@@ -27,7 +27,8 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
   const [form, setForm] = useState({
     titre: '', vehicule_id: '', chauffeur_id: '',
     lieu_depart: 'Antananarivo', lieu_destination: '',
-    distance_km: '', date_depart: '', date_retour_prevue: '', notes: ''
+    distance_km: '', date_depart: '', date_retour_prevue: '',
+    poids_charge: '', notes: ''
   });
   const [vehicules,   setVehicules]   = useState([]);
   const [chauffeurs,  setChauffeurs]  = useState([]);
@@ -47,7 +48,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
       const next = { ...p, [name]: value };
       // Calcul automatique du coût estimé lors de la saisie de la distance
       if (name === 'distance_km' && value > 0) {
-        setCoutEstime(parseFloat(value) * 0.08 * 5200);
+        setCoutEstime(parseFloat(value) * 0.30 * 5200);
       } else if (name === 'distance_km') {
         setCoutEstime(null);
       }
@@ -124,9 +125,18 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
           <p className="flex items-center gap-1.5 text-xs text-blue-600 mt-1">
             <Coins className="w-3.5 h-3.5" />
             Coût carburant estimé : <strong>{formatAriary(coutEstime)}</strong>
-            <span className="text-gray-400">(0,08 L/km × 5 200 Ar/L)</span>
+            <span className="text-gray-400">(0,30 L/km × 5 200 Ar/L)</span>
           </p>
         )}
+      </div>
+
+      {/* Poids de la charge transportée */}
+      <div>
+        <label className="block font-medium text-gray-700 mb-1">Poids chargé (tonnes)</label>
+        <input type="number" name="poids_charge" value={form.poids_charge} onChange={handleChange}
+          min="0" max="100" step="0.5" placeholder="ex: 32.5"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <p className="text-xs text-gray-400 mt-1">Tonnage effectivement chargé sur le camion</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -143,9 +153,9 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
       </div>
 
       <div>
-        <label className="block font-medium text-gray-700 mb-1">Notes</label>
+        <label className="block font-medium text-gray-700 mb-1">Marchandises transportées</label>
         <textarea name="notes" value={form.notes} onChange={handleChange} rows={3}
-          placeholder="Informations complémentaires…"
+          placeholder="Ex : Ciment Portland — 35 tonnes pour chantier CHU Toamasina"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
       </div>
 
@@ -170,22 +180,23 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
   );
 };
 
-/** Détail d'une mission terminée */
+/** Détail d'une mission de transport terminée */
 const DetailMission = ({ mission }) => (
   <div className="space-y-3 text-sm text-gray-700">
     <div className="grid grid-cols-2 gap-2">
-      <span><strong>Véhicule :</strong> {mission.immatriculation}</span>
+      <span><strong>Camion :</strong> {mission.immatriculation}</span>
       <span><strong>Chauffeur :</strong> {mission.chauffeur_prenom} {mission.chauffeur_nom}</span>
       <span><strong>Départ :</strong> {mission.lieu_depart}</span>
       <span><strong>Destination :</strong> {mission.lieu_destination}</span>
       <span><strong>Distance :</strong> {mission.distance_km} km</span>
+      <span><strong>Poids chargé :</strong> {mission.poids_charge ? `${mission.poids_charge} T` : '—'}</span>
       <span><strong>Coût carburant :</strong> {formatAriary(mission.cout_carburant)}</span>
       <span><strong>Date départ :</strong> {formatDate(mission.date_depart)}</span>
       <span><strong>Retour réel :</strong> {formatDate(mission.date_retour_reelle)}</span>
     </div>
     {mission.notes && (
       <div className="bg-gray-50 rounded-lg p-3">
-        <strong>Notes :</strong> {mission.notes}
+        <strong>Marchandises transportées :</strong> {mission.notes}
       </div>
     )}
   </div>
@@ -266,7 +277,7 @@ export default function Missions() {
             onClick={() => setModal({ ouvert: true, mission: null, mode: 'new' })}
             className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700"
           >
-            <Plus className="w-4 h-4" /> Nouvelle mission
+            <Plus className="w-4 h-4" /> Nouvelle mission de transport
           </button>
         )}
       </div>
