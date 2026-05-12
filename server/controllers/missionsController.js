@@ -59,7 +59,7 @@ const create = async (req, res) => {
     const {
       titre, vehicule_id, chauffeur_id,
       lieu_depart, lieu_destination, distance_km,
-      date_depart, date_retour_prevue, notes
+      date_depart, date_retour_prevue, notes, poids_charge
     } = req.body;
 
     if (!titre || !vehicule_id || !chauffeur_id || !lieu_depart || !lieu_destination || !date_depart || !date_retour_prevue) {
@@ -71,10 +71,10 @@ const create = async (req, res) => {
       'SELECT id, statut FROM vehicules WHERE id = ?', [vehicule_id]
     );
     if (vehicule.length === 0) {
-      return res.status(404).json({ message: 'Véhicule introuvable' });
+      return res.status(404).json({ message: 'Camion introuvable' });
     }
     if (vehicule[0].statut !== 'disponible') {
-      return res.status(409).json({ message: `Le véhicule n'est pas disponible (statut : ${vehicule[0].statut})` });
+      return res.status(409).json({ message: `Le camion n'est pas disponible (statut : ${vehicule[0].statut})` });
     }
 
     // Vérification de la disponibilité du chauffeur
@@ -91,10 +91,11 @@ const create = async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO missions
         (titre, vehicule_id, chauffeur_id, lieu_depart, lieu_destination,
-         distance_km, date_depart, date_retour_prevue, notes, statut)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'planifiee')`,
+         distance_km, date_depart, date_retour_prevue, notes, poids_charge, statut)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planifiee')`,
       [titre, vehicule_id, chauffeur_id, lieu_depart, lieu_destination,
-       distance_km || 0, date_depart, date_retour_prevue, notes || null]
+       distance_km || 0, date_depart, date_retour_prevue,
+       notes || null, poids_charge || null]
     );
 
     // Notifier via Socket.io les autres clients connectés
