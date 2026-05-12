@@ -1,6 +1,7 @@
 // Page de connexion — accès public
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Car, AlertTriangle, Mail, KeyRound, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -39,7 +40,11 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo et titre */}
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🚗</div>
+          <div className="flex justify-center mb-4">
+            <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center">
+              <Car className="w-10 h-10 text-white" />
+            </div>
+          </div>
           <h1 className="text-3xl font-bold text-white">FlotteApp</h1>
           <p className="text-blue-200 mt-2">Gestion de Flotte — Madagascar</p>
         </div>
@@ -89,7 +94,7 @@ export default function Login() {
             {erreur && (
               <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200
                               text-sm px-4 py-3 rounded-xl">
-                <span>⚠️</span>
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                 <span>{erreur}</span>
               </div>
             )}
@@ -105,10 +110,7 @@ export default function Login() {
             >
               {chargement ? (
                 <>
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                  </svg>
+                  <Loader2 className="w-5 h-5 animate-spin" />
                   Connexion en cours…
                 </>
               ) : (
@@ -120,10 +122,21 @@ export default function Login() {
           {/* Comptes de démonstration */}
           <div className="mt-6 p-4 bg-gray-50 rounded-xl text-xs text-gray-500">
             <p className="font-medium text-gray-700 mb-2">Comptes de démonstration :</p>
-            <p>📧 admin@flotte.mg</p>
-            <p>📧 gestionnaire@flotte.mg</p>
-            <p>📧 chauffeur@flotte.mg</p>
-            <p className="mt-1">🔑 Mot de passe : <span className="font-mono">password123</span></p>
+            <div className="space-y-1">
+              <p className="flex items-center gap-1.5">
+                <Mail className="w-3 h-3" /> admin@flotte.mg
+              </p>
+              <p className="flex items-center gap-1.5">
+                <Mail className="w-3 h-3" /> gestionnaire@flotte.mg
+              </p>
+              <p className="flex items-center gap-1.5">
+                <Mail className="w-3 h-3" /> chauffeur@flotte.mg
+              </p>
+              <p className="flex items-center gap-1.5 mt-1">
+                <KeyRound className="w-3 h-3" />
+                Mot de passe : <span className="font-mono">password123</span>
+              </p>
+            </div>
           </div>
         </div>
 

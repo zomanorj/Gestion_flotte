@@ -1,5 +1,6 @@
 // Badge d'alerte coloré selon le type de maintenance
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 /** Retourne les classes CSS Tailwind selon le type d'alerte */
 const couleurParType = (type = '') => {
@@ -17,7 +18,7 @@ const couleurParType = (type = '') => {
 export default function AlerteBadge({ alerte }) {
   return (
     <div className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${couleurParType(alerte.type)}`}>
-      <span className="text-lg flex-shrink-0">⚠️</span>
+      <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">
           {alerte.immatriculation} — {alerte.type}

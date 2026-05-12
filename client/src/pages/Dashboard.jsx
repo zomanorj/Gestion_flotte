@@ -6,6 +6,7 @@ import {
   Title, Tooltip, Legend, Filler
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { Truck, MapPin, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import api from '../services/api';
 import StatCard    from '../components/StatCard';
 import MapView     from '../components/MapView';
@@ -40,8 +41,9 @@ export default function Dashboard() {
 
   if (erreur) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
-        ⚠️ {erreur}
+      <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
+        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+        {erreur}
       </div>
     );
   }
@@ -80,28 +82,28 @@ export default function Dashboard() {
         <StatCard
           titre="Véhicules disponibles"
           valeur={stats.vehiculesDisponibles}
-          icone="🚙"
+          icone={<Truck className="w-7 h-7" />}
           couleur="green"
           sousTitre={`sur ${stats.totalVehicules} au total`}
         />
         <StatCard
           titre="Missions en cours"
           valeur={stats.missionsEnCours}
-          icone="📍"
+          icone={<MapPin className="w-7 h-7" />}
           couleur="blue"
           sousTitre={`${stats.missionsPlanifiees} planifiée(s)`}
         />
         <StatCard
           titre="Missions aujourd'hui"
           valeur={stats.missionsAujourdhui}
-          icone="📅"
+          icone={<Calendar className="w-7 h-7" />}
           couleur="orange"
           sousTitre="départs prévus ce jour"
         />
         <StatCard
           titre="Alertes maintenance"
           valeur={stats.alertesMaintenance}
-          icone="⚠️"
+          icone={<AlertTriangle className="w-7 h-7" />}
           couleur="red"
           sousTitre="non lues"
         />
@@ -131,7 +133,10 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
           <h3 className="font-semibold text-gray-800 mb-3">Alertes récentes</h3>
           {stats.dernieresAlertes?.length === 0 ? (
-            <p className="text-sm text-gray-400">Aucune alerte en attente ✅</p>
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              Aucune alerte en attente
+            </div>
           ) : (
             <div className="space-y-2">
               {stats.dernieresAlertes.map((a) => (

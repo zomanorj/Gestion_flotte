@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { Search, Loader2, FileDown, Table2 } from 'lucide-react';
 import api from '../services/api';
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
@@ -45,7 +46,7 @@ export default function Rapports() {
 
     // En-tête du document
     doc.setFontSize(16);
-    doc.setTextColor(30, 64, 175); // bleu
+    doc.setTextColor(30, 64, 175);
     doc.text('Rapport de Missions — FlotteApp Madagascar', 14, 18);
 
     doc.setFontSize(10);
@@ -56,7 +57,6 @@ export default function Rapports() {
     doc.text(periode, 14, 26);
     doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 14, 32);
 
-    // Corps du tableau
     const lignes = missions.map((m) => [
       m.titre,
       m.immatriculation,
@@ -67,7 +67,6 @@ export default function Rapports() {
       formatDate(m.date_depart)
     ]);
 
-    // Ligne de totaux
     lignes.push([
       { content: `TOTAL — ${missions.length} mission(s)`, styles: { fontStyle: 'bold' } },
       '', '', '',
@@ -93,30 +92,28 @@ export default function Rapports() {
    * Exporte le rapport en fichier Excel avec SheetJS.
    */
   const exporterExcel = () => {
-    // Construction des lignes de données
     const lignes = missions.map((m) => ({
-      'Mission':          m.titre,
-      'Véhicule':         m.immatriculation,
-      'Chauffeur':        `${m.chauffeur_prenom} ${m.chauffeur_nom}`,
-      'Départ':           m.lieu_depart,
-      'Destination':      m.lieu_destination,
-      'Distance (km)':    parseFloat(m.distance_km),
+      'Mission':             m.titre,
+      'Véhicule':            m.immatriculation,
+      'Chauffeur':           `${m.chauffeur_prenom} ${m.chauffeur_nom}`,
+      'Départ':              m.lieu_depart,
+      'Destination':         m.lieu_destination,
+      'Distance (km)':       parseFloat(m.distance_km),
       'Coût carburant (Ar)': parseFloat(m.cout_carburant) || 0,
-      'Date de départ':   formatDate(m.date_depart),
-      'Date de retour':   formatDate(m.date_retour_reelle)
+      'Date de départ':      formatDate(m.date_depart),
+      'Date de retour':      formatDate(m.date_retour_reelle)
     }));
 
-    // Ligne de totaux
     lignes.push({
-      'Mission':            `TOTAL (${missions.length} missions)`,
-      'Véhicule':           '',
-      'Chauffeur':          '',
-      'Départ':             '',
-      'Destination':        '',
-      'Distance (km)':      parseFloat(totalKm.toFixed(2)),
-      'Coût carburant (Ar)':parseFloat(totalCout.toFixed(2)),
-      'Date de départ':     '',
-      'Date de retour':     ''
+      'Mission':             `TOTAL (${missions.length} missions)`,
+      'Véhicule':            '',
+      'Chauffeur':           '',
+      'Départ':              '',
+      'Destination':         '',
+      'Distance (km)':       parseFloat(totalKm.toFixed(2)),
+      'Coût carburant (Ar)': parseFloat(totalCout.toFixed(2)),
+      'Date de départ':      '',
+      'Date de retour':      ''
     });
 
     const ws = XLSX.utils.json_to_sheet(lignes);
@@ -144,13 +141,13 @@ export default function Rapports() {
           <button
             onClick={genererRapport}
             disabled={chargement}
-            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700
-                       disabled:opacity-60 flex items-center gap-2"
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white font-medium rounded-xl
+                       hover:bg-blue-700 disabled:opacity-60"
           >
             {chargement ? (
-              <><span className="animate-spin">⟳</span> Chargement…</>
+              <><Loader2 className="w-4 h-4 animate-spin" /> Chargement…</>
             ) : (
-              '🔍 Générer le rapport'
+              <><Search className="w-4 h-4" /> Générer le rapport</>
             )}
           </button>
         </div>
@@ -175,14 +172,14 @@ export default function Rapports() {
                   className="flex items-center gap-2 px-5 py-2 bg-red-600 text-white text-sm font-medium
                              rounded-xl hover:bg-red-700 transition-colors"
                 >
-                  📄 Exporter PDF
+                  <FileDown className="w-4 h-4" /> Exporter PDF
                 </button>
                 <button
                   onClick={exporterExcel}
                   className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white text-sm font-medium
                              rounded-xl hover:bg-green-700 transition-colors"
                 >
-                  📊 Exporter Excel
+                  <Table2 className="w-4 h-4" /> Exporter Excel
                 </button>
               </>
             )}

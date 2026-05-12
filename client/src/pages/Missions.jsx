@@ -1,5 +1,6 @@
 // Page gestion des missions — workflow complet de statuts
 import React, { useState, useEffect, useCallback } from 'react';
+import { Play, X, Check, Eye, Trash2, AlertTriangle, Coins, Plus } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
@@ -120,9 +121,10 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
           min="0" step="0.1" placeholder="260"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
         {coutEstime !== null && (
-          <p className="text-xs text-blue-600 mt-1">
-            💰 Coût carburant estimé : <strong>{formatAriary(coutEstime)}</strong>
-            <span className="text-gray-400 ml-1">(consommation standard 0,08 L/km × 5 200 Ar/L)</span>
+          <p className="flex items-center gap-1.5 text-xs text-blue-600 mt-1">
+            <Coins className="w-3.5 h-3.5" />
+            Coût carburant estimé : <strong>{formatAriary(coutEstime)}</strong>
+            <span className="text-gray-400">(0,08 L/km × 5 200 Ar/L)</span>
           </p>
         )}
       </div>
@@ -147,7 +149,12 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
       </div>
 
-      {erreur && <p className="text-red-600 bg-red-50 px-3 py-2 rounded-lg">⚠️ {erreur}</p>}
+      {erreur && (
+        <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          {erreur}
+        </div>
+      )}
 
       <div className="flex gap-3 pt-1">
         <button type="button" onClick={onAnnuler}
@@ -257,9 +264,9 @@ export default function Missions() {
         {isGestionnaire && (
           <button
             onClick={() => setModal({ ouvert: true, mission: null, mode: 'new' })}
-            className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700"
+            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700"
           >
-            + Nouvelle mission
+            <Plus className="w-4 h-4" /> Nouvelle mission
           </button>
         )}
       </div>
@@ -307,45 +314,45 @@ export default function Missions() {
                           <>
                             <button
                               onClick={() => changerStatut(m.id, 'en_cours')}
-                              className="px-2 py-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg"
+                              className="flex items-center gap-1 px-2 py-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
                               title="Démarrer la mission"
                             >
-                              ▶ Démarrer
+                              <Play className="w-3 h-3" /> Démarrer
                             </button>
                             <button
                               onClick={() => changerStatut(m.id, 'annulee')}
-                              className="px-2 py-1 text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg"
+                              className="flex items-center gap-1 px-2 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors"
                               title="Annuler la mission"
                             >
-                              ✕ Annuler
+                              <X className="w-3 h-3" /> Annuler
                             </button>
                           </>
                         )}
                         {isGestionnaire && m.statut === 'en_cours' && (
                           <button
                             onClick={() => changerStatut(m.id, 'terminee')}
-                            className="px-2 py-1 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded-lg"
+                            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors"
                             title="Terminer la mission"
                           >
-                            ✓ Terminer
+                            <Check className="w-3 h-3" /> Terminer
                           </button>
                         )}
                         {m.statut === 'terminee' && (
                           <button
                             onClick={() => setModal({ ouvert: true, mission: m, mode: 'detail' })}
-                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg"
+                            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                             title="Voir le détail"
                           >
-                            👁 Détail
+                            <Eye className="w-3 h-3" /> Détail
                           </button>
                         )}
                         {user?.role === 'admin' && ['annulee', 'planifiee'].includes(m.statut) && (
                           <button
                             onClick={() => supprimer(m.id)}
-                            className="px-2 py-1 text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded-lg"
+                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors"
                             title="Supprimer"
                           >
-                            🗑
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>

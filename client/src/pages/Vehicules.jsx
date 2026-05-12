@@ -1,5 +1,6 @@
 // Page gestion des véhicules — CRUD + filtres + badges statut
 import React, { useState, useEffect, useCallback } from 'react';
+import { Eye, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
@@ -96,7 +97,12 @@ const FormulaireVehicule = ({ vehicule, onSauvegarder, onAnnuler }) => {
         {champInput('date_derniere_vidange', 'Dernière vidange', 'date')}
         {champInput('date_prochain_ct', 'Prochain CT', 'date')}
       </div>
-      {erreur && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">⚠️ {erreur}</p>}
+      {erreur && (
+        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          {erreur}
+        </div>
+      )}
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onAnnuler}
           className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
@@ -181,9 +187,9 @@ export default function Vehicules() {
         {isAdmin && (
           <button
             onClick={() => ouvrirFormulaire()}
-            className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 whitespace-nowrap"
+            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 whitespace-nowrap"
           >
-            + Ajouter un véhicule
+            <Plus className="w-4 h-4" /> Ajouter un véhicule
           </button>
         )}
       </div>
@@ -227,27 +233,27 @@ export default function Vehicules() {
                       <div className="flex gap-1">
                         <button
                           onClick={() => ouvrirDetail(v)}
-                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg"
+                          className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                           title="Voir le détail"
                         >
-                          👁 Voir
+                          <Eye className="w-3.5 h-3.5" />
                         </button>
                         {isAdmin && (
                           <>
                             <button
                               onClick={() => ouvrirFormulaire(v)}
-                              className="px-2 py-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg"
+                              className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
                               title="Modifier"
                             >
-                              ✏️
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
                             {user?.role === 'admin' && (
                               <button
                                 onClick={() => setConfirmSuppression(v)}
-                                className="px-2 py-1 text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded-lg"
+                                className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors"
                                 title="Supprimer"
                               >
-                                🗑
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             )}
                           </>
@@ -303,9 +309,9 @@ export default function Vehicules() {
           </button>
           <button
             onClick={() => supprimer(confirmSuppression.id)}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
           >
-            Supprimer
+            <Trash2 className="w-4 h-4" /> Supprimer
           </button>
         </div>
       </Modal>

@@ -1,6 +1,10 @@
 // Barre de navigation latérale fixe
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import {
+  Car, LayoutDashboard, Truck, Users, MapPin,
+  FileText, LogOut
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -9,7 +13,7 @@ const initiales = (nom) =>
   nom ? nom.split(' ').map((p) => p[0]).join('').toUpperCase().slice(0, 2) : '?';
 
 /** Lien de navigation avec style actif automatique */
-const NavItem = ({ to, icon, label, badge }) => (
+const NavItem = ({ to, Icon, label, badge }) => (
   <NavLink
     to={to}
     className={({ isActive }) =>
@@ -19,7 +23,7 @@ const NavItem = ({ to, icon, label, badge }) => (
          : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`
     }
   >
-    <span className="text-lg">{icon}</span>
+    <Icon className="w-5 h-5 flex-shrink-0" />
     <span>{label}</span>
     {badge > 0 && (
       <span className="absolute right-3 top-2 bg-red-500 text-white text-xs font-bold
@@ -52,18 +56,19 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-700">
         <h1 className="text-white text-xl font-bold flex items-center gap-2">
-          🚗 <span>FlotteApp</span>
+          <Car className="w-6 h-6 text-blue-400" />
+          <span>FlotteApp</span>
         </h1>
         <p className="text-gray-400 text-xs mt-1">Gestion de Flotte — Madagascar</p>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <NavItem to="/"          icon="📊" label="Tableau de bord" />
-        <NavItem to="/vehicules" icon="🚙" label="Véhicules" badge={nbAlertes} />
-        <NavItem to="/chauffeurs" icon="👤" label="Chauffeurs" />
-        <NavItem to="/missions"  icon="📍" label="Missions" />
-        <NavItem to="/rapports"  icon="📄" label="Rapports" />
+        <NavItem to="/"           Icon={LayoutDashboard} label="Tableau de bord" />
+        <NavItem to="/vehicules"  Icon={Truck}           label="Véhicules" badge={nbAlertes} />
+        <NavItem to="/chauffeurs" Icon={Users}           label="Chauffeurs" />
+        <NavItem to="/missions"   Icon={MapPin}          label="Missions" />
+        <NavItem to="/rapports"   Icon={FileText}        label="Rapports" />
       </nav>
 
       {/* Profil utilisateur + déconnexion */}
@@ -83,7 +88,8 @@ export default function Sidebar() {
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400
                      hover:text-red-400 hover:bg-gray-800 rounded-lg transition-colors"
         >
-          <span>🚪</span> Déconnexion
+          <LogOut className="w-4 h-4" />
+          Déconnexion
         </button>
       </div>
     </aside>

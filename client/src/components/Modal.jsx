@@ -1,5 +1,6 @@
 // Composant Modal réutilisable avec overlay
 import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
 
 /**
  * Fenêtre modale générique.
@@ -42,8 +43,9 @@ export default function Modal({ isOpen, onClose, titre, children, taille = 'max-
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full
                        text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            aria-label="Fermer"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 

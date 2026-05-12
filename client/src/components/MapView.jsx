@@ -1,6 +1,6 @@
 // Carte Leaflet centrée sur Antananarivo avec marqueurs des véhicules en mission
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
 // Correction du bug d'icônes Leaflet avec les bundlers modernes
@@ -11,13 +11,30 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
 });
 
-// Icône personnalisée pour les véhicules en mission
+// Marqueur personnalisé pour les véhicules en mission — icône SVG car (style lucide)
 const iconeVehicule = new L.DivIcon({
-  html: '<div style="font-size:24px;line-height:1;">🚙</div>',
+  html: `
+    <div style="
+      width:32px;height:32px;
+      background:#2563eb;
+      border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 6px rgba(0,0,0,0.3);
+    ">
+      <svg style="transform:rotate(45deg)" width="16" height="16"
+           viewBox="0 0 24 24" fill="none"
+           stroke="white" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v9a2 2 0 0 1-2 2h-3"/>
+        <circle cx="7.5" cy="17" r="2.5"/>
+        <circle cx="17.5" cy="17" r="2.5"/>
+      </svg>
+    </div>`,
   className: '',
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-  popupAnchor: [0, -30]
+  iconSize:   [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor:[0, -34]
 });
 
 // Coordonnées approximatives des grandes villes malgaches
@@ -31,7 +48,7 @@ const VILLES_COORDS = {
   'Antsiranana':  [-12.3483, 49.2958]
 };
 
-/** Retourne les coordonnées d'une ville ou les coordonnées d'Antananarivo par défaut */
+/** Retourne les coordonnées d'une ville ou Antananarivo par défaut */
 const coordsVille = (nom) => {
   if (!nom) return [-18.9136, 47.5362];
   const cle = Object.keys(VILLES_COORDS).find(v =>

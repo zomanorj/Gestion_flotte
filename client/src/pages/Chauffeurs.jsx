@@ -1,5 +1,6 @@
 // Page gestion des chauffeurs + historique de missions
 import React, { useState, useEffect, useCallback } from 'react';
+import { ClipboardList, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
@@ -97,7 +98,12 @@ const FormulaireChauffeur = ({ chauffeur, onSauvegarder, onAnnuler }) => {
           {Object.entries(LABELS_STATUT).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </div>
-      {erreur && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">⚠️ {erreur}</p>}
+      {erreur && (
+        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          {erreur}
+        </div>
+      )}
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onAnnuler}
           className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
@@ -211,9 +217,9 @@ export default function Chauffeurs() {
         {isAdmin && (
           <button
             onClick={() => setModal({ ouvert: true, chauffeur: null, mode: 'form' })}
-            className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 whitespace-nowrap"
+            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 whitespace-nowrap"
           >
-            + Ajouter un chauffeur
+            <Plus className="w-4 h-4" /> Ajouter un chauffeur
           </button>
         )}
       </div>
@@ -264,27 +270,28 @@ export default function Chauffeurs() {
                       <div className="flex gap-1">
                         <button
                           onClick={() => setModal({ ouvert: true, chauffeur: c, mode: 'historique' })}
-                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg"
+                          className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                           title="Historique des missions"
                         >
-                          📋 Missions
+                          <ClipboardList className="w-3.5 h-3.5" />
+                          Missions
                         </button>
                         {isAdmin && (
                           <>
                             <button
                               onClick={() => setModal({ ouvert: true, chauffeur: c, mode: 'form' })}
-                              className="px-2 py-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg"
+                              className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
                               title="Modifier"
                             >
-                              ✏️
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
                             {user?.role === 'admin' && (
                               <button
                                 onClick={() => setConfirmSupp(c)}
-                                className="px-2 py-1 text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded-lg"
+                                className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors"
                                 title="Supprimer"
                               >
-                                🗑
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             )}
                           </>
@@ -336,8 +343,8 @@ export default function Chauffeurs() {
             Annuler
           </button>
           <button onClick={() => supprimer(confirmSupp.id)}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">
-            Supprimer
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">
+            <Trash2 className="w-4 h-4" /> Supprimer
           </button>
         </div>
       </Modal>
