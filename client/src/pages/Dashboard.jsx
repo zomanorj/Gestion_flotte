@@ -80,11 +80,11 @@ export default function Dashboard() {
       {/* Section statistiques */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
-          titre="Véhicules disponibles"
+          titre="Camions disponibles"
           valeur={stats.vehiculesDisponibles}
           icone={<Truck className="w-7 h-7" />}
           couleur="green"
-          sousTitre={`sur ${stats.totalVehicules} au total`}
+          sousTitre={`sur ${stats.totalVehicules} camions`}
         />
         <StatCard
           titre="Missions en cours"
