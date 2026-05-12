@@ -1,9 +1,10 @@
-// Page gestion des missions — workflow complet de statuts
+// Page gestion des missions — workflow complet de statuts + simulation temps réel
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, X, Check, Eye, Trash2, AlertTriangle, Coins, Plus } from 'lucide-react';
+import { Play, X, Check, Eye, Trash2, AlertTriangle, Coins, Plus, Zap } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
+import SimulationMission from '../components/SimulationMission';
 
 const BADGES = {
   planifiee: 'bg-gray-100 text-gray-700',
@@ -211,7 +212,8 @@ export default function Missions() {
   const [filtreStatut, setFiltreStatut] = useState('');
   const [dateDebut,   setDateDebut]   = useState('');
   const [dateFin,     setDateFin]     = useState('');
-  const [modal,       setModal]       = useState({ ouvert: false, mission: null, mode: 'new' });
+  const [modal,             setModal]             = useState({ ouvert: false, mission: null, mode: 'new' });
+  const [missionEnSimulation, setMissionEnSimulation] = useState(null);
 
   const chargerMissions = useCallback(async () => {
     setChargement(true);
@@ -324,11 +326,11 @@ export default function Missions() {
                         {isGestionnaire && m.statut === 'planifiee' && (
                           <>
                             <button
-                              onClick={() => changerStatut(m.id, 'en_cours')}
-                              className="flex items-center gap-1 px-2 py-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
-                              title="Démarrer la mission"
+                              onClick={() => setMissionEnSimulation(m)}
+                              className="flex items-center gap-1 px-2 py-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-medium"
+                              title="Simuler la mission en temps réel"
                             >
-                              <Play className="w-3 h-3" /> Démarrer
+                              <Zap className="w-3 h-3" /> Simuler
                             </button>
                             <button
                               onClick={() => changerStatut(m.id, 'annulee')}
@@ -376,11 +378,11 @@ export default function Missions() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal nouvelle mission / détail */}
       <Modal
         isOpen={modal.ouvert}
         onClose={fermerModal}
-        titre={modal.mode === 'detail' ? `Détail — ${modal.mission?.titre}` : 'Nouvelle mission'}
+        titre={modal.mode === 'detail' ? `Détail — ${modal.mission?.titre}` : 'Nouvelle mission de transport'}
         taille="max-w-2xl"
       >
         {modal.mode === 'detail' ? (
@@ -389,6 +391,17 @@ export default function Missions() {
           <FormulaireMission onSauvegarder={apresCreation} onAnnuler={fermerModal} />
         )}
       </Modal>
+
+      {/* Simulation plein écran */}
+      {missionEnSimulation && (
+        <SimulationMission
+          mission={missionEnSimulation}
+          onFermer={() => {
+            setMissionEnSimulation(null);
+            chargerMissions(); // recharge le statut mis à jour
+          }}
+        />
+      )}
     </div>
   );
 }
