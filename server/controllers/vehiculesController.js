@@ -218,26 +218,34 @@ const update = async (req, res) => {
 
 /**
  * DELETE /api/vehicules/:id
- * Supprime un véhicule s'il n'a aucune mission en cours.
+ * Supprime un camion uniquement s'il n'a aucune mission (active ou historique).
+ * Un camion avec des missions terminées ne peut pas être supprimé :
+ * l'historique de transport doit être conservé.
  */
 const remove = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [existant] = await db.query('SELECT id FROM vehicules WHERE id = ?', [id]);
+    const [existant] = await db.query('SELECT id, immatriculation FROM vehicules WHERE id = ?', [id]);
     if (existant.length === 0) {
-      return res.status(404).json({ message: 'Véhicule introuvable' });
+      return res.status(404).json({ message: 'Camion introuvable' });
     }
 
-    // Vérification des missions actives
-    const [missionsActives] = await db.query(
-      `SELECT id FROM missions
-       WHERE vehicule_id = ? AND statut IN ('planifiee', 'en_cours')`,
+    // Compte toutes les missions liées à ce camion (tous statuts confondus)
+    const [toutesMissions] = await db.query(
+      'SELECT COUNT(*) AS nb, SUM(statut IN ("planifiee","en_cours")) AS actives FROM missions WHERE vehicule_id = ?',
       [id]
     );
-    if (missionsActives.length > 0) {
+
+    if (toutesMissions[0].actives > 0) {
       return res.status(409).json({
-        message: 'Impossible de supprimer : ce camion a des missions actives'
+        message: `Impossible de supprimer : le camion ${existant[0].immatriculation} a des missions en cours ou planifiées`
+      });
+    }
+
+    if (toutesMissions[0].nb > 0) {
+      return res.status(409).json({
+        message: `Impossible de supprimer : le camion ${existant[0].immatriculation} a un historique de ${toutesMissions[0].nb} mission(s). Modifiez son statut à la place.`
       });
     }
 

@@ -173,25 +173,37 @@ const update = async (req, res) => {
 
 /**
  * DELETE /api/chauffeurs/:id
- * Supprime un chauffeur s'il n'a aucune mission active.
+ * Supprime un chauffeur uniquement s'il n'a aucune mission (active ou historique).
+ * Un chauffeur avec un historique de missions doit être archivé, pas supprimé.
  */
 const remove = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [existant] = await db.query('SELECT id FROM chauffeurs WHERE id = ?', [id]);
+    const [existant] = await db.query(
+      'SELECT id, nom, prenom FROM chauffeurs WHERE id = ?', [id]
+    );
     if (existant.length === 0) {
       return res.status(404).json({ message: 'Chauffeur introuvable' });
     }
 
-    const [missionsActives] = await db.query(
-      `SELECT id FROM missions
-       WHERE chauffeur_id = ? AND statut IN ('planifiee', 'en_cours')`,
+    const nom = `${existant[0].prenom} ${existant[0].nom}`;
+
+    // Compte toutes les missions (actives + historique)
+    const [toutesMissions] = await db.query(
+      'SELECT COUNT(*) AS nb, SUM(statut IN ("planifiee","en_cours")) AS actives FROM missions WHERE chauffeur_id = ?',
       [id]
     );
-    if (missionsActives.length > 0) {
+
+    if (toutesMissions[0].actives > 0) {
       return res.status(409).json({
-        message: 'Impossible de supprimer : ce chauffeur a des missions actives'
+        message: `Impossible de supprimer : ${nom} a des missions en cours ou planifiées`
+      });
+    }
+
+    if (toutesMissions[0].nb > 0) {
+      return res.status(409).json({
+        message: `Impossible de supprimer : ${nom} a un historique de ${toutesMissions[0].nb} mission(s). Passez-le en statut "congé" à la place.`
       });
     }
 
