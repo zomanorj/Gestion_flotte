@@ -16,9 +16,12 @@ const VILLES_MADAGASCAR = {
   'Manakara':     { lat: -22.1333, lng: 48.0167 }
 };
 
+// Endpoint ORS — driving-car (gratuit) au lieu de driving-hgv (payant)
+const ORS_URL = 'https://api.openrouteservice.org/v2/directions/driving-car';
+
 /**
  * Récupère le tracé réel de la route entre deux villes
- * via l'API OpenRouteService (profil driving-hgv = poids lourds).
+ * via l'API OpenRouteService (profil driving-car, gratuit).
  * Bascule sur un fallback ligne droite si l'API est indisponible.
  * @param {string} villeDepart  - Nom de la ville de départ
  * @param {string} villeArrivee - Nom de la ville d'arrivée
@@ -32,25 +35,31 @@ async function getRoute(villeDepart, villeArrivee) {
     throw new Error(`Ville inconnue : "${villeDepart}" ou "${villeArrivee}"`);
   }
 
+  console.log(`[ORS] Appel route : ${villeDepart} → ${villeArrivee}`);
+  console.log(`[ORS] URL : ${ORS_URL}`);
+  console.log(`[ORS] start=${depart.lng},${depart.lat} | end=${arrivee.lng},${arrivee.lat}`);
+
   try {
-    const response = await axios.get(
-      'https://api.openrouteservice.org/v2/directions/driving-hgv',
-      {
-        params: {
-          api_key: process.env.ORS_API_KEY,
-          start: `${depart.lng},${depart.lat}`,
-          end:   `${arrivee.lng},${arrivee.lat}`
-        },
-        timeout: 8000
-      }
-    );
+    const response = await axios.get(ORS_URL, {
+      // Authentification via header Authorization (méthode correcte ORS v2)
+      headers: {
+        'Authorization': process.env.ORS_API_KEY
+      },
+      params: {
+        start: `${depart.lng},${depart.lat}`,
+        end:   `${arrivee.lng},${arrivee.lat}`
+      },
+      timeout: 10000
+    });
 
     const feature = response.data.features[0];
     const coords  = feature.geometry.coordinates;
     const summary = feature.properties.summary;
 
-    // ORS renvoie [lng, lat] — on convertit en { lat, lng } pour Leaflet
+    // ORS renvoie [lng, lat] — conversion en { lat, lng } pour Leaflet
     const points = coords.map(c => ({ lat: c[1], lng: c[0] }));
+
+    console.log(`[ORS] Succès : ${points.length} points, ${(summary.distance / 1000).toFixed(1)} km`);
 
     return {
       points,
@@ -59,9 +68,12 @@ async function getRoute(villeDepart, villeArrivee) {
       villeDepart,
       villeArrivee
     };
+
   } catch (error) {
-    // Fallback si l'API ORS est indisponible ou la clé invalide
-    console.warn('ORS indisponible, fallback ligne droite :', error.message);
+    // Log détaillé pour identifier la vraie cause de l'échec
+    console.error('[ORS] Erreur :', error.response?.data || error.message);
+    console.error('[ORS] Status :', error.response?.status);
+    console.warn('[ORS] Bascule sur fallback ligne droite');
     return getFallbackRoute(depart, arrivee, villeDepart, villeArrivee);
   }
 }
@@ -71,7 +83,7 @@ async function getRoute(villeDepart, villeArrivee) {
  * Utilisé quand l'API ORS n'est pas accessible.
  */
 function getFallbackRoute(depart, arrivee, nomDepart, nomArrivee) {
-  const points = [];
+  const points   = [];
   const nbPoints = 50;
 
   for (let i = 0; i <= nbPoints; i++) {
@@ -84,8 +96,8 @@ function getFallbackRoute(depart, arrivee, nomDepart, nomArrivee) {
 
   return {
     points,
-    distanceKm: calculerDistance(depart, arrivee),
-    dureeMin:   calculerDistance(depart, arrivee) / 60 * 60,
+    distanceKm:  calculerDistance(depart, arrivee),
+    dureeMin:    calculerDistance(depart, arrivee) / 60 * 60,
     villeDepart: nomDepart,
     villeArrivee: nomArrivee
   };
