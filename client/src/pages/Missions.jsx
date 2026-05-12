@@ -1,10 +1,10 @@
-// Page gestion des missions — workflow complet de statuts + simulation temps réel
+// Page gestion des missions — distance auto, toast, suppression universelle
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, X, Check, Eye, Trash2, AlertTriangle, Coins, Plus, Zap } from 'lucide-react';
+import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, Loader2 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
-import SimulationMission from '../components/SimulationMission';
+import { useToast } from '../components/Toast';
 
 const BADGES = {
   planifiee: 'bg-gray-100 text-gray-700',
@@ -20,45 +20,79 @@ const LABELS = {
   annulee:   'Annulée'
 };
 
-const formatDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-const formatAriary = (n) => n ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' Ar' : '—';
+const formatDate    = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+const formatAriary  = (n) => n ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' Ar' : '—';
 
-/** Formulaire de création de mission */
+// ────────────────────────────────────────────────
+// Formulaire de création de mission
+// ────────────────────────────────────────────────
 const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
   const [form, setForm] = useState({
-    titre: '', vehicule_id: '', chauffeur_id: '',
-    lieu_depart: 'Antananarivo', lieu_destination: '',
-    distance_km: '', date_depart: '', date_retour_prevue: '',
-    poids_charge: '', notes: ''
+    titre:             '',
+    vehicule_id:       '',
+    chauffeur_id:      '',
+    lieu_depart:       'Antananarivo',
+    lieu_destination:  '',
+    distance_km:       '',
+    date_depart:       '',
+    date_retour_prevue:'',
+    poids_charge:      '',
+    notes:             ''
   });
-  const [vehicules,   setVehicules]   = useState([]);
-  const [chauffeurs,  setChauffeurs]  = useState([]);
-  const [erreur,      setErreur]      = useState('');
-  const [loading,     setLoading]     = useState(false);
-  const [coutEstime,  setCoutEstime]  = useState(null);
 
-  // Chargement des ressources disponibles uniquement
+  const [vehicules,      setVehicules]      = useState([]);
+  const [chauffeurs,     setChauffeurs]     = useState([]);
+  const [villes,         setVilles]         = useState([]);
+  const [erreur,         setErreur]         = useState('');
+  const [loading,        setLoading]        = useState(false);
+  const [calculEnCours,  setCalculEnCours]  = useState(false);
+  const [dureeEstimee,   setDureeEstimee]   = useState(null);
+
+  // Chargement initial : camions dispo, chauffeurs dispo, liste des villes
   useEffect(() => {
     api.get('/vehicules',  { params: { statut: 'disponible' } }).then(({ data }) => setVehicules(data));
     api.get('/chauffeurs', { params: { statut: 'disponible' } }).then(({ data }) => setChauffeurs(data));
+    api.get('/simulation/villes').then(({ data }) => setVilles(data.villes || []));
   }, []);
+
+  // Calcul automatique dès que départ ET destination sont sélectionnés
+  useEffect(() => {
+    if (form.lieu_depart && form.lieu_destination && form.lieu_depart !== form.lieu_destination) {
+      calculerDistance();
+    } else {
+      setForm(p => ({ ...p, distance_km: '' }));
+      setDureeEstimee(null);
+    }
+  }, [form.lieu_depart, form.lieu_destination]);
+
+  /** Appelle l'API ORS pour obtenir la vraie distance et durée */
+  const calculerDistance = async () => {
+    setCalculEnCours(true);
+    try {
+      const { data } = await api.post('/simulation/route', {
+        villeDepart:  form.lieu_depart,
+        villeArrivee: form.lieu_destination
+      });
+      setForm(p => ({ ...p, distance_km: data.distanceKm }));
+      setDureeEstimee(data.dureeMin);
+    } catch (e) {
+      console.error('Erreur calcul route ORS :', e);
+    } finally {
+      setCalculEnCours(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((p) => {
-      const next = { ...p, [name]: value };
-      // Calcul automatique du coût estimé lors de la saisie de la distance
-      if (name === 'distance_km' && value > 0) {
-        setCoutEstime(parseFloat(value) * 0.30 * 5200);
-      } else if (name === 'distance_km') {
-        setCoutEstime(null);
-      }
-      return next;
-    });
+    setForm(p => ({ ...p, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.distance_km) {
+      setErreur('La distance n\'a pas pu être calculée. Vérifie les villes sélectionnées.');
+      return;
+    }
     setLoading(true);
     setErreur('');
     try {
@@ -71,22 +105,29 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
     }
   };
 
+  const coutEstime = form.distance_km
+    ? Math.round(form.distance_km * 0.30 * 5200)
+    : null;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3 text-sm">
+
+      {/* Titre */}
       <div>
         <label className="block font-medium text-gray-700 mb-1">Titre de la mission *</label>
         <input name="titre" value={form.titre} onChange={handleChange} required
-          placeholder="Livraison matériel — Toamasina"
+          placeholder="Transport ciment — Toamasina"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
+      {/* Camion + chauffeur */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block font-medium text-gray-700 mb-1">Véhicule disponible *</label>
+          <label className="block font-medium text-gray-700 mb-1">Camion disponible *</label>
           <select name="vehicule_id" value={form.vehicule_id} onChange={handleChange} required
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">— Choisir —</option>
-            {vehicules.map((v) => (
+            {vehicules.map(v => (
               <option key={v.id} value={v.id}>{v.immatriculation} ({v.marque} {v.modele})</option>
             ))}
           </select>
@@ -96,50 +137,82 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
           <select name="chauffeur_id" value={form.chauffeur_id} onChange={handleChange} required
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">— Choisir —</option>
-            {chauffeurs.map((c) => (
+            {chauffeurs.map(c => (
               <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
             ))}
           </select>
         </div>
       </div>
 
+      {/* Départ + destination (selects depuis VILLES_MADAGASCAR) */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block font-medium text-gray-700 mb-1">Lieu de départ *</label>
-          <input name="lieu_depart" value={form.lieu_depart} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <label className="block font-medium text-gray-700 mb-1">Départ *</label>
+          <select name="lieu_depart" value={form.lieu_depart} onChange={handleChange} required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">— Choisir —</option>
+            {villes.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
         </div>
         <div>
           <label className="block font-medium text-gray-700 mb-1">Destination *</label>
-          <input name="lieu_destination" value={form.lieu_destination} onChange={handleChange} required
-            placeholder="Toamasina"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <select name="lieu_destination" value={form.lieu_destination} onChange={handleChange} required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">— Choisir —</option>
+            {villes.filter(v => v !== form.lieu_depart).map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
         </div>
       </div>
 
+      {/* Carte distance / durée / coût — calculée automatiquement */}
       <div>
-        <label className="block font-medium text-gray-700 mb-1">Distance (km)</label>
-        <input type="number" name="distance_km" value={form.distance_km} onChange={handleChange}
-          min="0" step="0.1" placeholder="260"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        {coutEstime !== null && (
-          <p className="flex items-center gap-1.5 text-xs text-blue-600 mt-1">
-            <Coins className="w-3.5 h-3.5" />
-            Coût carburant estimé : <strong>{formatAriary(coutEstime)}</strong>
-            <span className="text-gray-400">(0,30 L/km × 5 200 Ar/L)</span>
-          </p>
-        )}
+        <label className="block font-medium text-gray-700 mb-1">Distance et durée</label>
+        <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+          {calculEnCours ? (
+            <div className="flex items-center gap-2 text-slate-500 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Calcul de la route en cours…
+            </div>
+          ) : form.distance_km ? (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <p className="text-xs text-slate-400 mb-0.5">Distance réelle</p>
+                <p className="font-bold text-lg text-gray-900">{Math.round(form.distance_km)} km</p>
+              </div>
+              {dureeEstimee !== null && (
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Durée estimée</p>
+                  <p className="font-bold text-lg text-gray-900">
+                    {Math.floor(dureeEstimee / 60)}h{Math.round(dureeEstimee % 60)}min
+                  </p>
+                </div>
+              )}
+              {coutEstime !== null && (
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Coût carburant</p>
+                  <p className="font-bold text-lg text-orange-500">
+                    {coutEstime.toLocaleString()} Ar
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-slate-400 text-sm">
+              Sélectionne le départ et la destination pour calculer automatiquement
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Poids de la charge transportée */}
+      {/* Poids chargé */}
       <div>
         <label className="block font-medium text-gray-700 mb-1">Poids chargé (tonnes)</label>
         <input type="number" name="poids_charge" value={form.poids_charge} onChange={handleChange}
           min="0" max="100" step="0.5" placeholder="ex: 32.5"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <p className="text-xs text-gray-400 mt-1">Tonnage effectivement chargé sur le camion</p>
       </div>
 
+      {/* Dates */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block font-medium text-gray-700 mb-1">Date de départ *</label>
@@ -153,9 +226,10 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
         </div>
       </div>
 
+      {/* Marchandises */}
       <div>
         <label className="block font-medium text-gray-700 mb-1">Marchandises transportées</label>
-        <textarea name="notes" value={form.notes} onChange={handleChange} rows={3}
+        <textarea name="notes" value={form.notes} onChange={handleChange} rows={2}
           placeholder="Ex : Ciment Portland — 35 tonnes pour chantier CHU Toamasina"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
       </div>
@@ -172,7 +246,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
           className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
           Annuler
         </button>
-        <button type="submit" disabled={loading}
+        <button type="submit" disabled={loading || calculEnCours}
           className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
           {loading ? '…' : 'Créer la mission'}
         </button>
@@ -181,7 +255,9 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
   );
 };
 
-/** Détail d'une mission de transport terminée */
+// ────────────────────────────────────────────────
+// Détail d'une mission terminée
+// ────────────────────────────────────────────────
 const DetailMission = ({ mission }) => (
   <div className="space-y-3 text-sm text-gray-700">
     <div className="grid grid-cols-2 gap-2">
@@ -197,23 +273,26 @@ const DetailMission = ({ mission }) => (
     </div>
     {mission.notes && (
       <div className="bg-gray-50 rounded-lg p-3">
-        <strong>Marchandises transportées :</strong> {mission.notes}
+        <strong>Marchandises :</strong> {mission.notes}
       </div>
     )}
   </div>
 );
 
+// ────────────────────────────────────────────────
+// Page principale
+// ────────────────────────────────────────────────
 export default function Missions() {
-  const { user } = useAuth();
+  const { user }       = useAuth();
   const isGestionnaire = ['admin', 'gestionnaire'].includes(user?.role);
+  const { ajouterToast, ToastContainer } = useToast();
 
-  const [missions,    setMissions]    = useState([]);
-  const [chargement,  setChargement]  = useState(true);
+  const [missions,     setMissions]     = useState([]);
+  const [chargement,   setChargement]   = useState(true);
   const [filtreStatut, setFiltreStatut] = useState('');
-  const [dateDebut,   setDateDebut]   = useState('');
-  const [dateFin,     setDateFin]     = useState('');
-  const [modal,             setModal]             = useState({ ouvert: false, mission: null, mode: 'new' });
-  const [missionEnSimulation, setMissionEnSimulation] = useState(null);
+  const [dateDebut,    setDateDebut]    = useState('');
+  const [dateFin,      setDateFin]      = useState('');
+  const [modal,        setModal]        = useState({ ouvert: false, mission: null, mode: 'new' });
 
   const chargerMissions = useCallback(async () => {
     setChargement(true);
@@ -233,53 +312,73 @@ export default function Missions() {
 
   useEffect(() => { chargerMissions(); }, [chargerMissions]);
 
-  /** Change le statut d'une mission et recharge la liste */
+  /** Démarre la simulation via l'API et affiche une notification */
+  const demarrerMission = async (mission) => {
+    try {
+      await api.post(`/simulation/demarrer/${mission.id}`);
+      ajouterToast(
+        'Mission démarrée !',
+        `${mission.lieu_depart} → ${mission.lieu_destination} · Visible sur la Carte globale`
+      );
+      chargerMissions();
+    } catch (e) {
+      ajouterToast(
+        'Erreur de démarrage',
+        e.response?.data?.message || e.message,
+        true
+      );
+    }
+  };
+
+  /** Supprime une mission (tous statuts) avec confirmation */
+  const supprimerMission = async (mission) => {
+    const avertissement = mission.statut === 'en_cours'
+      ? '\nAttention : le camion sera remis disponible et la simulation arrêtée.'
+      : '';
+    if (!window.confirm(`Supprimer "${mission.titre}" ?${avertissement}`)) return;
+
+    try {
+      await api.delete(`/missions/${mission.id}`);
+      ajouterToast('Mission supprimée', mission.titre);
+      chargerMissions();
+    } catch (e) {
+      ajouterToast('Erreur', e.response?.data?.message || e.message, true);
+    }
+  };
+
   const changerStatut = async (id, nouveauStatut) => {
     try {
       await api.put(`/missions/${id}/statut`, { statut: nouveauStatut });
       chargerMissions();
     } catch (err) {
-      alert(err.response?.data?.message || 'Erreur lors de la mise à jour');
+      ajouterToast('Erreur', err.response?.data?.message || 'Mise à jour impossible', true);
     }
   };
 
-  const supprimer = async (id) => {
-    if (!window.confirm('Supprimer cette mission ?')) return;
-    try {
-      await api.delete(`/missions/${id}`);
-      chargerMissions();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Erreur lors de la suppression');
-    }
-  };
-
-  const fermerModal = () => setModal({ ouvert: false, mission: null, mode: 'new' });
+  const fermerModal   = () => setModal({ ouvert: false, mission: null, mode: 'new' });
   const apresCreation = () => { fermerModal(); chargerMissions(); };
 
   return (
     <div className="space-y-4">
+
       {/* Filtres */}
       <div className="flex flex-wrap gap-3">
-        <select
-          value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
+        <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">Tous les statuts</option>
           {Object.entries(LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)}
+        <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           title="Date de début" />
-        <input type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)}
+        <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           title="Date de fin" />
         <div className="flex-1" />
         {isGestionnaire && (
-          <button
-            onClick={() => setModal({ ouvert: true, mission: null, mode: 'new' })}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700"
-          >
-            <Plus className="w-4 h-4" /> Nouvelle mission de transport
+          <button onClick={() => setModal({ ouvert: true, mission: null, mode: 'new' })}
+            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700">
+            <Plus className="w-4 h-4" /> Nouvelle mission
           </button>
         )}
       </div>
@@ -297,7 +396,7 @@ export default function Missions() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {['Titre', 'Véhicule', 'Chauffeur', 'Trajet', 'Départ', 'Statut', 'Actions'].map((h) => (
+                  {['Titre', 'Camion', 'Chauffeur', 'Trajet', 'Départ', 'Statut', 'Actions'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {h}
                     </th>
@@ -305,9 +404,9 @@ export default function Missions() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {missions.map((m) => (
+                {missions.map(m => (
                   <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[180px] truncate">{m.titre}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[160px] truncate">{m.titre}</td>
                     <td className="px-4 py-3 text-gray-600 font-mono text-xs">{m.immatriculation}</td>
                     <td className="px-4 py-3 text-gray-600">{m.chauffeur_prenom} {m.chauffeur_nom}</td>
                     <td className="px-4 py-3 text-gray-600 text-xs">
@@ -321,50 +420,49 @@ export default function Missions() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1 flex-wrap">
-                        {/* Boutons selon le statut */}
+                      <div className="flex gap-1 flex-wrap items-center">
+
+                        {/* Démarrer (planifiée seulement) */}
                         {isGestionnaire && m.statut === 'planifiee' && (
-                          <>
-                            <button
-                              onClick={() => setMissionEnSimulation(m)}
-                              className="flex items-center gap-1 px-2 py-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-medium"
-                              title="Simuler la mission en temps réel"
-                            >
-                              <Zap className="w-3 h-3" /> Simuler
-                            </button>
-                            <button
-                              onClick={() => changerStatut(m.id, 'annulee')}
-                              className="flex items-center gap-1 px-2 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors"
-                              title="Annuler la mission"
-                            >
-                              <X className="w-3 h-3" /> Annuler
-                            </button>
-                          </>
+                          <button onClick={() => demarrerMission(m)}
+                            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-medium"
+                            title="Démarrer la simulation">
+                            <Play className="w-3 h-3" /> Démarrer
+                          </button>
                         )}
+
+                        {/* Annuler (planifiée) */}
+                        {isGestionnaire && m.statut === 'planifiee' && (
+                          <button onClick={() => changerStatut(m.id, 'annulee')}
+                            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors"
+                            title="Annuler">
+                            <X className="w-3 h-3" /> Annuler
+                          </button>
+                        )}
+
+                        {/* Terminer (en_cours) */}
                         {isGestionnaire && m.statut === 'en_cours' && (
-                          <button
-                            onClick={() => changerStatut(m.id, 'terminee')}
+                          <button onClick={() => changerStatut(m.id, 'terminee')}
                             className="flex items-center gap-1 px-2 py-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors"
-                            title="Terminer la mission"
-                          >
+                            title="Terminer">
                             <Check className="w-3 h-3" /> Terminer
                           </button>
                         )}
+
+                        {/* Détail (terminée) */}
                         {m.statut === 'terminee' && (
-                          <button
-                            onClick={() => setModal({ ouvert: true, mission: m, mode: 'detail' })}
+                          <button onClick={() => setModal({ ouvert: true, mission: m, mode: 'detail' })}
                             className="flex items-center gap-1 px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                            title="Voir le détail"
-                          >
+                            title="Voir le détail">
                             <Eye className="w-3 h-3" /> Détail
                           </button>
                         )}
-                        {user?.role === 'admin' && ['annulee', 'planifiee'].includes(m.statut) && (
-                          <button
-                            onClick={() => supprimer(m.id)}
-                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors"
-                            title="Supprimer"
-                          >
+
+                        {/* Supprimer — tous les statuts, admin uniquement */}
+                        {user?.role === 'admin' && (
+                          <button onClick={() => supprimerMission(m)}
+                            className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Supprimer la mission">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
@@ -378,30 +476,21 @@ export default function Missions() {
         )}
       </div>
 
-      {/* Modal nouvelle mission / détail */}
+      {/* Modal */}
       <Modal
         isOpen={modal.ouvert}
         onClose={fermerModal}
         titre={modal.mode === 'detail' ? `Détail — ${modal.mission?.titre}` : 'Nouvelle mission de transport'}
         taille="max-w-2xl"
       >
-        {modal.mode === 'detail' ? (
-          <DetailMission mission={modal.mission} />
-        ) : (
-          <FormulaireMission onSauvegarder={apresCreation} onAnnuler={fermerModal} />
-        )}
+        {modal.mode === 'detail'
+          ? <DetailMission mission={modal.mission} />
+          : <FormulaireMission onSauvegarder={apresCreation} onAnnuler={fermerModal} />
+        }
       </Modal>
 
-      {/* Simulation plein écran */}
-      {missionEnSimulation && (
-        <SimulationMission
-          mission={missionEnSimulation}
-          onFermer={() => {
-            setMissionEnSimulation(null);
-            chargerMissions(); // recharge le statut mis à jour
-          }}
-        />
-      )}
+      {/* Notifications toast */}
+      <ToastContainer />
     </div>
   );
 }
