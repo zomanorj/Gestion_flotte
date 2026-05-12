@@ -1,9 +1,9 @@
-# 🚗 Système de Gestion de Flotte
+# Système de Gestion de Flotte de Camions
 
 > Projet réalisé dans le cadre d'une recherche de stage — L3 Informatique
 > Étudiant : Manoa | Antananarivo, Madagascar
 
-## 🛠️ Technologies
+## Technologies
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white&style=flat-square)
 ![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white&style=flat-square)
@@ -12,16 +12,16 @@
 ![JWT](https://img.shields.io/badge/JWT-Auth-000000?logo=jsonwebtokens&logoColor=white&style=flat-square)
 ![Leaflet](https://img.shields.io/badge/Leaflet-Maps-199900?logo=leaflet&logoColor=white&style=flat-square)
 
-## ✨ Fonctionnalités
+## Fonctionnalités
 
-- **Gestion des véhicules** — CRUD complet, filtres par statut, alertes de maintenance (CT et vidange)
-- **Gestion des chauffeurs** — CRUD, historique détaillé des missions par chauffeur
-- **Missions** — Création avec vérification de disponibilité, workflow complet (planifiée → en cours → terminée/annulée), calcul automatique du coût carburant en Ariary
+- **Gestion des camions** — CRUD complet avec type, tonnage et numéro de châssis, alertes de maintenance (CT et vidange)
+- **Gestion des chauffeurs poids lourds** — CRUD, historique détaillé des missions par chauffeur
+- **Missions de transport** — Création avec vérification de disponibilité, suivi du poids chargé, workflow (planifiée → en cours → terminée/annulée), calcul automatique du coût carburant en Ariary
 - **Dashboard** — Statistiques en temps réel, graphique des missions par semaine (Chart.js), carte interactive (Leaflet, centrée Madagascar)
 - **Rapports & Exports** — Filtrage par période, export PDF (jsPDF) et Excel (SheetJS)
 - **Authentification** — JWT avec 3 rôles (admin, gestionnaire, chauffeur)
 
-## ⚙️ Installation
+## Installation
 
 ### Prérequis
 
@@ -57,96 +57,79 @@ npm run dev
 # http://localhost:5173
 ```
 
-> **Note :** Le mot de passe `password123` doit être re-hashé avec bcrypt après l'import SQL.
-> Exécutez dans le répertoire server :
+> **Note :** Régénérer les hash bcrypt pour `password123` :
 > ```bash
 > node -e "const b=require('bcrypt');b.hash('password123',10).then(h=>console.log(h))"
 > ```
-> Puis mettez à jour le champ `password_hash` des utilisateurs dans MySQL.
+> Puis mettre à jour le champ `password_hash` dans MySQL.
 
-## 🔑 Comptes de test
+## Comptes de test
 
 | Email | Mot de passe | Rôle | Permissions |
 |-------|-------------|------|-------------|
 | admin@flotte.mg | password123 | Admin | Tout (CRUD complet + suppression) |
-| gestionnaire@flotte.mg | password123 | Gestionnaire | CRUD véhicules, chauffeurs, missions |
+| gestionnaire@flotte.mg | password123 | Gestionnaire | CRUD camions, chauffeurs, missions |
 | chauffeur@flotte.mg | password123 | Chauffeur | Lecture seule |
 
-## 📁 Structure du projet
+## Flotte de démonstration
+
+| Immatriculation | Marque | Modèle | Type | Tonnage |
+|----------------|--------|--------|------|---------|
+| MAD-001-24 | Mercedes | Actros | Tracteur | 32,5 T |
+| MAD-002-24 | Volvo | FH16 | Tracteur | 36 T |
+| MAD-003-24 | MAN | TGX | Porteur | 28 T |
+| MAD-004-24 | Scania | R500 | Benne | 40 T |
+| MAD-005-24 | Renault | T520 | Frigorifique | 30 T |
+
+## Structure du projet
 
 ```
 flotte-app/
 ├── database/
-│   └── schema.sql           # Tables + données de test malgaches
+│   └── schema.sql           # Tables + données camions malgaches
 ├── server/                  # API REST Node.js + Express
-│   ├── .env.example         # Template de configuration
+│   ├── .env.example
 │   ├── index.js             # Point d'entrée Express + Socket.io
-│   ├── config/
-│   │   └── db.js            # Pool de connexions MySQL2
-│   ├── middleware/
-│   │   └── authMiddleware.js # Vérification JWT + rôles
-│   ├── controllers/         # Logique métier
+│   ├── config/db.js         # Pool MySQL2
+│   ├── middleware/authMiddleware.js
+│   ├── controllers/
 │   │   ├── authController.js
-│   │   ├── vehiculesController.js
+│   │   ├── vehiculesController.js  # Gestion des camions
 │   │   ├── chauffeursController.js
-│   │   ├── missionsController.js
+│   │   ├── missionsController.js   # Missions de transport
 │   │   └── dashboardController.js
-│   └── routes/              # Endpoints API
-│       ├── auth.js
-│       ├── vehicules.js
-│       ├── chauffeurs.js
-│       ├── missions.js
-│       └── dashboard.js
+│   └── routes/
 └── client/                  # Application React 18
-    ├── vite.config.js
-    ├── tailwind.config.js
     └── src/
-        ├── App.jsx           # Routage React Router v6
-        ├── context/
-        │   └── AuthContext.jsx  # État global + ProtectedRoute
-        ├── services/
-        │   └── api.js           # Instance axios + intercepteurs
         ├── components/
-        │   ├── Sidebar.jsx      # Navigation avec badge alertes
-        │   ├── Navbar.jsx       # Barre supérieure
-        │   ├── StatCard.jsx     # Carte métrique réutilisable
-        │   ├── MapView.jsx      # Carte Leaflet — Madagascar
-        │   ├── Modal.jsx        # Fenêtre modale générique
-        │   └── AlerteBadge.jsx  # Badge d'alerte de maintenance
+        │   ├── Sidebar.jsx   # Navigation (CamionApp)
+        │   ├── Navbar.jsx
+        │   ├── StatCard.jsx
+        │   ├── MapView.jsx   # Carte Leaflet — Madagascar
+        │   ├── Modal.jsx
+        │   └── AlerteBadge.jsx
         └── pages/
-            ├── Login.jsx        # Authentification
-            ├── Dashboard.jsx    # Statistiques + graphique + carte
-            ├── Vehicules.jsx    # CRUD véhicules + filtres
-            ├── Chauffeurs.jsx   # CRUD chauffeurs + historique
-            ├── Missions.jsx     # Missions + workflow statuts
-            └── Rapports.jsx     # Export PDF + Excel
+            ├── Login.jsx
+            ├── Dashboard.jsx  # Stats flotte de camions
+            ├── Vehicules.jsx  # Gestion des camions (type, tonnage, châssis)
+            ├── Chauffeurs.jsx
+            ├── Missions.jsx   # Transport + poids chargé
+            └── Rapports.jsx
 ```
 
-## 🗺️ API Endpoints
+## API Endpoints principaux
 
-| Méthode | Route | Description | Auth |
-|---------|-------|-------------|------|
-| POST | `/api/auth/login` | Connexion | Non |
-| GET | `/api/auth/me` | Profil connecté | Token |
-| GET | `/api/vehicules` | Liste véhicules | Non |
-| GET | `/api/vehicules/alertes` | Alertes maintenance | Non |
-| GET | `/api/vehicules/:id` | Détail véhicule | Non |
-| POST | `/api/vehicules` | Créer véhicule | Admin/Gest. |
-| PUT | `/api/vehicules/:id` | Modifier véhicule | Admin/Gest. |
-| DELETE | `/api/vehicules/:id` | Supprimer véhicule | Admin |
-| GET | `/api/chauffeurs` | Liste chauffeurs | Non |
-| GET | `/api/chauffeurs/:id/missions` | Historique missions | Non |
-| POST | `/api/chauffeurs` | Créer chauffeur | Admin/Gest. |
-| GET | `/api/missions` | Liste missions | Non |
-| POST | `/api/missions` | Créer mission | Admin/Gest. |
-| PUT | `/api/missions/:id/statut` | Changer statut | Admin/Gest. |
-| GET | `/api/dashboard/stats` | Statistiques | Token |
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| POST | `/api/auth/login` | Connexion |
+| GET | `/api/vehicules` | Liste des camions |
+| GET | `/api/vehicules/alertes` | Camions nécessitant maintenance |
+| POST | `/api/vehicules` | Enregistrer un nouveau camion |
+| GET | `/api/missions` | Liste des missions de transport |
+| POST | `/api/missions` | Créer une mission de transport |
+| PUT | `/api/missions/:id/statut` | Mettre à jour le statut |
+| GET | `/api/dashboard/stats` | Statistiques globales |
 
-## 👤 Auteur
+## Auteur
 
 **Manoa** — Étudiant L3 Informatique — Antananarivo, Madagascar
-
----
-
-*Projet portfolio réalisé avec Node.js, React 18, MySQL et TailwindCSS.*
-*Données de test avec noms malgaches. Carte centrée sur Antananarivo (-18.9136, 47.5362).*
