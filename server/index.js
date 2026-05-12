@@ -29,12 +29,16 @@ app.use((req, _res, next) => {
   next();
 });
 
+// Rend io accessible depuis les routes (ex: simulation)
+app.set('io', io);
+
 // Montage des routes de l'API
 app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/vehicules',  require('./routes/vehicules'));
 app.use('/api/chauffeurs', require('./routes/chauffeurs'));
 app.use('/api/missions',   require('./routes/missions'));
 app.use('/api/dashboard',  require('./routes/dashboard'));
+app.use('/api/simulation', require('./routes/simulation'));
 
 // Route de santé : permet de vérifier que le serveur tourne
 app.get('/api/health', (_req, res) => {
@@ -54,16 +58,16 @@ app.use((err, _req, res, _next) => {
 
 // Événements Socket.io
 io.on('connection', (socket) => {
-  console.log(`🔌 Client connecté : ${socket.id}`);
+  console.log(`[Socket] Client connecté : ${socket.id}`);
   socket.on('disconnect', () => {
-    console.log(`🔌 Client déconnecté : ${socket.id}`);
+    console.log(`[Socket] Client déconnecté : ${socket.id}`);
   });
 });
 
 // Démarrage du serveur
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`\n🚗 Flotte App — Serveur démarré`);
+  console.log(`\nCamionApp — Serveur démarré`);
   console.log(`   API disponible sur : http://localhost:${PORT}/api`);
   console.log(`   Environnement      : ${process.env.NODE_ENV || 'development'}\n`);
 });
