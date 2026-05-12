@@ -215,29 +215,37 @@ const updateStatut = async (req, res) => {
 
 /**
  * DELETE /api/missions/:id
- * Supprime une mission uniquement si elle est planifiée ou annulée.
+ * Supprime une mission quel que soit son statut.
+ * Si la mission est en cours : remet camion + chauffeur à "disponible"
+ * et arrête la simulation Socket.io si elle est active.
  */
 const remove = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [missions] = await db.query('SELECT statut FROM missions WHERE id = ?', [id]);
+    const [missions] = await db.query('SELECT * FROM missions WHERE id = ?', [id]);
     if (missions.length === 0) {
       return res.status(404).json({ message: 'Mission introuvable' });
     }
 
-    if (!['planifiee', 'annulee'].includes(missions[0].statut)) {
-      return res.status(409).json({
-        message: 'Seules les missions planifiées ou annulées peuvent être supprimées'
-      });
+    const mission = missions[0];
+
+    // Si la mission est en cours, remet les ressources disponibles
+    if (mission.statut === 'en_cours') {
+      await db.query("UPDATE vehicules  SET statut = 'disponible' WHERE id = ?", [mission.vehicule_id]);
+      await db.query("UPDATE chauffeurs SET statut = 'disponible' WHERE id = ?", [mission.chauffeur_id]);
+
+      // Arrête la simulation Socket.io si elle est active
+      const { arreterSimulation } = require('../services/simulationService');
+      arreterSimulation(String(id));
     }
 
     await db.query('DELETE FROM missions WHERE id = ?', [id]);
-    return res.json({ message: 'Mission supprimée avec succès' });
+    return res.json({ message: 'Mission supprimée' });
 
   } catch (err) {
     console.error('Erreur remove mission :', err);
-    return res.status(500).json({ message: 'Erreur interne du serveur' });
+    return res.status(500).json({ message: err.message });
   }
 };
 
