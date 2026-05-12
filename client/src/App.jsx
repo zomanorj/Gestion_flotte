@@ -4,12 +4,13 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './context/AuthContext';
 
 // Pages
-import Login      from './pages/Login';
-import Dashboard  from './pages/Dashboard';
-import Vehicules  from './pages/Vehicules';
-import Chauffeurs from './pages/Chauffeurs';
-import Missions   from './pages/Missions';
-import Rapports   from './pages/Rapports';
+import Login        from './pages/Login';
+import Dashboard    from './pages/Dashboard';
+import Vehicules    from './pages/Vehicules';
+import Chauffeurs   from './pages/Chauffeurs';
+import Missions     from './pages/Missions';
+import Rapports     from './pages/Rapports';
+import CarteGlobale from './pages/CarteGlobale';
 
 // Layout avec sidebar
 import Sidebar from './components/Sidebar';
@@ -22,6 +23,19 @@ const AppLayout = ({ children }) => (
     <div className="flex flex-col flex-1 overflow-hidden">
       <Navbar />
       <main className="flex-1 overflow-y-auto p-6">
+        {children}
+      </main>
+    </div>
+  </div>
+);
+
+/** Layout sans padding pour les pages plein écran (carte globale) */
+const AppLayoutPleinEcran = ({ children }) => (
+  <div className="flex h-screen overflow-hidden">
+    <Sidebar />
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <Navbar />
+      <main className="flex-1 overflow-hidden">
         {children}
       </main>
     </div>
@@ -58,6 +72,12 @@ export default function App() {
       <Route path="/rapports" element={
         <ProtectedRoute>
           <AppLayout><Rapports /></AppLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/carte" element={
+        <ProtectedRoute>
+          <AppLayoutPleinEcran><CarteGlobale /></AppLayoutPleinEcran>
         </ProtectedRoute>
       } />
 

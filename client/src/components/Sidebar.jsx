@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Truck, LayoutDashboard, Users, MapPin,
-  FileText, LogOut
+  FileText, LogOut, Map
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -68,6 +68,7 @@ export default function Sidebar() {
         <NavItem to="/vehicules"  Icon={Truck}           label="Véhicules" badge={nbAlertes} />
         <NavItem to="/chauffeurs" Icon={Users}           label="Chauffeurs" />
         <NavItem to="/missions"   Icon={MapPin}          label="Missions" />
+        <NavItem to="/carte"      Icon={Map}             label="Carte globale" />
         <NavItem to="/rapports"   Icon={FileText}        label="Rapports" />
       </nav>
 

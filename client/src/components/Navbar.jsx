@@ -9,6 +9,7 @@ const TITRES = {
   '/vehicules':  'Gestion des Camions',
   '/chauffeurs': 'Gestion des Chauffeurs',
   '/missions':   'Missions de Transport',
+  '/carte':      'Carte Globale de la Flotte',
   '/rapports':   'Rapports & Exports'
 };
 
