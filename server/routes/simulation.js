@@ -4,7 +4,7 @@ const router  = express.Router();
 const db      = require('../config/db');
 const { verifierToken, verifierRole } = require('../middleware/authMiddleware');
 const { getRoute, VILLES_MADAGASCAR }  = require('../services/routeService');
-const { demarrerSimulation, arreterSimulation } = require('../services/simulationService');
+const { demarrerSimulation, arreterSimulation, changerVitesse, simulationsActives } = require('../services/simulationService');
 
 /**
  * GET /api/simulation/villes
@@ -110,5 +110,58 @@ router.post(
     res.json({ message: 'Simulation arrêtée' });
   }
 );
+
+/**
+ * POST /api/simulation/vitesse/:missionId
+ * Change la vitesse (multiplicateur) d'une simulation en cours.
+ * Body : { multiplicateur: 1 | 5 | 10 | 30 | 60 }
+ */
+router.post(
+  '/vitesse/:missionId',
+  verifierToken,
+  verifierRole('admin', 'gestionnaire'),
+  (req, res) => {
+    const { missionId }     = req.params;
+    const { multiplicateur } = req.body;
+    const io                = req.app.get('io');
+
+    const ok = changerVitesse(missionId, multiplicateur, io);
+    if (!ok) {
+      return res.status(404).json({ message: `Simulation ${missionId} introuvable` });
+    }
+    res.json({ message: 'Vitesse mise à jour', multiplicateur: Number(multiplicateur) });
+  }
+);
+
+/**
+ * GET /api/simulation/actives
+ * Retourne l'état actuel de toutes les simulations en cours.
+ * Utilisé par CarteGlobale pour l'initialisation.
+ */
+router.get('/actives', verifierToken, (req, res) => {
+  const actives = Object.entries(simulationsActives)
+    .map(([missionId, sim]) => {
+      const pos = sim.route.points[sim.indexActuel];
+      if (!pos) return null;
+      return {
+        missionId,
+        position:         pos,
+        progression:      Math.round(sim.indexActuel / sim.route.points.length * 100),
+        vitesse:          sim.enPause ? 0 : Math.round(60 * sim.multiplicateur * 10) / 10,
+        multiplicateur:   sim.multiplicateur,
+        enPause:          sim.enPause,
+        evenementActuel:  sim.evenementActuel || null,
+        immatriculation:  sim.mission?.immatriculation,
+        chauffeur_nom:    sim.mission?.chauffeur_nom,
+        titre:            sim.mission?.titre,
+        lieu_depart:      sim.mission?.lieu_depart,
+        lieu_destination: sim.mission?.lieu_destination,
+        distanceKm:       sim.route.distanceKm
+      };
+    })
+    .filter(Boolean);
+
+  res.json(actives);
+});
 
 module.exports = router;
