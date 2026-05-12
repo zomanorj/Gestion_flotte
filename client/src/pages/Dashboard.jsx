@@ -1,15 +1,15 @@
 // Page tableau de bord — statistiques, graphique et carte en temps réel
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, PointElement, LineElement,
   Title, Tooltip, Legend, Filler
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { Truck, MapPin, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Truck, MapPin, Calendar, AlertTriangle, CheckCircle2, Map } from 'lucide-react';
 import api from '../services/api';
 import StatCard    from '../components/StatCard';
-import MapView     from '../components/MapView';
 import AlerteBadge from '../components/AlerteBadge';
 
 // Enregistrement des modules Chart.js nécessaires
@@ -147,21 +147,24 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Carte Leaflet */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-800">
-            Véhicules en mission
-            <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-              {stats.vehiculesEnMissionCarte?.length || 0}
-            </span>
-          </h3>
-          <span className="text-xs text-gray-400">Centré sur Madagascar</span>
+      {/* Raccourci carte globale */}
+      <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="bg-orange-500 rounded-xl p-3 flex-shrink-0">
+            <Map className="w-7 h-7 text-white" />
+          </div>
+          <div>
+            <h3 className="text-white font-bold text-lg">Carte de la flotte</h3>
+            <p className="text-slate-400 text-sm">
+              Suivez tous vos camions en temps réel sur la carte interactive
+            </p>
+          </div>
         </div>
-        <MapView
-          vehicules={stats.vehiculesEnMissionCarte || []}
-          className="h-72"
-        />
+        <Link to="/carte"
+          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600
+                     text-white px-5 py-2.5 rounded-xl font-medium transition-colors flex-shrink-0">
+          <Map className="w-4 h-4" /> Ouvrir la carte
+        </Link>
       </div>
     </div>
   );
