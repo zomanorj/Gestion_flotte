@@ -5,10 +5,10 @@ import { useAuth } from '../context/AuthContext';
 
 /** Correspondance chemin → titre de page */
 const TITRES = {
-  '/':           'Tableau de bord',
-  '/vehicules':  'Gestion des Véhicules',
+  '/':           'Tableau de bord — Flotte de Camions',
+  '/vehicules':  'Gestion des Camions',
   '/chauffeurs': 'Gestion des Chauffeurs',
-  '/missions':   'Gestion des Missions',
+  '/missions':   'Missions de Transport',
   '/rapports':   'Rapports & Exports'
 };
 
@@ -19,7 +19,7 @@ export default function Navbar() {
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
       <h2 className="text-xl font-semibold text-gray-800">
-        {TITRES[pathname] || 'FlotteApp'}
+        {TITRES[pathname] || 'CamionApp'}
       </h2>
       <div className="flex items-center gap-3 text-sm text-gray-600">
         <span>Connecté en tant que</span>
