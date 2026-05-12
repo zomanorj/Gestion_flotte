@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  Car, LayoutDashboard, Truck, Users, MapPin,
+  Truck, LayoutDashboard, Users, MapPin,
   FileText, LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -56,10 +56,10 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-700">
         <h1 className="text-white text-xl font-bold flex items-center gap-2">
-          <Car className="w-6 h-6 text-blue-400" />
-          <span>FlotteApp</span>
+          <Truck className="w-6 h-6 text-blue-400" />
+          <span>CamionApp</span>
         </h1>
-        <p className="text-gray-400 text-xs mt-1">Gestion de Flotte — Madagascar</p>
+        <p className="text-gray-400 text-xs mt-1">Flotte de Camions — Madagascar</p>
       </div>
 
       {/* Navigation */}
