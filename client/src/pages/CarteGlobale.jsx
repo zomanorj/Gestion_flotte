@@ -71,12 +71,14 @@ export default function CarteGlobale() {
   // camions : { [missionId]: { position, progression, vitesse, enPause, evenementActuel,
   //              immatriculation, chauffeur_nom, titre, lieu_depart, lieu_destination,
   //              distanceKm, trace: [[lat,lng],...], couleur, initiale } }
-  const [camions,       setCamions]       = useState({});
-  const [indicesCouleur, setIndicesCouleur] = useState({}); // { missionId: index }
-  const [cible,         setCible]         = useState(null); // position à centrer
-  const [panneauOuvert, setPanneauOuvert] = useState(true);
-  const [derniereMaj,   setDerniereMaj]   = useState(null);
-  const [chargement,    setChargement]    = useState(true);
+  const [camions,            setCamions]            = useState({});
+  const [indicesCouleur,     setIndicesCouleur]     = useState({});
+  const [cible,              setCible]              = useState(null);
+  const [panneauOuvert,      setPanneauOuvert]      = useState(true);
+  const [derniereMaj,        setDerniereMaj]        = useState(null);
+  const [chargement,         setChargement]         = useState(true);
+  const [multiplicateurs,    setMultiplicateurs]    = useState({}); // { missionId: 1|5|10|30|60 }
+  const [multiplicateurGlobal, setMultiplicateurGlobal] = useState(30);
 
   // Assigne une couleur stable à chaque missionId
   const getCouleur = useCallback((missionId) => {
@@ -125,6 +127,15 @@ export default function CarteGlobale() {
     socket.on('flotte:positions', (positions) => {
       setDerniereMaj(new Date());
 
+      // Synchronise les multiplicateurs depuis le serveur
+      setMultiplicateurs(prev => {
+        const updated = { ...prev };
+        positions.forEach(c => {
+          if (c.multiplicateur !== undefined) updated[c.missionId] = c.multiplicateur;
+        });
+        return updated;
+      });
+
       setCamions(prev => {
         const suivant = { ...prev };
 
@@ -164,6 +175,25 @@ export default function CarteGlobale() {
 
   const camionsList = Object.values(camions);
   const nbEnMission = camionsList.length;
+
+  /** Applique un multiplicateur à TOUS les camions en mission */
+  const changerVitesseGlobale = async (v) => {
+    setMultiplicateurGlobal(v);
+    for (const c of camionsList) {
+      setMultiplicateurs(prev => ({ ...prev, [c.missionId]: v }));
+      try {
+        await api.post(`/simulation/vitesse/${c.missionId}`, { multiplicateur: v });
+      } catch { /* simulation peut être terminée */ }
+    }
+  };
+
+  /** Applique un multiplicateur à UN seul camion */
+  const changerVitesseCamion = async (missionId, v) => {
+    setMultiplicateurs(prev => ({ ...prev, [missionId]: v }));
+    try {
+      await api.post(`/simulation/vitesse/${missionId}`, { multiplicateur: v });
+    } catch { /* simulation peut être terminée */ }
+  };
 
   return (
     <div className="flex h-full overflow-hidden relative">
@@ -268,6 +298,21 @@ export default function CarteGlobale() {
                   </div>
                 )}
 
+                {/* Boutons vitesse individuelle */}
+                <div className="flex items-center gap-1 mb-2">
+                  <span className="text-slate-500 text-[10px] mr-1">Vitesse :</span>
+                  {[1, 5, 10, 30, 60].map(v => (
+                    <button key={v}
+                      onClick={() => changerVitesseCamion(c.missionId, v)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all
+                        ${(multiplicateurs[c.missionId] || 30) === v
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600'}`}>
+                      x{v}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Bouton centrer */}
                 <button
                   onClick={() => setCible({ ...c.position, _ts: Date.now() })}
@@ -353,12 +398,35 @@ export default function CarteGlobale() {
           {cible && <CentrerSur cible={cible} />}
         </MapContainer>
 
-        {/* Badge nombre de camions (superposé sur la carte) */}
-        <div className="absolute top-4 right-4 z-40 bg-slate-900/90 text-white
-                        px-3 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm">
-          <Truck className="w-4 h-4 text-orange-500" />
-          <span className="font-bold">{nbEnMission}</span>
-          <span className="text-slate-400">camion{nbEnMission > 1 ? 's' : ''} en mission</span>
+        {/* Overlay top-right : badge + vitesse globale */}
+        <div className="absolute top-4 right-4 z-40 flex items-center gap-2 flex-wrap justify-end">
+
+          {/* Sélecteur vitesse globale */}
+          {nbEnMission > 0 && (
+            <div className="flex items-center gap-1 bg-slate-900/90 rounded-xl p-1.5 shadow-lg border border-slate-700">
+              <span className="text-slate-400 text-xs px-1.5 flex items-center gap-1">
+                <Gauge className="w-3 h-3" /> Tous
+              </span>
+              {[1, 5, 10, 30, 60].map(v => (
+                <button key={v}
+                  onClick={() => changerVitesseGlobale(v)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all
+                    ${multiplicateurGlobal === v
+                      ? 'bg-orange-500 text-white shadow-md'
+                      : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                  x{v}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Badge nombre de camions */}
+          <div className="bg-slate-900/90 text-white px-3 py-2 rounded-xl shadow-lg
+                          flex items-center gap-2 text-sm border border-slate-700">
+            <Truck className="w-4 h-4 text-orange-500" />
+            <span className="font-bold">{nbEnMission}</span>
+            <span className="text-slate-400">camion{nbEnMission > 1 ? 's' : ''}</span>
+          </div>
         </div>
 
         {/* Message si vide */}
