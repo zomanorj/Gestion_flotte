@@ -1,4 +1,4 @@
-// Contrôleur véhicules — CRUD et alertes de maintenance
+// Contrôleur camions — CRUD et alertes de maintenance
 const db = require('../config/db');
 
 /**
@@ -112,13 +112,15 @@ const getById = async (req, res) => {
 
 /**
  * POST /api/vehicules
- * Crée un nouveau véhicule. Vérifie l'unicité de l'immatriculation.
+ * Crée un nouveau camion. Vérifie l'unicité de l'immatriculation.
+ * Champs spécifiques camions : tonnage, type_camion, numero_chassis
  */
 const create = async (req, res) => {
   try {
     const {
       immatriculation, marque, modele, annee, kilometrage,
-      consommation_litre_km, statut, date_derniere_vidange, date_prochain_ct
+      consommation_litre_km, statut, date_derniere_vidange, date_prochain_ct,
+      tonnage, type_camion, numero_chassis
     } = req.body;
 
     if (!immatriculation || !marque || !modele || !annee) {
@@ -136,15 +138,19 @@ const create = async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO vehicules
         (immatriculation, marque, modele, annee, kilometrage, consommation_litre_km,
-         statut, date_derniere_vidange, date_prochain_ct)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         statut, date_derniere_vidange, date_prochain_ct,
+         tonnage, type_camion, numero_chassis)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         immatriculation.toUpperCase(), marque, modele, annee,
         kilometrage || 0,
-        consommation_litre_km || 0.08,
+        consommation_litre_km || 0.30,
         statut || 'disponible',
         date_derniere_vidange || null,
-        date_prochain_ct || null
+        date_prochain_ct || null,
+        tonnage || null,
+        type_camion || 'porteur',
+        numero_chassis || null
       ]
     );
 
@@ -159,19 +165,20 @@ const create = async (req, res) => {
 
 /**
  * PUT /api/vehicules/:id
- * Met à jour les champs fournis d'un véhicule.
+ * Met à jour les champs fournis d'un camion (inclut tonnage, type et châssis).
  */
 const update = async (req, res) => {
   try {
     const { id } = req.params;
     const {
       immatriculation, marque, modele, annee, kilometrage,
-      consommation_litre_km, statut, date_derniere_vidange, date_prochain_ct
+      consommation_litre_km, statut, date_derniere_vidange, date_prochain_ct,
+      tonnage, type_camion, numero_chassis
     } = req.body;
 
     const [existant] = await db.query('SELECT id FROM vehicules WHERE id = ?', [id]);
     if (existant.length === 0) {
-      return res.status(404).json({ message: 'Véhicule introuvable' });
+      return res.status(404).json({ message: 'Camion introuvable' });
     }
 
     await db.query(
@@ -184,14 +191,19 @@ const update = async (req, res) => {
         consommation_litre_km = COALESCE(?, consommation_litre_km),
         statut                = COALESCE(?, statut),
         date_derniere_vidange = COALESCE(?, date_derniere_vidange),
-        date_prochain_ct      = COALESCE(?, date_prochain_ct)
+        date_prochain_ct      = COALESCE(?, date_prochain_ct),
+        tonnage               = COALESCE(?, tonnage),
+        type_camion           = COALESCE(?, type_camion),
+        numero_chassis        = COALESCE(?, numero_chassis)
        WHERE id = ?`,
       [
         immatriculation ? immatriculation.toUpperCase() : null,
         marque || null, modele || null, annee || null,
         kilometrage || null, consommation_litre_km || null,
         statut || null, date_derniere_vidange || null,
-        date_prochain_ct || null, id
+        date_prochain_ct || null,
+        tonnage || null, type_camion || null, numero_chassis || null,
+        id
       ]
     );
 
@@ -225,12 +237,12 @@ const remove = async (req, res) => {
     );
     if (missionsActives.length > 0) {
       return res.status(409).json({
-        message: 'Impossible de supprimer : ce véhicule a des missions actives'
+        message: 'Impossible de supprimer : ce camion a des missions actives'
       });
     }
 
     await db.query('DELETE FROM vehicules WHERE id = ?', [id]);
-    return res.json({ message: 'Véhicule supprimé avec succès' });
+    return res.json({ message: 'Camion supprimé avec succès' });
 
   } catch (err) {
     console.error('Erreur remove véhicule :', err);
