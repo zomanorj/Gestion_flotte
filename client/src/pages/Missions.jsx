@@ -31,6 +31,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
     titre:             '',
     vehicule_id:       '',
     chauffeur_id:      '',
+    client_id:         '',
     lieu_depart:       'Antananarivo',
     lieu_destination:  '',
     distance_km:       '',
@@ -43,6 +44,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
   const [vehicules,      setVehicules]      = useState([]);
   const [chauffeurs,     setChauffeurs]     = useState([]);
   const [villes,         setVilles]         = useState([]);
+  const [clients,        setClients]        = useState([]);
   const [erreur,         setErreur]         = useState('');
   const [loading,        setLoading]        = useState(false);
   const [calculEnCours,  setCalculEnCours]  = useState(false);
@@ -53,6 +55,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
     api.get('/vehicules',  { params: { statut: 'disponible' } }).then(({ data }) => setVehicules(data));
     api.get('/chauffeurs', { params: { statut: 'disponible' } }).then(({ data }) => setChauffeurs(data));
     api.get('/simulation/villes').then(({ data }) => setVilles(data.villes || []));
+    api.get('/clients').then(({ data }) => setClients(data));
   }, []);
 
   // Calcul automatique dès que départ ET destination sont sélectionnés
@@ -202,6 +205,18 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
             </p>
           )}
         </div>
+      </div>
+
+      {/* Client (optionnel) */}
+      <div>
+        <label className="block font-medium text-gray-700 mb-1">Client (optionnel)</label>
+        <select name="client_id" value={form.client_id} onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">— Aucun client —</option>
+          {clients.map(c => (
+            <option key={c.id} value={c.id}>{c.nom} ({c.type})</option>
+          ))}
+        </select>
       </div>
 
       {/* Poids chargé */}

@@ -43,6 +43,7 @@ app.use('/api/documents',     require('./routes/documents'));
 app.use('/api/carburant',     require('./routes/carburant'));
 app.use('/api/depenses',      require('./routes/depenses'));
 app.use('/api/maintenances',  require('./routes/maintenances'));
+app.use('/api/clients',       require('./routes/clients'));
 
 // Route de santé : permet de vérifier que le serveur tourne
 app.get('/api/health', (_req, res) => {
