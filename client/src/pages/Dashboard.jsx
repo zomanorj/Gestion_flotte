@@ -7,7 +7,7 @@ import {
   Title, Tooltip, Legend, Filler
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { Truck, MapPin, Calendar, AlertTriangle, CheckCircle2, Map } from 'lucide-react';
+import { Truck, MapPin, Calendar, AlertTriangle, CheckCircle2, Map, FileCheck } from 'lucide-react';
 import api from '../services/api';
 import StatCard    from '../components/StatCard';
 import AlerteBadge from '../components/AlerteBadge';
@@ -78,7 +78,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Section statistiques */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <StatCard
           titre="Camions disponibles"
           valeur={stats.vehiculesDisponibles}
@@ -106,6 +106,13 @@ export default function Dashboard() {
           icone={<AlertTriangle className="w-7 h-7" />}
           couleur="red"
           sousTitre="non lues"
+        />
+        <StatCard
+          titre="Documents à renouveler"
+          valeur={stats.documentsExpires}
+          icone={<FileCheck className="w-7 h-7" />}
+          couleur="yellow"
+          sousTitre="expirés ou < 30 jours"
         />
       </div>
 

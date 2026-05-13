@@ -11,6 +11,9 @@ import Chauffeurs   from './pages/Chauffeurs';
 import Missions     from './pages/Missions';
 import Rapports     from './pages/Rapports';
 import CarteGlobale from './pages/CarteGlobale';
+import Documents    from './pages/Documents';
+import Carburant    from './pages/Carburant';
+import Depenses     from './pages/Depenses';
 
 // Layout avec sidebar
 import Sidebar from './components/Sidebar';
@@ -72,6 +75,21 @@ export default function App() {
       <Route path="/rapports" element={
         <ProtectedRoute>
           <AppLayout><Rapports /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/documents" element={
+        <ProtectedRoute>
+          <AppLayout><Documents /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/carburant" element={
+        <ProtectedRoute>
+          <AppLayout><Carburant /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/depenses" element={
+        <ProtectedRoute>
+          <AppLayout><Depenses /></AppLayout>
         </ProtectedRoute>
       } />
 

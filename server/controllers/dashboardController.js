@@ -54,6 +54,13 @@ const getStats = async (req, res) => {
       SELECT COUNT(*) AS alertesMaintenance FROM alertes WHERE est_lue = FALSE
     `);
 
+    // Documents expirés ou expirant dans les 30 prochains jours
+    const [documentsStats] = await db.query(`
+      SELECT COUNT(*) AS documentsExpires
+      FROM documents
+      WHERE date_expiration <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+    `);
+
     // Missions par semaine sur les 4 dernières semaines
     const [missionsParSemaine] = await db.query(`
       SELECT
@@ -106,6 +113,7 @@ const getStats = async (req, res) => {
       missionsTermineesThisMois:missionsStats[0].missionsTermineesThisMois || 0,
       coutTotalMois:            parseFloat(missionsStats[0].coutTotalMois) || 0,
       alertesMaintenance:       alertesStats[0].alertesMaintenance     || 0,
+      documentsExpires:         documentsStats[0].documentsExpires     || 0,
       missionsParSemaine:       semaines,
       dernieresAlertes,
       vehiculesEnMissionCarte:  vehiculesEnMission

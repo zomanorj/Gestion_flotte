@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Truck, LayoutDashboard, Users, MapPin,
-  FileText, LogOut, Map
+  FileText, LogOut, Map, FileCheck, Fuel, Receipt
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -37,12 +37,16 @@ const NavItem = ({ to, Icon, label, badge }) => (
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate          = useNavigate();
-  const [nbAlertes, setNbAlertes] = useState(0);
+  const [nbAlertes,          setNbAlertes]          = useState(0);
+  const [nbDocsExpires,      setNbDocsExpires]      = useState(0);
 
-  // Récupération du nombre d'alertes non lues pour le badge
+  // Récupération des badges : alertes maintenance et documents expirés
   useEffect(() => {
     api.get('/vehicules/alertes')
       .then(({ data }) => setNbAlertes(data.length))
+      .catch(() => {});
+    api.get('/documents/alertes')
+      .then(({ data }) => setNbDocsExpires(data.length))
       .catch(() => {});
   }, []);
 
@@ -65,10 +69,13 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <NavItem to="/"           Icon={LayoutDashboard} label="Tableau de bord" />
-        <NavItem to="/vehicules"  Icon={Truck}           label="Véhicules" badge={nbAlertes} />
+        <NavItem to="/vehicules"  Icon={Truck}           label="Véhicules"      badge={nbAlertes} />
         <NavItem to="/chauffeurs" Icon={Users}           label="Chauffeurs" />
         <NavItem to="/missions"   Icon={MapPin}          label="Missions" />
         <NavItem to="/carte"      Icon={Map}             label="Carte globale" />
+        <NavItem to="/documents"  Icon={FileCheck}       label="Documents"      badge={nbDocsExpires} />
+        <NavItem to="/carburant"  Icon={Fuel}            label="Carburant" />
+        <NavItem to="/depenses"   Icon={Receipt}         label="Dépenses" />
         <NavItem to="/rapports"   Icon={FileText}        label="Rapports" />
       </nav>
 
