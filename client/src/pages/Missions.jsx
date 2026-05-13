@@ -5,6 +5,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
+import { useConfirm } from '../components/ConfirmModal';
 
 const BADGES = {
   planifiee: 'bg-gray-100 text-gray-700',
@@ -301,6 +302,7 @@ export default function Missions() {
   const { user }       = useAuth();
   const isGestionnaire = ['admin', 'gestionnaire'].includes(user?.role);
   const { ajouterToast, ToastContainer } = useToast();
+  const { confirmer, ConfirmModalComponent } = useConfirm();
 
   const [missions,     setMissions]     = useState([]);
   const [chargement,   setChargement]   = useState(true);
@@ -347,10 +349,13 @@ export default function Missions() {
 
   /** Supprime une mission (tous statuts) avec confirmation */
   const supprimerMission = async (mission) => {
-    const avertissement = mission.statut === 'en_cours'
-      ? '\nAttention : le camion sera remis disponible et la simulation arrêtée.'
-      : '';
-    if (!window.confirm(`Supprimer "${mission.titre}" ?${avertissement}`)) return;
+    const consequences = ['Cette action est irréversible'];
+    if (mission.statut === 'en_cours') {
+      consequences.push('Le camion sera remis disponible');
+      consequences.push('La simulation en cours sera arrêtée');
+    }
+    const ok = await confirmer({ type: 'supprimer', element: mission.titre, consequences });
+    if (!ok) return;
 
     try {
       await api.delete(`/missions/${mission.id}`);
@@ -515,8 +520,8 @@ export default function Missions() {
         }
       </Modal>
 
-      {/* Notifications toast */}
       <ToastContainer />
+      <ConfirmModalComponent />
     </div>
   );
 }

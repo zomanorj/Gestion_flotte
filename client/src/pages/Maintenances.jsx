@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../components/ConfirmModal';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ export default function Maintenances() {
   const { user } = useAuth();
   const isAdmin      = user?.role === 'admin';
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
+  const { confirmer, ConfirmModalComponent } = useConfirm();
 
   const [maintenances, setMaintenances] = useState([]);
   const [alertes,      setAlertes]      = useState([]);
@@ -195,7 +197,12 @@ export default function Maintenances() {
   // ── Suppression ──
 
   const supprimer = async (m) => {
-    if (!window.confirm(`Supprimer la maintenance "${TYPES[m.type]}" du camion ${m.immatriculation} ?`)) return;
+    const ok = await confirmer({
+      type: 'supprimer',
+      element: `${TYPES[m.type]} — ${m.immatriculation}`,
+      consequences: ['La maintenance planifiée sera supprimée', 'Cette action est irréversible']
+    });
+    if (!ok) return;
     try {
       await api.delete(`/maintenances/${m.id}`);
       charger();
@@ -527,6 +534,7 @@ export default function Maintenances() {
           </div>
         </div>
       )}
+      <ConfirmModalComponent />
     </div>
   );
 }

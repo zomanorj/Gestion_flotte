@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../components/ConfirmModal';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ export default function Clients() {
   const { user } = useAuth();
   const isAdmin      = user?.role === 'admin';
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
+  const { confirmer, ConfirmModalComponent } = useConfirm();
 
   const [clients,    setClients]    = useState([]);
   const [chargement, setChargement] = useState(true);
@@ -110,7 +112,12 @@ export default function Clients() {
   };
 
   const supprimer = async (c) => {
-    if (!window.confirm(`Supprimer le client "${c.nom}" ? Ses missions seront détachées.`)) return;
+    const ok = await confirmer({
+      type: 'supprimer',
+      element: c.nom,
+      consequences: ['Les missions liées seront détachées de ce client', 'Cette action est irréversible']
+    });
+    if (!ok) return;
     try {
       await api.delete(`/clients/${c.id}`);
       charger();
@@ -401,6 +408,7 @@ export default function Clients() {
           </div>
         </div>
       )}
+      <ConfirmModalComponent />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../components/ConfirmModal';
 
 const CATEGORIES = {
   peage:            'Péage',
@@ -58,6 +59,7 @@ export default function Depenses() {
   const { user } = useAuth();
   const isAdmin      = user?.role === 'admin';
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
+  const { confirmer, ConfirmModalComponent } = useConfirm();
 
   const [depenses,  setDepenses]  = useState([]);
   const [stats,     setStats]     = useState(null);
@@ -146,7 +148,12 @@ export default function Depenses() {
   };
 
   const supprimer = async (dep) => {
-    if (!window.confirm(`Supprimer la dépense "${CATEGORIES[dep.categorie]}" de ${fmtMontant(dep.montant)} ?`)) return;
+    const ok = await confirmer({
+      type: 'supprimer',
+      element: `${CATEGORIES[dep.categorie]} — ${fmtMontant(dep.montant)}`,
+      consequences: ['La dépense sera définitivement supprimée', 'Cette action est irréversible']
+    });
+    if (!ok) return;
     try {
       await api.delete(`/depenses/${dep.id}`);
       charger();
@@ -367,6 +374,7 @@ export default function Depenses() {
           </div>
         </div>
       )}
+      <ConfirmModalComponent />
     </div>
   );
 }

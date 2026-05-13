@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../components/ConfirmModal';
 
 const TYPES_CARBURANT = { diesel: 'Diesel', essence: 'Essence', gasoil: 'Gasoil' };
 
@@ -39,6 +40,7 @@ export default function Carburant() {
   const { user } = useAuth();
   const isAdmin      = user?.role === 'admin';
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
+  const { confirmer, ConfirmModalComponent } = useConfirm();
 
   const [pleins,    setPleins]    = useState([]);
   const [stats,     setStats]     = useState(null);
@@ -130,7 +132,12 @@ export default function Carburant() {
   };
 
   const supprimer = async (plein) => {
-    if (!window.confirm(`Supprimer ce plein (${plein.immatriculation} — ${fmtDate(plein.date_plein)}) ?`)) return;
+    const ok = await confirmer({
+      type: 'supprimer',
+      element: `Plein du ${fmtDate(plein.date_plein)} — ${plein.immatriculation}`,
+      consequences: ['Cette action est irréversible', `${plein.litres} L — ${fmtMontant(plein.cout_total)}`]
+    });
+    if (!ok) return;
     try {
       await api.delete(`/carburant/${plein.id}`);
       charger();
@@ -387,6 +394,7 @@ export default function Carburant() {
           </div>
         </div>
       )}
+      <ConfirmModalComponent />
     </div>
   );
 }

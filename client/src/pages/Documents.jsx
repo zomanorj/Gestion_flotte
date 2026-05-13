@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../components/ConfirmModal';
 
 // Labels lisibles pour les types de documents
 const TYPES = {
@@ -50,6 +51,7 @@ export default function Documents() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
+  const { confirmer, ConfirmModalComponent } = useConfirm();
 
   const [docs,      setDocs]      = useState([]);
   const [alertes,   setAlertes]   = useState([]);
@@ -137,7 +139,12 @@ export default function Documents() {
   };
 
   const supprimer = async (doc) => {
-    if (!window.confirm(`Supprimer le document "${TYPES[doc.type]}" du camion ${doc.immatriculation} ?`)) return;
+    const ok = await confirmer({
+      type: 'supprimer',
+      element: `${TYPES[doc.type]} — ${doc.immatriculation}`,
+      consequences: ['Le document sera définitivement supprimé', 'Cette action est irréversible']
+    });
+    if (!ok) return;
     try {
       await api.delete(`/documents/${doc.id}`);
       charger();
@@ -378,6 +385,7 @@ export default function Documents() {
           </div>
         </div>
       )}
+      <ConfirmModalComponent />
     </div>
   );
 }
