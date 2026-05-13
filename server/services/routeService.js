@@ -1,5 +1,5 @@
-// Service de calcul de route via OpenRouteService
-// Récupère le tracé GPS réel des routes de Madagascar
+// Service de calcul de route via OSRM (OpenStreetMap Routing Machine)
+// Pas de clé API requise — serveur public OSRM basé sur OpenStreetMap
 const axios = require('axios');
 
 // Coordonnées GPS des principales villes de Madagascar
@@ -16,13 +16,30 @@ const VILLES_MADAGASCAR = {
   'Manakara':     { lat: -22.1333, lng: 48.0167 }
 };
 
-// Endpoint ORS — driving-car (gratuit) au lieu de driving-hgv (payant)
-const ORS_URL = 'https://api.openrouteservice.org/v2/directions/driving-car';
+// Serveur OSRM public — aucune clé requise, profil voiture (routes de Madagascar)
+const OSRM_URL = 'http://router.project-osrm.org/route/v1/driving';
+
+// Nombre cible de points après décimation — compromis précision/performance Socket.io
+const POINTS_CIBLE = 300;
 
 /**
- * Récupère le tracé réel de la route entre deux villes
- * via l'API OpenRouteService (profil driving-car, gratuit).
- * Bascule sur un fallback ligne droite si l'API est indisponible.
+ * Décime un tableau de points en gardant exactement `n` points
+ * répartis uniformément, tout en conservant toujours le premier et le dernier.
+ */
+function decimerPoints(points, n) {
+  if (points.length <= n) return points;
+  const result = [];
+  const pas    = (points.length - 1) / (n - 1);
+  for (let i = 0; i < n; i++) {
+    result.push(points[Math.round(i * pas)]);
+  }
+  return result;
+}
+
+/**
+ * Récupère le tracé réel des routes entre deux villes via OSRM.
+ * Décime le résultat à ~300 points pour la simulation Socket.io.
+ * Bascule sur un fallback ligne droite uniquement si OSRM est inaccessible.
  * @param {string} villeDepart  - Nom de la ville de départ
  * @param {string} villeArrivee - Nom de la ville d'arrivée
  * @returns {{ points, distanceKm, dureeMin, villeDepart, villeArrivee }}
@@ -35,45 +52,42 @@ async function getRoute(villeDepart, villeArrivee) {
     throw new Error(`Ville inconnue : "${villeDepart}" ou "${villeArrivee}"`);
   }
 
-  console.log(`[ORS] Appel route : ${villeDepart} → ${villeArrivee}`);
-  console.log(`[ORS] URL : ${ORS_URL}`);
-  console.log(`[ORS] start=${depart.lng},${depart.lat} | end=${arrivee.lng},${arrivee.lat}`);
+  console.log(`[OSRM] Calcul route : ${villeDepart} → ${villeArrivee}`);
 
   try {
-    const response = await axios.get(ORS_URL, {
-      // Authentification via header Authorization (méthode correcte ORS v2)
-      headers: {
-        'Authorization': process.env.ORS_API_KEY
-      },
-      params: {
-        start: `${depart.lng},${depart.lat}`,
-        end:   `${arrivee.lng},${arrivee.lat}`
-      },
+    // OSRM attend les coordonnées sous la forme lng,lat;lng,lat
+    const url = `${OSRM_URL}/${depart.lng},${depart.lat};${arrivee.lng},${arrivee.lat}`;
+
+    const response = await axios.get(url, {
+      params:  { overview: 'full', geometries: 'geojson' },
       timeout: 10000
     });
 
-    const feature = response.data.features[0];
-    const coords  = feature.geometry.coordinates;
-    const summary = feature.properties.summary;
+    if (response.data.code !== 'Ok' || !response.data.routes?.length) {
+      throw new Error('Réponse OSRM invalide : ' + response.data.code);
+    }
 
-    // ORS renvoie [lng, lat] — conversion en { lat, lng } pour Leaflet
-    const points = coords.map(c => ({ lat: c[1], lng: c[0] }));
+    const route    = response.data.routes[0];
+    const coords   = route.geometry.coordinates; // [lng, lat]
+    const leg      = route.legs[0];
 
-    console.log(`[ORS] Succès : ${points.length} points, ${(summary.distance / 1000).toFixed(1)} km`);
+    // Conversion [lng, lat] → { lat, lng } pour Leaflet + décimation
+    const tousPoints = coords.map(c => ({ lat: c[1], lng: c[0] }));
+    const points     = decimerPoints(tousPoints, POINTS_CIBLE);
+
+    console.log(`[OSRM] Succès : ${tousPoints.length} pts bruts → ${points.length} pts, ${(leg.distance / 1000).toFixed(1)} km`);
 
     return {
       points,
-      distanceKm: summary.distance / 1000,
-      dureeMin:   summary.duration / 60,
+      distanceKm:  leg.distance / 1000,
+      dureeMin:    leg.duration / 60,
       villeDepart,
       villeArrivee
     };
 
   } catch (error) {
-    // Log détaillé pour identifier la vraie cause de l'échec
-    console.error('[ORS] Erreur :', error.response?.data || error.message);
-    console.error('[ORS] Status :', error.response?.status);
-    console.warn('[ORS] Bascule sur fallback ligne droite');
+    console.error('[OSRM] Erreur :', error.response?.data || error.message);
+    console.warn('[OSRM] Bascule sur fallback ligne droite');
     return getFallbackRoute(depart, arrivee, villeDepart, villeArrivee);
   }
 }
