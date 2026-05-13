@@ -1,6 +1,6 @@
 // Page gestion des missions — distance auto, toast, suppression universelle
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, Loader2 } from 'lucide-react';
+import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, Loader2, FileDown } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
@@ -472,6 +472,17 @@ export default function Missions() {
                             <Eye className="w-3 h-3" /> Détail
                           </button>
                         )}
+
+                        {/* Bon de livraison PDF — toutes les missions */}
+                        <a
+                          href={`http://localhost:5000/api/missions/${m.id}/bon-livraison`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Télécharger le bon de livraison PDF"
+                        >
+                          <FileDown className="w-3.5 h-3.5" />
+                        </a>
 
                         {/* Supprimer — tous les statuts, admin uniquement */}
                         {user?.role === 'admin' && (
