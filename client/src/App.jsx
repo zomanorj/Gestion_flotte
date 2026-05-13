@@ -14,6 +14,9 @@ import CarteGlobale from './pages/CarteGlobale';
 import Documents    from './pages/Documents';
 import Carburant    from './pages/Carburant';
 import Depenses     from './pages/Depenses';
+import Maintenances from './pages/Maintenances';
+import Planning     from './pages/Planning';
+import Clients      from './pages/Clients';
 
 // Layout avec sidebar
 import Sidebar from './components/Sidebar';
@@ -90,6 +93,22 @@ export default function App() {
       <Route path="/depenses" element={
         <ProtectedRoute>
           <AppLayout><Depenses /></AppLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/maintenances" element={
+        <ProtectedRoute>
+          <AppLayout><Maintenances /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/planning" element={
+        <ProtectedRoute>
+          <AppLayout><Planning /></AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/clients" element={
+        <ProtectedRoute>
+          <AppLayout><Clients /></AppLayout>
         </ProtectedRoute>
       } />
 

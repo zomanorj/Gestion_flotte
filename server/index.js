@@ -39,9 +39,10 @@ app.use('/api/chauffeurs', require('./routes/chauffeurs'));
 app.use('/api/missions',   require('./routes/missions'));
 app.use('/api/dashboard',  require('./routes/dashboard'));
 app.use('/api/simulation', require('./routes/simulation'));
-app.use('/api/documents',  require('./routes/documents'));
-app.use('/api/carburant',  require('./routes/carburant'));
-app.use('/api/depenses',   require('./routes/depenses'));
+app.use('/api/documents',     require('./routes/documents'));
+app.use('/api/carburant',     require('./routes/carburant'));
+app.use('/api/depenses',      require('./routes/depenses'));
+app.use('/api/maintenances',  require('./routes/maintenances'));
 
 // Route de santé : permet de vérifier que le serveur tourne
 app.get('/api/health', (_req, res) => {

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Truck, LayoutDashboard, Users, MapPin,
-  FileText, LogOut, Map, FileCheck, Fuel, Receipt
+  FileText, LogOut, Map, FileCheck, Fuel, Receipt, Wrench, Calendar, Building2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -37,16 +37,20 @@ const NavItem = ({ to, Icon, label, badge }) => (
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate          = useNavigate();
-  const [nbAlertes,          setNbAlertes]          = useState(0);
-  const [nbDocsExpires,      setNbDocsExpires]      = useState(0);
+  const [nbAlertes,        setNbAlertes]        = useState(0);
+  const [nbDocsExpires,    setNbDocsExpires]    = useState(0);
+  const [nbMaintUrgentes,  setNbMaintUrgentes]  = useState(0);
 
-  // Récupération des badges : alertes maintenance et documents expirés
+  // Récupération des badges : alertes véhicules, documents expirés, maintenances urgentes
   useEffect(() => {
     api.get('/vehicules/alertes')
       .then(({ data }) => setNbAlertes(data.length))
       .catch(() => {});
     api.get('/documents/alertes')
       .then(({ data }) => setNbDocsExpires(data.length))
+      .catch(() => {});
+    api.get('/maintenances/alertes')
+      .then(({ data }) => setNbMaintUrgentes(data.length))
       .catch(() => {});
   }, []);
 
@@ -74,9 +78,12 @@ export default function Sidebar() {
         <NavItem to="/missions"   Icon={MapPin}          label="Missions" />
         <NavItem to="/carte"      Icon={Map}             label="Carte globale" />
         <NavItem to="/documents"  Icon={FileCheck}       label="Documents"      badge={nbDocsExpires} />
-        <NavItem to="/carburant"  Icon={Fuel}            label="Carburant" />
-        <NavItem to="/depenses"   Icon={Receipt}         label="Dépenses" />
-        <NavItem to="/rapports"   Icon={FileText}        label="Rapports" />
+        <NavItem to="/carburant"    Icon={Fuel}        label="Carburant" />
+        <NavItem to="/depenses"     Icon={Receipt}     label="Dépenses" />
+        <NavItem to="/maintenances" Icon={Wrench}      label="Maintenances"  badge={nbMaintUrgentes} />
+        <NavItem to="/planning"     Icon={Calendar}    label="Planning" />
+        <NavItem to="/clients"      Icon={Building2}   label="Clients" />
+        <NavItem to="/rapports"     Icon={FileText}    label="Rapports" />
       </nav>
 
       {/* Profil utilisateur + déconnexion */}
