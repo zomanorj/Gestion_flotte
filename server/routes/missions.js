@@ -4,6 +4,7 @@ const router  = express.Router();
 const ctrl    = require('../controllers/missionsController');
 const { verifierToken, verifierRole } = require('../middleware/authMiddleware');
 
+router.get('/planning', ctrl.getPlanning);
 router.get('/', ctrl.getAll);
 
 router.post('/',

@@ -249,4 +249,51 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { getAll, create, updateStatut, remove };
+/**
+ * GET /api/missions/planning
+ * Retourne les missions formatées pour FullCalendar.
+ * Couleur selon le statut : planifiée=jaune, en_cours=bleu, terminée=vert, annulée=gris.
+ */
+const getPlanning = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT m.*, v.immatriculation, v.marque,
+        c.nom AS chauffeur_nom, c.prenom AS chauffeur_prenom
+      FROM missions m
+      JOIN vehicules  v ON m.vehicule_id  = v.id
+      JOIN chauffeurs c ON m.chauffeur_id = c.id
+      ORDER BY m.date_depart ASC
+    `);
+
+    const COULEURS = {
+      planifiee: '#f59e0b',
+      en_cours:  '#3b82f6',
+      terminee:  '#22c55e',
+      annulee:   '#9ca3af'
+    };
+
+    const evenements = rows.map(m => ({
+      id:    m.id,
+      title: `${m.immatriculation} — ${m.titre}`,
+      start: m.date_depart,
+      end:   m.date_retour_prevue,
+      color: COULEURS[m.statut] || '#9ca3af',
+      extendedProps: {
+        statut:          m.statut,
+        chauffeur:       `${m.chauffeur_prenom} ${m.chauffeur_nom}`,
+        vehicule:        `${m.immatriculation} ${m.marque}`,
+        lieu_depart:     m.lieu_depart,
+        lieu_destination:m.lieu_destination,
+        distance_km:     m.distance_km,
+        poids_charge:    m.poids_charge
+      }
+    }));
+
+    return res.json(evenements);
+  } catch (err) {
+    console.error('Erreur getPlanning missions :', err);
+    return res.status(500).json({ message: 'Erreur interne du serveur' });
+  }
+};
+
+module.exports = { getAll, getPlanning, create, updateStatut, remove };
