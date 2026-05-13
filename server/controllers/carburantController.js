@@ -69,8 +69,8 @@ const getStats = async (req, res) => {
     // Évolution mensuelle sur 6 mois (pour graphique Bar)
     const [evolutionMensuelle] = await db.query(`
       SELECT
-        DATE_FORMAT(date_plein, '%Y-%m') AS mois,
-        DATE_FORMAT(date_plein, '%b %Y') AS label,
+        DATE_FORMAT(date_plein, '%Y-%m')        AS mois,
+        MIN(DATE_FORMAT(date_plein, '%b %Y'))   AS label,
         SUM(litres)     AS litres,
         SUM(cout_total) AS cout
       FROM carburant

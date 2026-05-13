@@ -72,8 +72,8 @@ const getStats = async (req, res) => {
     // Évolution mensuelle sur 6 mois (pour graphique Bar)
     const [evolutionMensuelle] = await db.query(`
       SELECT
-        DATE_FORMAT(date_depense, '%Y-%m') AS mois,
-        DATE_FORMAT(date_depense, '%b %Y') AS label,
+        DATE_FORMAT(date_depense, '%Y-%m')      AS mois,
+        MIN(DATE_FORMAT(date_depense, '%b %Y')) AS label,
         SUM(montant) AS total
       FROM depenses
       WHERE date_depense >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
