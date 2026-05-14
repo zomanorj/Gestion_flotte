@@ -46,20 +46,23 @@ COMMENT ON COLUMN users.mot_de_passe IS 'Toujours hashé avec bcrypt avant inser
 -- Inventaire des véhicules de la flotte STTA.
 -- =============================================================================
 CREATE TABLE vehicles (
-    id               SERIAL       PRIMARY KEY,
-    immatriculation  VARCHAR(20)  NOT NULL UNIQUE, -- Ex: MG-1234-TA
-    type             VARCHAR(50)  NOT NULL,         -- Ex: Minibus, Camionnette, Berline
-    capacite         INT          NOT NULL CHECK (capacite > 0),  -- Nombre de places ou charge max (kg)
-    statut           VARCHAR(30)  NOT NULL DEFAULT 'disponible'
-                                  CHECK (statut IN ('disponible', 'en_mission', 'en_maintenance', 'hors_service')),
-    date_assurance   DATE,                          -- Date d'expiration de l'assurance
-    kilometrage      INT          NOT NULL DEFAULT 0 CHECK (kilometrage >= 0),
-    created_at       TIMESTAMP    NOT NULL DEFAULT NOW()
+    id                     SERIAL       PRIMARY KEY,
+    immatriculation        VARCHAR(20)  NOT NULL UNIQUE, -- Ex: MG-1234-TA
+    type                   VARCHAR(50)  NOT NULL,         -- Ex: camion, citerne, pickup, autre
+    capacite               INT          NOT NULL CHECK (capacite > 0),  -- Nombre de places ou charge max (tonnes)
+    statut                 VARCHAR(30)  NOT NULL DEFAULT 'actif'
+                                  CHECK (statut IN ('actif', 'en_revision', 'archive')),
+    date_assurance         DATE,                          -- Date d'expiration de l'assurance
+    date_visite_technique  DATE,                          -- Date de la visite technique
+    kilometrage            INT          NOT NULL DEFAULT 0 CHECK (kilometrage >= 0),
+    notes                  TEXT,                          -- Notes libres sur le véhicule
+    created_at             TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at             TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
 COMMENT ON TABLE  vehicles              IS 'Inventaire des véhicules de la flotte STTA';
-COMMENT ON COLUMN vehicles.capacite     IS 'Nombre de passagers ou charge utile en kg selon le type de véhicule';
-COMMENT ON COLUMN vehicles.statut       IS 'disponible | en_mission | en_maintenance | hors_service';
+COMMENT ON COLUMN vehicles.capacite     IS 'Nombre de passagers ou charge utile en tonnes selon le type de véhicule';
+COMMENT ON COLUMN vehicles.statut       IS 'actif = en service | en_revision = en maintenance | archive = hors service';
 
 
 -- =============================================================================
@@ -74,9 +77,13 @@ CREATE TABLE drivers (
     telephone               VARCHAR(20),
     numero_permis           VARCHAR(50)  NOT NULL UNIQUE,   -- Numéro de permis de conduire
     date_expiration_permis  DATE         NOT NULL,           -- Date d'expiration du permis
-    statut                  VARCHAR(30)  NOT NULL DEFAULT 'disponible'
-                                         CHECK (statut IN ('disponible', 'en_mission', 'en_conge', 'inactif')),
-    created_at              TIMESTAMP    NOT NULL DEFAULT NOW()
+    statut                  VARCHAR(30)  NOT NULL DEFAULT 'actif'
+                                         CHECK (statut IN ('actif', 'en_conge', 'inactif')),
+    photo_url               VARCHAR(255),                    -- URL de la photo du chauffeur
+    date_embauche           DATE,                            -- Date d'embauche
+    notes                   TEXT,                            -- Notes libres sur le chauffeur
+    created_at              TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
 COMMENT ON TABLE  drivers                     IS 'Profils des chauffeurs de la flotte STTA';

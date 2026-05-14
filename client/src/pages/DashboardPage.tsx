@@ -17,6 +17,7 @@ import { useNavigate, Link } from 'react-router-dom'
 
 import { useAuth }                        from '../contexts/AuthContext'
 import * as vehicleService                from '../services/vehicleService'
+import * as driverService                 from '../services/driverService'
 import type { VehicleAvecAlerte }         from '../services/vehicleService'
 import { formatDateFR, getDocumentEtat, calculerJoursRestants }  from '../utils/vehicleUtils'
 
@@ -311,6 +312,10 @@ export default function DashboardPage() {
   const [nbAlertes,            setNbAlertes]            = useState<number | null>(null)
   const [loadingAlertes,       setLoadingAlertes]       = useState(true)
 
+  // ── État : chauffeurs actifs ──
+  const [nbChauffeursActifs,   setNbChauffeursActifs]   = useState<number | null>(null)
+  const [loadingChauffeurs,    setLoadingChauffeurs]    = useState(true)
+
   // ── Chargement indépendant de chaque KPI ──
 
   useEffect(() => {
@@ -333,6 +338,14 @@ export default function DashboardPage() {
         setAlertes([])
       })
       .finally(() => setLoadingAlertes(false))
+  }, [])
+
+  useEffect(() => {
+    // KPI 3 : nombre de chauffeurs actifs
+    driverService.countDrivers('actif')
+      .then(reponse => setNbChauffeursActifs(reponse.donnees.total))
+      .catch(() => setNbChauffeursActifs(0))
+      .finally(() => setLoadingChauffeurs(false))
   }, [])
 
   // ── Données d'affichage ──
@@ -398,15 +411,16 @@ export default function DashboardPage() {
             onClick={() => navigate('/vehicles')}
           />
 
-          {/* KPI 3 : Chauffeurs — TODO Sprint 3 */}
+          {/* KPI 3 : Chauffeurs actifs (données réelles) */}
           <CarteKPI
-            libelle="Chauffeurs dispo."
-            valeur="—"
+            libelle="Chauffeurs actifs"
+            valeur={nbChauffeursActifs !== null ? String(nbChauffeursActifs) : '—'}
             icone={<IcChauffeur />}
             couleurFond="bg-emerald-50"
             couleurIcone="text-emerald-600"
             description="Prêts à être affectés"
-            badge={<BadgeSprint numero={3} />}
+            isLoading={loadingChauffeurs}
+            onClick={() => navigate('/drivers')}
           />
 
           {/* KPI 4 : Missions du jour — TODO Sprint 4 */}

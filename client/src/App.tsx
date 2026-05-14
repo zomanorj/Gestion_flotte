@@ -28,6 +28,8 @@ import LoginPage              from './pages/LoginPage'
 import DashboardPage          from './pages/DashboardPage'
 import VehiclesPage           from './pages/VehiclesPage'
 import VehicleDetailPage      from './pages/VehicleDetailPage'
+import DriversPage            from './pages/DriversPage'
+import DriverDetailPage       from './pages/DriverDetailPage'
 
 /** Placeholder pour les routes non encore implémentées */
 function PageEnConstruction({ titre }: { titre: string }) {
@@ -83,7 +85,8 @@ function App() {
             <Route path="vehicles/:id" element={<VehicleDetailPage />} />
 
             {/* Sprint 3 : Chauffeurs */}
-            <Route path="chauffeurs"  element={<PageEnConstruction titre="Gestion des chauffeurs" />} />
+            <Route path="drivers"     element={<DriversPage />} />
+            <Route path="drivers/:id" element={<DriverDetailPage />} />
 
             {/* Sprint 4 : Missions */}
             <Route path="missions"    element={<PageEnConstruction titre="Planification des missions" />} />

@@ -23,7 +23,9 @@ dotenv.config()
 require('./db/connection')
 
 // Import des routeurs métier
-const authRoutes = require('./routes/authRoutes')
+const authRoutes     = require('./routes/authRoutes')
+const vehicleRoutes  = require('./routes/vehicleRoutes')
+const driverRoutes   = require('./routes/driverRoutes')
 
 const app  = express()
 const PORT = process.env.PORT || 5000
@@ -64,6 +66,12 @@ app.use((req, _res, next) => {
 // Routes d'authentification : /api/auth/register, /api/auth/login, /api/auth/me
 app.use('/api/auth', authRoutes)
 
+// Routes de gestion des véhicules : /api/vehicles
+app.use('/api/vehicles', vehicleRoutes)
+
+// Routes de gestion des chauffeurs : /api/drivers
+app.use('/api/drivers', driverRoutes)
+
 // Route de santé : vérifier que le serveur est opérationnel
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -89,9 +97,11 @@ app.listen(PORT, () => {
   console.log('├─────────────────────────────────────────┤')
   console.log(`│  Port      : ${PORT}                        │`)
   console.log(`│  Env       : ${(process.env.NODE_ENV || 'development').padEnd(27)}│`)
-  console.log('├─────────────────────────────────────────┤')
-  console.log(`│  Health    : http://localhost:${PORT}/api/health │`)
-  console.log(`│  Auth      : http://localhost:${PORT}/api/auth   │`)
-  console.log('└─────────────────────────────────────────┘')
+console.log('├─────────────────────────────────────────┤')
+console.log(`│  Health    : http://localhost:${PORT}/api/health  │`)
+console.log(`│  Auth      : http://localhost:${PORT}/api/auth    │`)
+console.log(`│  Vehicles  : http://localhost:${PORT}/api/vehicles│`)
+console.log(`│  Drivers   : http://localhost:${PORT}/api/drivers │`)
+console.log('└─────────────────────────────────────────┘')
   console.log('')
 })

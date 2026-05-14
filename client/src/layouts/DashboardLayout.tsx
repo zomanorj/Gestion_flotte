@@ -117,7 +117,7 @@ function IcRapport() {
 const NAVIGATION: ItemNavigation[] = [
   { libelle: 'Tableau de bord', chemin: '/',           icone: <IcDashboard /> },
   { libelle: 'Flotte',          chemin: '/vehicles',   icone: <IcCamion />    },
-  { libelle: 'Chauffeurs',      chemin: '/chauffeurs', icone: <IcChauffeur /> },
+  { libelle: 'Chauffeurs',      chemin: '/drivers',    icone: <IcChauffeur /> },
   { libelle: 'Missions',        chemin: '/missions',   icone: <IcMission />   },
   { libelle: 'Suivi',           chemin: '/suivi',      icone: <IcSuivi />     },
   { libelle: 'Rapports',        chemin: '/rapports',   icone: <IcRapport />   },
@@ -127,7 +127,7 @@ const NAVIGATION: ItemNavigation[] = [
 const LABELS_CHEMINS: Record<string, string> = {
   '/':           'Tableau de bord',
   '/vehicles':   'Flotte',
-  '/chauffeurs': 'Chauffeurs',
+  '/drivers':    'Chauffeurs',
   '/missions':   'Missions',
   '/suivi':      'Suivi',
   '/rapports':   'Rapports',

@@ -58,4 +58,36 @@ const verifierToken = (req, res, next) => {
   }
 }
 
-module.exports = { verifierToken }
+/**
+ * verifierRole
+ * Middleware qui vérifie que l'utilisateur connecté a l'un des rôles autorisés.
+ * À utiliser APRÈS verifierToken (qui remplit req.user).
+ *
+ * @param {string[]} rolesAutorises - Tableau des rôles acceptés (ex: ['admin', 'gestionnaire'])
+ * @returns {Function} Middleware Express
+ *
+ * @example
+ *   routeur.post('/', verifierToken, verifierRole(['admin']), createVehicle)
+ */
+const verifierRole = (rolesAutorises) => {
+  return (req, res, next) => {
+    // req.user a été injecté par verifierToken
+    if (!req.user || !req.user.role) {
+      return res.status(403).json({
+        message: 'Accès refusé : authentification requise',
+      })
+    }
+
+    // Vérification que le rôle de l'utilisateur est dans la liste autorisée
+    if (!rolesAutorises.includes(req.user.role)) {
+      return res.status(403).json({
+        message: `Accès refusé : rôle "${req.user.role}" non autorisé. Rôles requis : ${rolesAutorises.join(', ')}`,
+      })
+    }
+
+    // Rôle valide, on passe au contrôleur suivant
+    next()
+  }
+}
+
+module.exports = { verifierToken, verifierRole }
