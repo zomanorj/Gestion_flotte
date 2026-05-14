@@ -4,12 +4,17 @@
   "description": "API REST pour le système de gestion de transport STTA Madagascar",
   "main": "server.js",
   "scripts": {
-    "start":  "node server.js",
-    "dev":    "nodemon server.js",
-    "lint":   "eslint .",
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "lint": "eslint .",
     "format": "prettier --write ."
   },
-  "keywords": ["transport", "stta", "madagascar", "fleet-management"],
+  "keywords": [
+    "transport",
+    "stta",
+    "madagascar",
+    "fleet-management"
+  ],
   "author": "NP AKADIN / STTA Madagascar",
   "license": "ISC",
   "type": "commonjs",
@@ -19,6 +24,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "pdfkit": "^0.18.0",
     "pg": "^8.20.0"
   },
   "devDependencies": {

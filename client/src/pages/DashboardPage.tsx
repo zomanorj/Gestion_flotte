@@ -4,10 +4,11 @@
  *
  * Sprint 2 : connecté aux vraies données de l'API véhicules.
  *   - KPI "Véhicules actifs"   → GET /api/vehicles/count?statut=actif
- *   - KPI "Alertes documents"  → GET /api/vehicles/alertes (nombre total)
- *   - KPI "Chauffeurs"         → placeholder (Sprint 3)
- *   - KPI "Missions du jour"   → placeholder (Sprint 4)
- *   - Section alertes rapides  → liste des 3 premiers véhicules en alerte
+ *   - KPI "Alertes documents"  → GET /api/vehicles/alertes + GET /api/drivers/alertes
+ *   - KPI "Chauffeurs"         → GET /api/drivers/count?statut=actif
+ *   - KPI "Missions du jour"   → GET /api/missions/planning?date=[date]
+ *   - Section alertes rapides  → liste mixte véhicules + chauffeurs (max 5)
+ *   - Section missions en cours → GET /api/missions?statut=en_cours&limit=4
  *
  * Chaque KPI charge ses données indépendamment (skeleton par carte, pas de loader global).
  */
@@ -18,11 +19,14 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth }                        from '../contexts/AuthContext'
 import * as vehicleService                from '../services/vehicleService'
 import * as driverService                 from '../services/driverService'
+import * as missionService                from '../services/missionService'
 import type { VehicleAvecAlerte }         from '../services/vehicleService'
-import { formatDateFR, getDocumentEtat, calculerJoursRestants }  from '../utils/vehicleUtils'
+import type { DriverAvecAlerte }          from '../types/driver'
+import type { Mission }                   from '../types/mission'
+import { getDocumentEtat, calculerJoursRestants }  from '../utils/vehicleUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Icônes SVG des KPI (inchangées depuis Sprint 1)
+// Icônes SVG des KPI
 // ─────────────────────────────────────────────────────────────────────────────
 
 function IcVehicule() {
@@ -52,19 +56,6 @@ function IcChauffeur() {
   )
 }
 
-function IcMission() {
-  return (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round"
-        d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006
-           V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0
-           L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695
-           V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0
-           l4.994 2.497c.317.158.69.158 1.006 0z" />
-    </svg>
-  )
-}
-
 function IcAlerte() {
   return (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -72,6 +63,40 @@ function IcAlerte() {
         d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71
            c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z
            M12 15.75h.007v.008H12v-.008z" />
+    </svg>
+  )
+}
+
+function IcRoute() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M3.75 3.75v4.5m0 15.75v-4.5m0 0h16.5m-16.5 0h16.5
+           M3.75 3.75l4.5 4.5m-4.5 0l4.5-4.5M20.25 20.25l-4.5-4.5m4.5 4.5l-4.5-4.5" />
+    </svg>
+  )
+}
+
+function IcCamionAlerte() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H3m16.5 0h-.375
+           M3.75 18.75V7.5A2.25 2.25 0 016 5.25h10.5A2.25 2.25 0 0118.75 7.5v6.75
+           m-15 4.5h.375m14.625 0h.375m-14.625 0H3.75
+           M18.75 14.25h-3.375a.75.75 0 01-.75-.75v-3a.75.75 0 01.75-.75h2.625
+           c.621 0 1.125.504 1.125 1.125v3.375z" />
+    </svg>
+  )
+}
+
+function IcBadgeAlerte() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z
+           M4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75
+           c-2.676 0-5.216-.584-7.499-1.632z" />
     </svg>
   )
 }
@@ -149,13 +174,17 @@ function CarteKPI({
   )
 }
 
-// Badge "Sprint X" pour les KPIs pas encore connectés
-function BadgeSprint({ numero }: { numero: number }) {
-  return (
-    <span className="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded-full shrink-0">
-      Sprint {numero}
-    </span>
-  )
+// ─────────────────────────────────────────────────────────────────────────────
+// Type unifié pour les alertes (véhicules + chauffeurs)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface AlerteUnifiee {
+  type:        'vehicule' | 'chauffeur'
+  id:          number
+  libelle:     string        // Immatriculation ou nom complet
+  message:     string        // Description du problème
+  joursRestants: number | null
+  urgent:      boolean
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -163,13 +192,20 @@ function BadgeSprint({ numero }: { numero: number }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SectionAlertesProps {
-  alertes:   VehicleAvecAlerte[]
-  isLoading: boolean
+  alertesUnifiees: AlerteUnifiee[]
+  isLoading:       boolean
 }
 
-function SectionAlertesRapides({ alertes, isLoading }: SectionAlertesProps) {
-  // On n'affiche que les 3 premières alertes
-  const alertesAffichees = alertes.slice(0, 3)
+function SectionAlertesRapides({ alertesUnifiees, isLoading }: SectionAlertesProps) {
+  // On trie par urgence (moins de jours restants en premier)
+  const alertesTrie = [...alertesUnifiees].sort((a, b) => {
+    if (a.joursRestants === null) return 1
+    if (b.joursRestants === null) return -1
+    return a.joursRestants - b.joursRestants
+  })
+
+  // On n'affiche que les 5 premières alertes
+  const alertesAffichees = alertesTrie.slice(0, 5)
 
   if (isLoading) {
     return (
@@ -186,7 +222,7 @@ function SectionAlertesRapides({ alertes, isLoading }: SectionAlertesProps) {
     )
   }
 
-  if (alertes.length === 0) {
+  if (alertesUnifiees.length === 0) {
     return (
       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 flex items-center gap-3">
         <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 shrink-0">
@@ -217,7 +253,7 @@ function SectionAlertesRapides({ alertes, isLoading }: SectionAlertesProps) {
           </div>
           <h2 className="text-sm font-semibold text-slate-800">Alertes documents</h2>
           <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
-            {alertes.length}
+            {alertesUnifiees.length}
           </span>
         </div>
         <Link
@@ -230,67 +266,189 @@ function SectionAlertesRapides({ alertes, isLoading }: SectionAlertesProps) {
 
       {/* Liste des alertes */}
       <div className="divide-y divide-slate-50">
-        {alertesAffichees.map((vehicleAlerte) => {
-          // Calculer le document le plus urgent à afficher
-          const etatAssurance = getDocumentEtat(vehicleAlerte.date_assurance)
-          const etatVisite    = getDocumentEtat(vehicleAlerte.date_visite_technique)
+        {alertesAffichees.map((alerte) => (
+          <Link
+            key={`${alerte.type}-${alerte.id}`}
+            to={alerte.type === 'vehicule' ? `/vehicles/${alerte.id}` : `/drivers/${alerte.id}`}
+            className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50 transition-colors group"
+          >
+            {/* Icône + Libellé */}
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                alerte.type === 'vehicule' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'
+              }`}>
+                {alerte.type === 'vehicule' ? <IcCamionAlerte /> : <IcBadgeAlerte />}
+              </div>
+              <span className="text-sm font-semibold text-slate-800 group-hover:text-blue-700 transition-colors">
+                {alerte.libelle}
+              </span>
+            </div>
 
-          // Déterminer quel document est le plus problématique
-          const documentProbleme =
-            etatAssurance === 'expiree'         ? { label: 'Assurance expirée',         urgent: true }
-          : etatVisite    === 'expiree'         ? { label: 'Visite technique expirée',   urgent: true }
-          : etatAssurance === 'bientot_expiree' ? { label: 'Assurance bientôt expirée',  urgent: false }
-          :                                       { label: 'Visite technique bientôt expirée', urgent: false }
+            {/* Type de problème */}
+            <span className="text-sm text-slate-500 flex-1 px-4">
+              {alerte.message}
+            </span>
 
-          // Trouver la date la plus proche pour l'échéance
-          const dateRef = etatAssurance !== 'valide'
-            ? vehicleAlerte.date_assurance
-            : vehicleAlerte.date_visite_technique
+            {/* Jours restants */}
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${
+              alerte.urgent
+                ? 'bg-red-100 text-red-700'
+                : 'bg-orange-100 text-orange-700'
+            }`}>
+              {alerte.joursRestants === null
+                ? '—'
+                : alerte.joursRestants < 0
+                  ? `${Math.abs(alerte.joursRestants)}j dépassé`
+                  : `${alerte.joursRestants}j restants`
+              }
+            </span>
+          </Link>
+        ))}
+      </div>
 
-          const joursRestants = dateRef ? calculerJoursRestants(dateRef) : null
+      {/* Footer si plus de 5 alertes */}
+      {alertesUnifiees.length > 5 && (
+        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50">
+          <Link to="/vehicles" className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
+            + {alertesUnifiees.length - 5} autre{alertesUnifiees.length - 5 > 1 ? 's' : ''} alerte{alertesUnifiees.length - 5 > 1 ? 's' : ''}
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Composant SectionMissionsEnCours — liste des missions en cours
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SectionMissionsEnCoursProps {
+  missions: Mission[]
+  isLoading: boolean
+}
+
+// Composant skeleton pour une ligne de mission
+function SkeletonLigneMission() {
+  return (
+    <div className="flex items-center gap-3 py-3 animate-pulse">
+      <div className="w-16 h-4 bg-slate-200 rounded" />
+      <div className="flex-1 h-4 bg-slate-100 rounded" />
+      <div className="w-20 h-6 bg-slate-200 rounded-full" />
+    </div>
+  )
+}
+
+function SectionMissionsEnCours({ missions, isLoading }: SectionMissionsEnCoursProps) {
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-800">Missions en cours</h2>
+            <div className="w-6 h-5 bg-slate-200 rounded-full animate-pulse" />
+          </div>
+        </div>
+        <div className="divide-y divide-slate-50">
+          <SkeletonLigneMission />
+          <SkeletonLigneMission />
+          <SkeletonLigneMission />
+        </div>
+      </div>
+    )
+  }
+
+  if (missions.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-6 flex items-center gap-3">
+        <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 shrink-0">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <p className="text-sm font-medium text-emerald-800">
+          Aucune mission en cours pour le moment
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-slate-800">Missions en cours</h2>
+          <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
+            {missions.length}
+          </span>
+        </div>
+        <Link
+          to="/missions?statut=en_cours"
+          className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+        >
+          Voir toutes les missions →
+        </Link>
+      </div>
+
+      {/* Liste des missions */}
+      <div className="divide-y divide-slate-50">
+        {missions.slice(0, 4).map((mission) => {
+          const immatriculation = mission.vehicle?.immatriculation ?? 'N/A'
+          const chauffeurNom = mission.driver
+            ? `${mission.driver.prenom} ${mission.driver.nom}`
+            : 'Non assigné'
+          const initiales = mission.driver
+            ? `${mission.driver.prenom[0]}${mission.driver.nom[0]}`.toUpperCase()
+            : 'NA'
 
           return (
             <Link
-              key={vehicleAlerte.id}
-              to={`/vehicles/${vehicleAlerte.id}`}
-              className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50 transition-colors group"
+              key={mission.id}
+              to={`/missions/${mission.id}`}
+              className="flex items-center gap-3 px-6 py-3.5 hover:bg-slate-50 transition-colors group"
             >
-              {/* Immatriculation */}
-              <span className="text-sm font-semibold text-slate-800 group-hover:text-blue-700 transition-colors w-28 shrink-0">
-                {vehicleAlerte.immatriculation}
+              {/* Référence mission */}
+              <span className="text-xs font-medium text-slate-400 w-14 shrink-0">
+                #{String(mission.id).padStart(4, '0')}
               </span>
 
-              {/* Type de problème */}
-              <span className="text-sm text-slate-500 flex-1 px-4">
-                {documentProbleme.label}
+              {/* Trajet avec flèche */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-slate-800 group-hover:text-blue-700 transition-colors">
+                  <span className="truncate">{mission.lieu_depart}</span>
+                  <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                  <span className="truncate">{mission.lieu_arrivee}</span>
+                </div>
+              </div>
+
+              {/* Avatar chauffeur + nom */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-semibold">
+                  {initiales}
+                </div>
+                <span className="text-xs text-slate-500 hidden sm:block max-w-[80px] truncate">
+                  {chauffeurNom}
+                </span>
+              </div>
+
+              {/* Immatriculation véhicule */}
+              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded shrink-0 hidden md:inline-block">
+                {immatriculation}
               </span>
 
-              {/* Jours restants */}
-              <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${
-                documentProbleme.urgent
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-orange-100 text-orange-700'
-              }`}>
-                {joursRestants === null
-                  ? '—'
-                  : joursRestants < 0
-                    ? `${Math.abs(joursRestants)}j dépassé`
-                    : `${joursRestants}j restants`
-                }
-              </span>
+              {/* Heure de départ */}
+              {mission.heure_depart && (
+                <span className="text-xs text-slate-400 shrink-0 hidden lg:block">
+                  {mission.heure_depart}
+                </span>
+              )}
             </Link>
           )
         })}
       </div>
-
-      {/* Footer si plus de 3 alertes */}
-      {alertes.length > 3 && (
-        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50">
-          <Link to="/vehicles" className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
-            + {alertes.length - 3} autre{alertes.length - 3 > 1 ? 's' : ''} alerte{alertes.length - 3 > 1 ? 's' : ''}
-          </Link>
-        </div>
-      )}
     </div>
   )
 }
@@ -307,14 +465,27 @@ export default function DashboardPage() {
   const [nbVehiculesActifs,    setNbVehiculesActifs]    = useState<number | null>(null)
   const [loadingVehicules,     setLoadingVehicules]     = useState(true)
 
-  // ── État : alertes documents ──
-  const [alertes,              setAlertes]              = useState<VehicleAvecAlerte[]>([])
-  const [nbAlertes,            setNbAlertes]            = useState<number | null>(null)
-  const [loadingAlertes,       setLoadingAlertes]       = useState(true)
+  // ── État : alertes documents véhicules ──
+  const [alertesVehicules,     setAlertesVehicules]     = useState<VehicleAvecAlerte[]>([])
+  const [nbAlertesVehicules,   setNbAlertesVehicules]   = useState<number | null>(null)
+  const [loadingAlertesVehicules, setLoadingAlertesVehicules] = useState(true)
+
+  // ── État : alertes permis chauffeurs ──
+  const [alertesPermis,        setAlertesPermis]        = useState<DriverAvecAlerte[]>([])
+  const [nbAlertesPermis,      setNbAlertesPermis]      = useState<number | null>(null)
+  const [loadingAlertesPermis, setLoadingAlertesPermis] = useState(true)
 
   // ── État : chauffeurs actifs ──
   const [nbChauffeursActifs,   setNbChauffeursActifs]   = useState<number | null>(null)
   const [loadingChauffeurs,    setLoadingChauffeurs]    = useState(true)
+
+  // ── État : missions du jour ──
+  const [nbMissionsJour,       setNbMissionsJour]       = useState<number | null>(null)
+  const [loadingMissionsJour,  setLoadingMissionsJour]  = useState(true)
+
+  // ── État : missions en cours ──
+  const [missionsEnCours,      setMissionsEnCours]      = useState<Mission[]>([])
+  const [loadingMissionsEnCours, setLoadingMissionsEnCours] = useState(true)
 
   // ── Chargement indépendant de chaque KPI ──
 
@@ -327,17 +498,31 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    // KPI 2 : alertes documents + liste pour la section rapide
+    // KPI 2 : alertes documents véhicules
     vehicleService.getAlertes()
       .then(reponse => {
-        setNbAlertes(reponse.resume.total)
-        setAlertes(reponse.donnees)
+        setNbAlertesVehicules(reponse.resume.total)
+        setAlertesVehicules(reponse.donnees)
       })
       .catch(() => {
-        setNbAlertes(0)
-        setAlertes([])
+        setNbAlertesVehicules(0)
+        setAlertesVehicules([])
       })
-      .finally(() => setLoadingAlertes(false))
+      .finally(() => setLoadingAlertesVehicules(false))
+  }, [])
+
+  useEffect(() => {
+    // Alertes permis chauffeurs
+    driverService.getPermisAlertes()
+      .then(reponse => {
+        setNbAlertesPermis(reponse.resume.total)
+        setAlertesPermis(reponse.donnees)
+      })
+      .catch(() => {
+        setNbAlertesPermis(0)
+        setAlertesPermis([])
+      })
+      .finally(() => setLoadingAlertesPermis(false))
   }, [])
 
   useEffect(() => {
@@ -348,6 +533,86 @@ export default function DashboardPage() {
       .finally(() => setLoadingChauffeurs(false))
   }, [])
 
+  useEffect(() => {
+    // KPI 4 : missions du jour
+    const dateAujourdhui = new Date().toISOString().split('T')[0]
+    missionService.getMissionsByDate(dateAujourdhui)
+      .then(reponse => setNbMissionsJour(reponse.donnees.length))
+      .catch(() => setNbMissionsJour(0))
+      .finally(() => setLoadingMissionsJour(false))
+  }, [])
+
+  useEffect(() => {
+    // Missions en cours (max 4)
+    missionService.getMissions({ statut: 'en_cours', limit: 4 })
+      .then(reponse => setMissionsEnCours(reponse.donnees))
+      .catch(() => setMissionsEnCours([]))
+      .finally(() => setLoadingMissionsEnCours(false))
+  }, [])
+
+  // ── Calcul du nombre total d'alertes (véhicules + permis) ──
+  const nbTotalAlertes = (nbAlertesVehicules ?? 0) + (nbAlertesPermis ?? 0)
+
+  // ── Fusion des alertes pour la section rapide ──
+  const alertesUnifiees: AlerteUnifiee[] = [
+    // Alertes véhicules
+    ...alertesVehicules.map((v) => {
+      const etatAssurance = getDocumentEtat(v.date_assurance)
+      const etatVisite    = getDocumentEtat(v.date_visite_technique)
+
+      // Déterminer le problème le plus urgent
+      let message = ''
+      let dateRef: string | null = null
+      if (etatAssurance === 'expiree') {
+        message = 'Assurance expirée'
+        dateRef = v.date_assurance
+      } else if (etatVisite === 'expiree') {
+        message = 'Visite technique expirée'
+        dateRef = v.date_visite_technique
+      } else if (etatAssurance === 'bientot_expiree') {
+        message = 'Assurance expire dans X jours'
+        dateRef = v.date_assurance
+      } else if (etatVisite === 'bientot_expiree') {
+        message = 'Visite technique expire dans X jours'
+        dateRef = v.date_visite_technique
+      }
+
+      const joursRestants = dateRef ? calculerJoursRestants(dateRef) : null
+
+      // Remplacer "X" par le nombre de jours si message contient "X jours"
+      if (message.includes('X jours') && joursRestants !== null) {
+        message = message.replace('X jours', `${joursRestants} jours`)
+      }
+
+      return {
+        type: 'vehicule' as const,
+        id: v.id,
+        libelle: v.immatriculation,
+        message,
+        joursRestants,
+        urgent: etatAssurance === 'expiree' || etatVisite === 'expiree',
+      }
+    }),
+    // Alertes permis chauffeurs
+    ...alertesPermis.map((d) => {
+      const joursRestants = d.date_expiration_permis
+        ? calculerJoursRestants(d.date_expiration_permis)
+        : null
+      const message = d.etat_permis === 'expire'
+        ? 'Permis expiré'
+        : `Permis expire dans ${joursRestants !== null ? joursRestants : 'X'} jours`
+
+      return {
+        type: 'chauffeur' as const,
+        id: d.id,
+        libelle: `${d.prenom} ${d.nom}`,
+        message,
+        joursRestants,
+        urgent: d.etat_permis === 'expire',
+      }
+    }),
+  ]
+
   // ── Données d'affichage ──
   const prenom         = utilisateur?.nom.split(' ')[0] ?? 'utilisateur'
   const dateAujourdhui = new Date().toLocaleDateString('fr-FR', {
@@ -356,6 +621,9 @@ export default function DashboardPage() {
     month:   'long',
     year:    'numeric',
   })
+
+  // État de chargement global pour la section alertes (les deux API doivent être chargées)
+  const loadingAlertes = loadingAlertesVehicules || loadingAlertesPermis
 
   return (
     <div className="space-y-6">
@@ -399,14 +667,14 @@ export default function DashboardPage() {
             onClick={() => navigate('/vehicles')}
           />
 
-          {/* KPI 2 : Alertes documents (données réelles) */}
+          {/* KPI 2 : Alertes documents (véhicules + permis chauffeurs) */}
           <CarteKPI
             libelle="Alertes documents"
-            valeur={nbAlertes !== null ? String(nbAlertes) : '—'}
+            valeur={nbTotalAlertes !== null ? String(nbTotalAlertes) : '—'}
             icone={<IcAlerte />}
-            couleurFond={nbAlertes && nbAlertes > 0 ? 'bg-orange-50' : 'bg-slate-50'}
-            couleurIcone={nbAlertes && nbAlertes > 0 ? 'text-orange-500' : 'text-slate-400'}
-            description="Assurances, visites"
+            couleurFond={nbTotalAlertes > 0 ? 'bg-orange-50' : 'bg-slate-50'}
+            couleurIcone={nbTotalAlertes > 0 ? 'text-orange-500' : 'text-slate-400'}
+            description={`${nbAlertesVehicules ?? 0} véhicules · ${nbAlertesPermis ?? 0} permis`}
             isLoading={loadingAlertes}
             onClick={() => navigate('/vehicles')}
           />
@@ -423,17 +691,26 @@ export default function DashboardPage() {
             onClick={() => navigate('/drivers')}
           />
 
-          {/* KPI 4 : Missions du jour — TODO Sprint 4 */}
+          {/* KPI 4 : Missions du jour (données réelles) */}
           <CarteKPI
             libelle="Missions du jour"
-            valeur="—"
-            icone={<IcMission />}
-            couleurFond="bg-purple-50"
-            couleurIcone="text-purple-600"
+            valeur={nbMissionsJour !== null ? String(nbMissionsJour) : '—'}
+            icone={<IcRoute />}
+            couleurFond="bg-green-50"
+            couleurIcone="text-green-600"
             description="Planifiées et en cours"
-            badge={<BadgeSprint numero={4} />}
+            isLoading={loadingMissionsJour}
+            onClick={() => navigate('/missions')}
           />
         </div>
+      </section>
+
+      {/* ── Section missions en cours ── */}
+      <section>
+        <SectionMissionsEnCours
+          missions={missionsEnCours}
+          isLoading={loadingMissionsEnCours}
+        />
       </section>
 
       {/* ── Section alertes rapides ── */}
@@ -442,7 +719,7 @@ export default function DashboardPage() {
           Alertes documents
         </h2>
         <SectionAlertesRapides
-          alertes={alertes}
+          alertesUnifiees={alertesUnifiees}
           isLoading={loadingAlertes}
         />
       </section>

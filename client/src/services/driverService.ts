@@ -20,7 +20,6 @@ import apiClient from './api'
 
 import type {
   Driver,
-  DriverAvecAlerte,
   DriverFilters,
   DriverFormData,
   DriverListResponse,

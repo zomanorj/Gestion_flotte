@@ -16,7 +16,11 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\" -Recurse -Force)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\" | ForEach-Object { $_.Name })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\\\\server\" | ForEach-Object { $_.Name })",
+      "Bash(timeout 5 node server.js)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\\\\server\\\\models\" | ForEach-Object { $_.Name })"
     ]
   }
 }

@@ -30,19 +30,10 @@ import VehiclesPage           from './pages/VehiclesPage'
 import VehicleDetailPage      from './pages/VehicleDetailPage'
 import DriversPage            from './pages/DriversPage'
 import DriverDetailPage       from './pages/DriverDetailPage'
-
-/** Placeholder pour les routes non encore implémentées */
-function PageEnConstruction({ titre }: { titre: string }) {
-  return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center">
-        <div className="text-4xl mb-3">🚧</div>
-        <p className="font-semibold text-slate-700">{titre}</p>
-        <p className="text-sm text-slate-400 mt-1">Disponible dans un prochain sprint</p>
-      </div>
-    </div>
-  )
-}
+import MissionsPage           from './pages/MissionsPage'
+import MissionDetailPage      from './pages/MissionDetailPage'
+import SuiviPage              from './pages/SuiviPage'
+import DocumentsPage          from './pages/DocumentsPage'
 
 function App() {
   return (
@@ -89,11 +80,12 @@ function App() {
             <Route path="drivers/:id" element={<DriverDetailPage />} />
 
             {/* Sprint 4 : Missions */}
-            <Route path="missions"    element={<PageEnConstruction titre="Planification des missions" />} />
+            <Route path="missions"       element={<MissionsPage />} />
+            <Route path="missions/:id"   element={<MissionDetailPage />} />
 
-            {/* Sprint 5 */}
-            <Route path="suivi"       element={<PageEnConstruction titre="Suivi en temps réel" />} />
-            <Route path="rapports"    element={<PageEnConstruction titre="Rapports et statistiques" />} />
+            {/* Sprint 5 : Suivi et documents */}
+            <Route path="suivi"       element={<SuiviPage />} />
+            <Route path="documents"   element={<DocumentsPage />} />
           </Route>
 
           {/* Toute URL inconnue → accueil */}

@@ -13,6 +13,7 @@
 
 -- On supprime les tables si elles existent déjà (pour faciliter les re-créations en dev)
 -- ATTENTION : en production, utiliser des migrations plutôt que DROP/CREATE
+DROP TABLE IF EXISTS tracking  CASCADE;
 DROP TABLE IF EXISTS missions  CASCADE;
 DROP TABLE IF EXISTS drivers   CASCADE;
 DROP TABLE IF EXISTS vehicles  CASCADE;
@@ -96,16 +97,23 @@ COMMENT ON COLUMN drivers.date_expiration_permis IS 'Une alerte devra être envo
 -- Planification et suivi des missions de transport.
 -- =============================================================================
 CREATE TABLE missions (
-    id            SERIAL       PRIMARY KEY,
-    vehicle_id    INT          NOT NULL REFERENCES vehicles(id) ON DELETE RESTRICT,
-    driver_id     INT          NOT NULL REFERENCES drivers(id)  ON DELETE RESTRICT,
-    lieu_depart   VARCHAR(255) NOT NULL,  -- Adresse ou nom du lieu de départ
-    lieu_arrivee  VARCHAR(255) NOT NULL,  -- Adresse ou nom de la destination
-    date_mission  TIMESTAMP    NOT NULL,  -- Date et heure prévues de départ
-    chargement    TEXT,                   -- Description du chargement ou des passagers
-    statut        VARCHAR(30)  NOT NULL DEFAULT 'planifiee'
-                               CHECK (statut IN ('planifiee', 'en_cours', 'terminee', 'annulee')),
-    created_at    TIMESTAMP    NOT NULL DEFAULT NOW()
+    id                    SERIAL        PRIMARY KEY,
+    vehicle_id            INT           NOT NULL REFERENCES vehicles(id) ON DELETE RESTRICT,
+    driver_id             INT           NOT NULL REFERENCES drivers(id)  ON DELETE RESTRICT,
+    lieu_depart           VARCHAR(255)  NOT NULL,  -- Adresse ou nom du lieu de départ
+    lieu_arrivee          VARCHAR(255)  NOT NULL,  -- Adresse ou nom de la destination
+    date_mission          DATE          NOT NULL,  -- Date prévue de la mission
+    heure_depart          TIME,                     -- Heure prévue de départ
+    heure_arrivee_prevue  TIME,                     -- Heure prévue d'arrivée
+    chargement            TEXT,                     -- Description du chargement ou des passagers
+    poids_tonne           DECIMAL(8,2),             -- Poids du chargement en tonnes
+    distance_km           INT           CHECK (distance_km >= 0),  -- Distance en kilomètres
+    statut                VARCHAR(30)   NOT NULL DEFAULT 'brouillon'
+                                  CHECK (statut IN ('brouillon', 'planifiee', 'en_cours', 'terminee', 'annulee')),
+    notes                 TEXT,                     -- Notes libres sur la mission
+    created_by            INT           REFERENCES users(id) ON DELETE SET NULL,  -- Utilisateur ayant créé la mission
+    created_at            TIMESTAMP     NOT NULL DEFAULT NOW(),
+    updated_at            TIMESTAMP     NOT NULL DEFAULT NOW()
 );
 
 COMMENT ON TABLE  missions           IS 'Missions de transport planifiées ou réalisées';
@@ -129,3 +137,29 @@ CREATE INDEX idx_drivers_statut      ON drivers(statut);
 
 -- Recherche de véhicules par statut
 CREATE INDEX idx_vehicles_statut     ON vehicles(statut);
+
+
+-- =============================================================================
+-- TABLE : tracking
+-- Suivi GPS des positions des véhicules pendant les missions.
+-- =============================================================================
+
+CREATE TABLE tracking (
+    id          SERIAL           PRIMARY KEY,
+    mission_id  INT              NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
+    latitude    DECIMAL(10, 8)   NOT NULL,
+    longitude   DECIMAL(11, 8)   NOT NULL,
+    vitesse     INT              DEFAULT 0 CHECK (vitesse >= 0),  -- Vitesse en km/h
+    horodatage  TIMESTAMP        DEFAULT NOW(),                   -- Horodatage de la position
+    created_at  TIMESTAMP        DEFAULT NOW()
+);
+
+COMMENT ON TABLE  tracking              IS 'Suivi GPS des positions des véhicules pendant les missions';
+COMMENT ON COLUMN tracking.mission_id   IS 'Référence à la mission en cours';
+COMMENT ON COLUMN tracking.vitesse      IS 'Vitesse du véhicule en km/h au moment du relevé';
+COMMENT ON COLUMN tracking.horodatage   IS 'Horodatage de la position GPS (peut différer de created_at)';
+
+-- Index pour les requêtes fréquentes
+CREATE INDEX idx_tracking_mission_id    ON tracking(mission_id);
+CREATE INDEX idx_tracking_horodatage    ON tracking(horodatage);
+CREATE INDEX idx_tracking_mission_time  ON tracking(mission_id, horodatage DESC);

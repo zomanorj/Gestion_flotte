@@ -21,7 +21,6 @@ import {
   getInitials,
   getAvatarColor,
   getPermisBadgeClasses,
-  getPermisLabel,
   getStatutClasses,
   getStatutLabel,
   formatDateFR,
@@ -41,7 +40,6 @@ export default function DriverDetailPage() {
   const [missions, setMissions] = useState<Mission[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   // ── Vérifier les permissions ──
   const canEdit = utilisateur?.role === 'admin' || utilisateur?.role === 'gestionnaire'
@@ -51,7 +49,6 @@ export default function DriverDetailPage() {
   useEffect(() => {
     async function loadData() {
       setIsLoading(true)
-      setError(null)
 
       try {
         // Charger le chauffeur
@@ -67,7 +64,6 @@ export default function DriverDetailPage() {
         }
       } catch (err) {
         console.error('Erreur chargement détail chauffeur:', err)
-        setError('Impossible de charger les informations du chauffeur')
       } finally {
         setIsLoading(false)
       }

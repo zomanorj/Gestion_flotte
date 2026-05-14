@@ -26,6 +26,9 @@ require('./db/connection')
 const authRoutes     = require('./routes/authRoutes')
 const vehicleRoutes  = require('./routes/vehicleRoutes')
 const driverRoutes   = require('./routes/driverRoutes')
+const missionRoutes  = require('./routes/missionRoutes')
+const trackingRoutes = require('./routes/trackingRoutes')
+const documentRoutes = require('./routes/documentRoutes')
 
 const app  = express()
 const PORT = process.env.PORT || 5000
@@ -72,6 +75,15 @@ app.use('/api/vehicles', vehicleRoutes)
 // Routes de gestion des chauffeurs : /api/drivers
 app.use('/api/drivers', driverRoutes)
 
+// Routes de gestion des missions : /api/missions
+app.use('/api/missions', missionRoutes)
+
+// Routes de suivi GPS : /api/tracking
+app.use('/api/tracking', trackingRoutes)
+
+// Routes de génération de documents : /api/documents
+app.use('/api/documents', documentRoutes)
+
 // Route de santé : vérifier que le serveur est opérationnel
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -102,6 +114,9 @@ console.log(`│  Health    : http://localhost:${PORT}/api/health  │`)
 console.log(`│  Auth      : http://localhost:${PORT}/api/auth    │`)
 console.log(`│  Vehicles  : http://localhost:${PORT}/api/vehicles│`)
 console.log(`│  Drivers   : http://localhost:${PORT}/api/drivers │`)
+console.log(`│  Missions  : http://localhost:${PORT}/api/missions│`)
+console.log(`│  Tracking  : http://localhost:${PORT}/api/tracking│`)
+console.log(`│  Documents : http://localhost:${PORT}/api/documents│`)
 console.log('└─────────────────────────────────────────┘')
   console.log('')
 })
