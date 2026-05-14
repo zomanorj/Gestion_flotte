@@ -12,14 +12,14 @@
 const express = require('express')
 const router = express.Router()
 
-const authMiddleware = require('../middleware/authMiddleware')
+const { verifierToken } = require('../middleware/authMiddleware')
 const documentController = require('../controllers/documentController')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Middleware d'authentification pour toutes les routes
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.use(authMiddleware.authentifier)
+router.use(verifierToken)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Routes

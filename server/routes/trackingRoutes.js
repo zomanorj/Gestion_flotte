@@ -13,14 +13,14 @@
 const express = require('express')
 const router = express.Router()
 
-const authMiddleware = require('../middleware/authMiddleware')
+const { verifierToken } = require('../middleware/authMiddleware')
 const trackingController = require('../controllers/trackingController')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Middleware d'authentification pour toutes les routes
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.use(authMiddleware.authentifier)
+router.use(verifierToken)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Routes
