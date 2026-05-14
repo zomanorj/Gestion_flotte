@@ -116,7 +116,7 @@ function IcRapport() {
 
 const NAVIGATION: ItemNavigation[] = [
   { libelle: 'Tableau de bord', chemin: '/',           icone: <IcDashboard /> },
-  { libelle: 'Flotte',          chemin: '/vehicules',  icone: <IcCamion />    },
+  { libelle: 'Flotte',          chemin: '/vehicles',   icone: <IcCamion />    },
   { libelle: 'Chauffeurs',      chemin: '/chauffeurs', icone: <IcChauffeur /> },
   { libelle: 'Missions',        chemin: '/missions',   icone: <IcMission />   },
   { libelle: 'Suivi',           chemin: '/suivi',      icone: <IcSuivi />     },
@@ -126,7 +126,7 @@ const NAVIGATION: ItemNavigation[] = [
 // Labels des chemins pour le breadcrumb
 const LABELS_CHEMINS: Record<string, string> = {
   '/':           'Tableau de bord',
-  '/vehicules':  'Flotte',
+  '/vehicles':   'Flotte',
   '/chauffeurs': 'Chauffeurs',
   '/missions':   'Missions',
   '/suivi':      'Suivi',

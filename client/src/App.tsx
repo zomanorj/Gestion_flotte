@@ -4,27 +4,32 @@
  *
  * Configure :
  *   1. AuthProvider  : fournit l'état d'authentification à toute l'application
- *   2. BrowserRouter : fournit le contexte de navigation
- *   3. Routes        : déclare les routes publiques et protégées
+ *   2. Toaster       : notifications toast globales (react-hot-toast)
+ *   3. BrowserRouter : fournit le contexte de navigation
+ *   4. Routes        : déclare les routes publiques et protégées
  *
  * Arborescence des routes :
- *   /login          → LoginPage (publique)
- *   /               → DashboardLayout > DashboardPage (privée)
- *   /vehicules      → DashboardLayout > placeholder (Sprint 2)
- *   /chauffeurs     → DashboardLayout > placeholder (Sprint 3)
- *   /missions       → DashboardLayout > placeholder (Sprint 4)
- *   /*              → Redirection vers /
+ *   /login            → LoginPage (publique)
+ *   /                 → DashboardLayout > DashboardPage (privée)
+ *   /vehicles         → DashboardLayout > VehiclesPage (Sprint 2)
+ *   /vehicles/:id     → DashboardLayout > VehicleDetailPage (Sprint 2)
+ *   /chauffeurs       → DashboardLayout > placeholder (Sprint 3)
+ *   /missions         → DashboardLayout > placeholder (Sprint 4)
+ *   /*                → Redirection vers /
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster }        from 'react-hot-toast'
 
-import { AuthProvider }    from './contexts/AuthContext'
-import PrivateRoute        from './components/PrivateRoute'
-import DashboardLayout     from './layouts/DashboardLayout'
-import LoginPage           from './pages/LoginPage'
-import DashboardPage       from './pages/DashboardPage'
+import { AuthProvider }       from './contexts/AuthContext'
+import PrivateRoute           from './components/PrivateRoute'
+import DashboardLayout        from './layouts/DashboardLayout'
+import LoginPage              from './pages/LoginPage'
+import DashboardPage          from './pages/DashboardPage'
+import VehiclesPage           from './pages/VehiclesPage'
+import VehicleDetailPage      from './pages/VehicleDetailPage'
 
-// Placeholder réutilisable pour les routes des prochains sprints
+/** Placeholder pour les routes non encore implémentées */
 function PageEnConstruction({ titre }: { titre: string }) {
   return (
     <div className="flex items-center justify-center h-64">
@@ -39,17 +44,29 @@ function PageEnConstruction({ titre }: { titre: string }) {
 
 function App() {
   return (
-    // AuthProvider doit entourer BrowserRouter pour que les composants de route
-    // puissent accéder au contexte d'authentification
     <AuthProvider>
+      {/* Toaster : rendu des notifications toast dans toute l'app */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            fontSize: '14px',
+            borderRadius: '10px',
+            padding: '12px 16px',
+          },
+          success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
+          error:   { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+        }}
+      />
+
       <BrowserRouter>
         <Routes>
 
           {/* ── Routes publiques ── */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* ── Routes privées (nécessitent une authentification) ── */}
-          {/* DashboardLayout gère le <Outlet /> pour toutes les sous-routes */}
+          {/* ── Routes privées (token requis) ── */}
           <Route
             path="/"
             element={
@@ -58,18 +75,25 @@ function App() {
               </PrivateRoute>
             }
           >
-            {/* Tableau de bord (index = route par défaut de "/") */}
+            {/* Tableau de bord */}
             <Route index element={<DashboardPage />} />
 
-            {/* Placeholders — à remplacer aux sprints suivants */}
-            <Route path="vehicules"  element={<PageEnConstruction titre="Gestion de la flotte" />} />
-            <Route path="chauffeurs" element={<PageEnConstruction titre="Gestion des chauffeurs" />} />
-            <Route path="missions"   element={<PageEnConstruction titre="Planification des missions" />} />
-            <Route path="suivi"      element={<PageEnConstruction titre="Suivi en temps réel" />} />
-            <Route path="rapports"   element={<PageEnConstruction titre="Rapports et statistiques" />} />
+            {/* Sprint 2 : Gestion de la flotte */}
+            <Route path="vehicles"    element={<VehiclesPage />} />
+            <Route path="vehicles/:id" element={<VehicleDetailPage />} />
+
+            {/* Sprint 3 : Chauffeurs */}
+            <Route path="chauffeurs"  element={<PageEnConstruction titre="Gestion des chauffeurs" />} />
+
+            {/* Sprint 4 : Missions */}
+            <Route path="missions"    element={<PageEnConstruction titre="Planification des missions" />} />
+
+            {/* Sprint 5 */}
+            <Route path="suivi"       element={<PageEnConstruction titre="Suivi en temps réel" />} />
+            <Route path="rapports"    element={<PageEnConstruction titre="Rapports et statistiques" />} />
           </Route>
 
-          {/* ── Toute URL inconnue → redirection vers l'accueil ── */}
+          {/* Toute URL inconnue → accueil */}
           <Route path="*" element={<Navigate to="/" replace />} />
 
         </Routes>

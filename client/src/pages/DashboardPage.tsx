@@ -2,17 +2,26 @@
  * DashboardPage.tsx
  * Page tableau de bord principal du système Transport STTA.
  *
- * Affiche :
- *   - Un message de bienvenue personnalisé avec le prénom de l'utilisateur
- *   - 4 cartes KPI avec icônes colorées (à connecter à l'API au Sprint 4)
- *   - Un indicateur visuel que les données seront disponibles prochainement
+ * Sprint 2 : connecté aux vraies données de l'API véhicules.
+ *   - KPI "Véhicules actifs"   → GET /api/vehicles/count?statut=actif
+ *   - KPI "Alertes documents"  → GET /api/vehicles/alertes (nombre total)
+ *   - KPI "Chauffeurs"         → placeholder (Sprint 3)
+ *   - KPI "Missions du jour"   → placeholder (Sprint 4)
+ *   - Section alertes rapides  → liste des 3 premiers véhicules en alerte
+ *
+ * Chaque KPI charge ses données indépendamment (skeleton par carte, pas de loader global).
  */
 
-import { useAuth } from '../contexts/AuthContext'
-import type { ReactNode } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+
+import { useAuth }                        from '../contexts/AuthContext'
+import * as vehicleService                from '../services/vehicleService'
+import type { VehicleAvecAlerte }         from '../services/vehicleService'
+import { formatDateFR, getDocumentEtat, calculerJoursRestants }  from '../utils/vehicleUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Icônes SVG des KPI
+// Icônes SVG des KPI (inchangées depuis Sprint 1)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function IcVehicule() {
@@ -49,7 +58,7 @@ function IcMission() {
         d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006
            V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0
            L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695
-           V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0
+           V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0
            l4.994 2.497c.317.158.69.158 1.006 0z" />
     </svg>
   )
@@ -59,104 +68,275 @@ function IcAlerte() {
   return (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round"
-        d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7
-           V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31
-           m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71
+           c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z
+           M12 15.75h.007v.008H12v-.008z" />
     </svg>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Composant CarteKPI
+// Composant SkeletonKPI — squelette pour une carte en chargement
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SkeletonKPI() {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse">
+      <div className="flex items-start justify-between mb-4">
+        <div className="w-11 h-11 rounded-xl bg-slate-200" />
+        <div className="w-14 h-5 bg-slate-100 rounded-full" />
+      </div>
+      <div className="h-8 bg-slate-200 rounded w-16 mb-1.5" />
+      <div className="h-3.5 bg-slate-100 rounded w-28" />
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Composant CarteKPI — carte de statistique individuelle
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface CarteKPIProps {
-  libelle:      string    // Ex: "Véhicules actifs"
-  valeur:       string    // "—" jusqu'à connexion à l'API
-  icone:        ReactNode
-  couleurFond:  string    // Classe Tailwind pour le fond de l'icône (ex: "bg-blue-100")
-  couleurIcone: string    // Classe Tailwind pour la couleur de l'icône (ex: "text-blue-600")
-  description?: string    // Sous-texte optionnel sous la valeur
+  libelle:      string
+  valeur:       string
+  icone:        React.ReactNode
+  couleurFond:  string       // Classe Tailwind (ex: "bg-blue-50")
+  couleurIcone: string       // Classe Tailwind (ex: "text-blue-600")
+  description?: string
+  isLoading?:   boolean
+  onClick?:     () => void   // Rend la carte cliquable (ex: alertes → /vehicles)
+  badge?:       React.ReactNode  // Badge optionnel en haut à droite
 }
 
-function CarteKPI({ libelle, valeur, icone, couleurFond, couleurIcone, description }: CarteKPIProps) {
+function CarteKPI({
+  libelle, valeur, icone, couleurFond, couleurIcone,
+  description, isLoading, onClick, badge,
+}: CarteKPIProps) {
+  if (isLoading) return <SkeletonKPI />
+
+  const Wrapper = onClick ? 'button' : 'div'
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-sm transition-shadow duration-150">
+    <Wrapper
+      onClick={onClick}
+      className={`
+        bg-white rounded-xl border border-slate-200 p-5
+        hover:shadow-sm transition-shadow duration-150 text-left w-full
+        ${onClick ? 'cursor-pointer hover:border-slate-300' : ''}
+      `}
+    >
       <div className="flex items-start justify-between mb-4">
-        {/* Icône dans un cercle coloré */}
+        {/* Icône colorée */}
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${couleurFond} ${couleurIcone}`}>
           {icone}
         </div>
-        {/* Indicateur "bientôt disponible" */}
-        <span className="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded-full">
-          Sprint 4
-        </span>
+        {/* Badge optionnel (ex: "Todo Sprint 3") */}
+        {badge}
       </div>
 
-      {/* Valeur numérique principale */}
+      {/* Valeur numérique */}
       <p className="text-3xl font-bold text-slate-800 mb-1">{valeur}</p>
 
       {/* Libellé */}
       <p className="text-sm font-medium text-slate-600">{libelle}</p>
 
-      {/* Sous-texte optionnel */}
+      {/* Sous-texte */}
       {description && (
         <p className="text-xs text-slate-400 mt-1">{description}</p>
+      )}
+    </Wrapper>
+  )
+}
+
+// Badge "Sprint X" pour les KPIs pas encore connectés
+function BadgeSprint({ numero }: { numero: number }) {
+  return (
+    <span className="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded-full shrink-0">
+      Sprint {numero}
+    </span>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Composant SectionAlertesRapides — bloc en dessous des KPIs
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SectionAlertesProps {
+  alertes:   VehicleAvecAlerte[]
+  isLoading: boolean
+}
+
+function SectionAlertesRapides({ alertes, isLoading }: SectionAlertesProps) {
+  // On n'affiche que les 3 premières alertes
+  const alertesAffichees = alertes.slice(0, 3)
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse space-y-3">
+        <div className="h-5 bg-slate-200 rounded w-1/3 mb-4" />
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex items-center justify-between py-2">
+            <div className="h-4 bg-slate-200 rounded w-1/4" />
+            <div className="h-4 bg-slate-100 rounded w-1/3" />
+            <div className="h-5 bg-slate-200 rounded-full w-16" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (alertes.length === 0) {
+    return (
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 flex items-center gap-3">
+        <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 shrink-0">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <p className="text-sm font-medium text-emerald-800">
+          Tous les documents sont à jour ✓
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71
+                   c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0
+                   L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <h2 className="text-sm font-semibold text-slate-800">Alertes documents</h2>
+          <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
+            {alertes.length}
+          </span>
+        </div>
+        <Link
+          to="/vehicles"
+          className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+        >
+          Voir tout →
+        </Link>
+      </div>
+
+      {/* Liste des alertes */}
+      <div className="divide-y divide-slate-50">
+        {alertesAffichees.map((vehicleAlerte) => {
+          // Calculer le document le plus urgent à afficher
+          const etatAssurance = getDocumentEtat(vehicleAlerte.date_assurance)
+          const etatVisite    = getDocumentEtat(vehicleAlerte.date_visite_technique)
+
+          // Déterminer quel document est le plus problématique
+          const documentProbleme =
+            etatAssurance === 'expiree'         ? { label: 'Assurance expirée',         urgent: true }
+          : etatVisite    === 'expiree'         ? { label: 'Visite technique expirée',   urgent: true }
+          : etatAssurance === 'bientot_expiree' ? { label: 'Assurance bientôt expirée',  urgent: false }
+          :                                       { label: 'Visite technique bientôt expirée', urgent: false }
+
+          // Trouver la date la plus proche pour l'échéance
+          const dateRef = etatAssurance !== 'valide'
+            ? vehicleAlerte.date_assurance
+            : vehicleAlerte.date_visite_technique
+
+          const joursRestants = dateRef ? calculerJoursRestants(dateRef) : null
+
+          return (
+            <Link
+              key={vehicleAlerte.id}
+              to={`/vehicles/${vehicleAlerte.id}`}
+              className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50 transition-colors group"
+            >
+              {/* Immatriculation */}
+              <span className="text-sm font-semibold text-slate-800 group-hover:text-blue-700 transition-colors w-28 shrink-0">
+                {vehicleAlerte.immatriculation}
+              </span>
+
+              {/* Type de problème */}
+              <span className="text-sm text-slate-500 flex-1 px-4">
+                {documentProbleme.label}
+              </span>
+
+              {/* Jours restants */}
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${
+                documentProbleme.urgent
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-orange-100 text-orange-700'
+              }`}>
+                {joursRestants === null
+                  ? '—'
+                  : joursRestants < 0
+                    ? `${Math.abs(joursRestants)}j dépassé`
+                    : `${joursRestants}j restants`
+                }
+              </span>
+            </Link>
+          )
+        })}
+      </div>
+
+      {/* Footer si plus de 3 alertes */}
+      {alertes.length > 3 && (
+        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50">
+          <Link to="/vehicles" className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
+            + {alertes.length - 3} autre{alertes.length - 3 > 1 ? 's' : ''} alerte{alertes.length - 3 > 1 ? 's' : ''}
+          </Link>
+        </div>
       )}
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Données des cartes KPI (statiques pour l'instant — Sprint 4 : appel API)
+// Composant principal DashboardPage
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CARTES_KPI: CarteKPIProps[] = [
-  {
-    libelle:      'Véhicules actifs',
-    valeur:       '—',
-    icone:        <IcVehicule />,
-    couleurFond:  'bg-blue-50',
-    couleurIcone: 'text-blue-600',
-    description:  'Flotte disponible ce jour',
-  },
-  {
-    libelle:      'Chauffeurs disponibles',
-    valeur:       '—',
-    icone:        <IcChauffeur />,
-    couleurFond:  'bg-emerald-50',
-    couleurIcone: 'text-emerald-600',
-    description:  'Prêts à être affectés',
-  },
-  {
-    libelle:      'Missions du jour',
-    valeur:       '—',
-    icone:        <IcMission />,
-    couleurFond:  'bg-orange-50',
-    couleurIcone: 'text-orange-500',
-    description:  'Planifiées et en cours',
-  },
-  {
-    libelle:      'Alertes actives',
-    valeur:       '—',
-    icone:        <IcAlerte />,
-    couleurFond:  'bg-red-50',
-    couleurIcone: 'text-red-500',
-    description:  'Permis, assurances expirés',
-  },
-]
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Composant principal
-// ─────────────────────────────────────────────────────────────────────────────
-
-function DashboardPage() {
+export default function DashboardPage() {
   const { utilisateur } = useAuth()
+  const navigate        = useNavigate()
 
-  // Extraction du prénom (premier mot du nom complet)
-  const prenom = utilisateur?.nom.split(' ')[0] ?? 'utilisateur'
+  // ── État : véhicules actifs ──
+  const [nbVehiculesActifs,    setNbVehiculesActifs]    = useState<number | null>(null)
+  const [loadingVehicules,     setLoadingVehicules]     = useState(true)
 
-  // Date du jour formatée en français
+  // ── État : alertes documents ──
+  const [alertes,              setAlertes]              = useState<VehicleAvecAlerte[]>([])
+  const [nbAlertes,            setNbAlertes]            = useState<number | null>(null)
+  const [loadingAlertes,       setLoadingAlertes]       = useState(true)
+
+  // ── Chargement indépendant de chaque KPI ──
+
+  useEffect(() => {
+    // KPI 1 : nombre de véhicules actifs
+    vehicleService.countVehicles('actif')
+      .then(reponse => setNbVehiculesActifs(reponse.donnees.total))
+      .catch(() => setNbVehiculesActifs(0))
+      .finally(() => setLoadingVehicules(false))
+  }, [])
+
+  useEffect(() => {
+    // KPI 2 : alertes documents + liste pour la section rapide
+    vehicleService.getAlertes()
+      .then(reponse => {
+        setNbAlertes(reponse.resume.total)
+        setAlertes(reponse.donnees)
+      })
+      .catch(() => {
+        setNbAlertes(0)
+        setAlertes([])
+      })
+      .finally(() => setLoadingAlertes(false))
+  }, [])
+
+  // ── Données d'affichage ──
+  const prenom         = utilisateur?.nom.split(' ')[0] ?? 'utilisateur'
   const dateAujourdhui = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long',
     day:     'numeric',
@@ -176,8 +356,10 @@ function DashboardPage() {
           <p className="text-sm text-slate-500 mt-0.5 capitalize">{dateAujourdhui}</p>
         </div>
 
-        {/* Bouton d'action rapide */}
-        <button className="flex items-center gap-2 px-4 py-2 bg-blue-800 text-white text-sm font-medium rounded-lg hover:bg-blue-900 transition-colors duration-150">
+        <button
+          onClick={() => navigate('/missions')}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-150"
+        >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
@@ -185,40 +367,72 @@ function DashboardPage() {
         </button>
       </div>
 
-      {/* ── Grille des KPI ── */}
+      {/* ── Grille des KPI (chaque carte charge indépendamment) ── */}
       <section>
-        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
+        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
           Vue d'ensemble
         </h2>
-        {/* 2 colonnes sur mobile, 4 sur desktop */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {CARTES_KPI.map((carte) => (
-            <CarteKPI key={carte.libelle} {...carte} />
-          ))}
+
+          {/* KPI 1 : Véhicules actifs (données réelles) */}
+          <CarteKPI
+            libelle="Véhicules actifs"
+            valeur={nbVehiculesActifs !== null ? String(nbVehiculesActifs) : '—'}
+            icone={<IcVehicule />}
+            couleurFond="bg-blue-50"
+            couleurIcone="text-blue-600"
+            description="Flotte disponible"
+            isLoading={loadingVehicules}
+            onClick={() => navigate('/vehicles')}
+          />
+
+          {/* KPI 2 : Alertes documents (données réelles) */}
+          <CarteKPI
+            libelle="Alertes documents"
+            valeur={nbAlertes !== null ? String(nbAlertes) : '—'}
+            icone={<IcAlerte />}
+            couleurFond={nbAlertes && nbAlertes > 0 ? 'bg-orange-50' : 'bg-slate-50'}
+            couleurIcone={nbAlertes && nbAlertes > 0 ? 'text-orange-500' : 'text-slate-400'}
+            description="Assurances, visites"
+            isLoading={loadingAlertes}
+            onClick={() => navigate('/vehicles')}
+          />
+
+          {/* KPI 3 : Chauffeurs — TODO Sprint 3 */}
+          <CarteKPI
+            libelle="Chauffeurs dispo."
+            valeur="—"
+            icone={<IcChauffeur />}
+            couleurFond="bg-emerald-50"
+            couleurIcone="text-emerald-600"
+            description="Prêts à être affectés"
+            badge={<BadgeSprint numero={3} />}
+          />
+
+          {/* KPI 4 : Missions du jour — TODO Sprint 4 */}
+          <CarteKPI
+            libelle="Missions du jour"
+            valeur="—"
+            icone={<IcMission />}
+            couleurFond="bg-purple-50"
+            couleurIcone="text-purple-600"
+            description="Planifiées et en cours"
+            badge={<BadgeSprint numero={4} />}
+          />
         </div>
       </section>
 
-      {/* ── Bannière informative ── */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 flex items-start gap-4">
-        <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-700 shrink-0">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836
-                 a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z
-                 m-9-3.75h.008v.008H12V8.25z" />
-          </svg>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-blue-800">Sprint 1 — Authentification opérationnelle</p>
-          <p className="text-sm text-blue-600 mt-0.5">
-            Les données de la flotte, des chauffeurs et des missions seront disponibles
-            aux sprints 2, 3 et 4. L'interface est prête à les accueillir.
-          </p>
-        </div>
-      </div>
+      {/* ── Section alertes rapides ── */}
+      <section>
+        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+          Alertes documents
+        </h2>
+        <SectionAlertesRapides
+          alertes={alertes}
+          isLoading={loadingAlertes}
+        />
+      </section>
 
     </div>
   )
 }
-
-export default DashboardPage
