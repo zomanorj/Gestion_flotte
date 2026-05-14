@@ -1,0 +1,11 @@
+{
+  "_commentaire": "Configuration Prettier pour le serveur Node.js/Express Transport STTA",
+  "semi": false,
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "bracketSpacing": true,
+  "arrowParens": "always",
+  "endOfLine": "lf"
+}

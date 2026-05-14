@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx tailwindcss *)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\\\\server\\\\db\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"Dossiers serveur créés\")",
+      "Bash(npm init *)",
+      "PowerShell(New-Item *)",
+      "Bash(npx tsc *)",
+      "Bash(node \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\\\\server\\\\server.js\")",
+      "Bash(curl -s http://localhost:5000/api/health)"
+    ]
+  }
+}

@@ -1,0 +1,57 @@
+/*
+ * index.css
+ * Feuille de style globale de l'application Transport STTA.
+ * On importe les directives de base de Tailwind CSS,
+ * puis on définit quelques styles personnalisés réutilisables.
+ */
+
+/* --- Directives Tailwind (obligatoires) --- */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- Styles de base globaux --- */
+@layer base {
+  /* Police par défaut et couleur de fond */
+  body {
+    @apply bg-stta-gris text-gray-800 font-sans antialiased;
+  }
+
+  /* Titres principaux */
+  h1 {
+    @apply text-3xl font-bold text-stta-bleu;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold text-stta-bleu;
+  }
+
+  h3 {
+    @apply text-xl font-medium text-stta-bleuClair;
+  }
+}
+
+/* --- Composants réutilisables --- */
+@layer components {
+  /* Bouton d'action principal (orange) */
+  .btn-primary {
+    @apply bg-stta-orange text-white px-6 py-2 rounded-lg font-semibold
+           hover:bg-orange-600 transition-colors duration-200 cursor-pointer;
+  }
+
+  /* Bouton secondaire (bleu) */
+  .btn-secondary {
+    @apply bg-stta-bleu text-white px-6 py-2 rounded-lg font-semibold
+           hover:bg-blue-900 transition-colors duration-200 cursor-pointer;
+  }
+
+  /* Carte générique */
+  .card {
+    @apply bg-white rounded-xl shadow-md p-6;
+  }
+
+  /* Badge de statut */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+}

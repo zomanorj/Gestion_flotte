@@ -1,0 +1,35 @@
+# .gitignore
+# Fichiers et dossiers à exclure du dépôt Git pour le projet Transport STTA.
+
+# ---- Dépendances ----
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# ---- Fichiers d'environnement (contiennent des secrets) ----
+.env
+server/.env
+client/.env
+*.env.local
+
+# ---- Build / compilation ----
+client/dist/
+client/build/
+server/dist/
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Éditeurs et OS ----
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ---- TypeScript ----
+*.tsbuildinfo
