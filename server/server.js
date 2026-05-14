@@ -1,61 +1,89 @@
 /**
  * server.js
- * Point d'entrée principal du serveur Express pour l'API Transport STTA.
+ * Point d'entrée principal du serveur Express — Transport STTA.
  *
- * Ce fichier :
- *  - charge les variables d'environnement depuis le fichier .env
- *  - configure les middlewares globaux (CORS, JSON)
- *  - définit une route de test pour vérifier que le serveur fonctionne
- *  - lance le serveur sur le port configuré
- *
- * À faire dans les prochains sprints : importer et brancher les routeurs métier
- * (utilisateurs, véhicules, chauffeurs, missions).
+ * Responsabilités :
+ *  1. Charger les variables d'environnement (.env)
+ *  2. Initialiser la connexion PostgreSQL
+ *  3. Configurer les middlewares globaux (CORS, JSON, logs)
+ *  4. Monter les routeurs métier sur /api/*
+ *  5. Démarrer le serveur HTTP sur le port configuré
  */
 
 const express = require('express')
 const cors    = require('cors')
 const dotenv  = require('dotenv')
 
-// Chargement des variables d'environnement depuis .env
+// Chargement des variables d'environnement EN PREMIER
+// (doit précéder tout import utilisant process.env)
 dotenv.config()
+
+// Initialisation de la connexion au pool PostgreSQL
+// L'import déclenche le pool.connect() de vérification dans connection.js
+require('./db/connection')
+
+// Import des routeurs métier
+const authRoutes = require('./routes/authRoutes')
 
 const app  = express()
 const PORT = process.env.PORT || 5000
 
-// ----- Middlewares globaux -----
+// ─────────────────────────────────────────────────────────────────────────────
+// Middlewares globaux
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Autorise les requêtes cross-origin depuis le client React (port 5173 en dev)
+// CORS : autorise les requêtes depuis l'application React
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin:      process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
+  methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }))
 
-// Parse automatiquement le corps des requêtes en JSON
+// Parsing automatique du corps des requêtes JSON
 app.use(express.json())
 
-// ----- Routes -----
+// Log minimaliste de chaque requête reçue (utile en développement)
+app.use((req, _res, next) => {
+  const horodatage = new Date().toLocaleTimeString('fr-FR')
+  console.log(`[${horodatage}] ${req.method} ${req.path}`)
+  next()
+})
 
-/**
- * GET /api/health
- * Route de test pour vérifier que le serveur est opérationnel.
- * Utile pour les health checks en production.
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Routes
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Routes d'authentification : /api/auth/register, /api/auth/login, /api/auth/me
+app.use('/api/auth', authRoutes)
+
+// Route de santé : vérifier que le serveur est opérationnel
 app.get('/api/health', (_req, res) => {
   res.json({
-    statut:  'ok',
-    message: 'Serveur Transport STTA opérationnel',
-    horodatage: new Date().toISOString(),
+    statut:      'ok',
+    message:     'Serveur Transport STTA opérationnel',
+    environnement: process.env.NODE_ENV || 'development',
+    horodatage:  new Date().toISOString(),
   })
 })
 
-// TODO Sprint 1 : brancher les routeurs ici
-// app.use('/api/auth',      require('./routes/auth'))
-// app.use('/api/vehicules', require('./routes/vehicules'))
-// app.use('/api/chauffeurs', require('./routes/chauffeurs'))
-// app.use('/api/missions',  require('./routes/missions'))
+// Route générique pour les endpoints non trouvés
+app.use((_req, res) => {
+  res.status(404).json({ message: 'Route introuvable' })
+})
 
-// ----- Démarrage du serveur -----
+// ─────────────────────────────────────────────────────────────────────────────
+// Démarrage
+// ─────────────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`✅ Serveur démarré sur le port ${PORT}`)
-  console.log(`   → Health check : http://localhost:${PORT}/api/health`)
+  console.log('')
+  console.log('┌─────────────────────────────────────────┐')
+  console.log('│       🚌 Serveur Transport STTA          │')
+  console.log('├─────────────────────────────────────────┤')
+  console.log(`│  Port      : ${PORT}                        │`)
+  console.log(`│  Env       : ${(process.env.NODE_ENV || 'development').padEnd(27)}│`)
+  console.log('├─────────────────────────────────────────┤')
+  console.log(`│  Health    : http://localhost:${PORT}/api/health │`)
+  console.log(`│  Auth      : http://localhost:${PORT}/api/auth   │`)
+  console.log('└─────────────────────────────────────────┘')
+  console.log('')
 })

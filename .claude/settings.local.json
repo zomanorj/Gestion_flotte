@@ -10,7 +10,8 @@
       "PowerShell(New-Item *)",
       "Bash(npx tsc *)",
       "Bash(node \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\\\\server\\\\server.js\")",
-      "Bash(curl -s http://localhost:5000/api/health)"
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(node -e ' *)"
     ]
   }
 }
