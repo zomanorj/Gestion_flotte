@@ -14,34 +14,30 @@
 
 -- =============================================================================
 -- Utilisateurs de test
--- Les mots de passe ci-dessous sont en clair pour les tests.
--- En production, ils seront hashés avec bcrypt (coût 12) via l'API.
+-- Hashes bcrypt générés réellement avec bcryptjs (coût 10) — valides pour le login.
 --
 -- Comptes de test :
---   admin@stta.mg       / admin1234
+--   admin@stta.mg        / admin1234
 --   gestionnaire@stta.mg / gest1234
---   chauffeur@stta.mg   / chauf1234
+--   chauffeur@stta.mg    / chauf1234
 -- =============================================================================
 INSERT INTO users (nom, email, mot_de_passe, role) VALUES
 (
     'Administrateur STTA',
     'admin@stta.mg',
-    -- Hash bcrypt de "admin1234" (généré avec bcrypt coût 12)
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LeAH2Gu4Xv5dzmP0y',
+    '$2b$10$UK0u2Cuu0iupV7T5SwgHkOx.yxRKDlyOeOP4.hF0pQVg14vsHHCZO',
     'admin'
 ),
 (
     'Rakoto Jean',
     'gestionnaire@stta.mg',
-    -- Hash bcrypt de "gest1234"
-    '$2b$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGfad/URdOW18JUmV6',
+    '$2b$10$.PVepOCTqeNgpcwl5eSIE.ztN26a0hauzY16zYK.jngBUtpJVa62G',
     'gestionnaire'
 ),
 (
     'Rabe Fidy',
     'chauffeur@stta.mg',
-    -- Hash bcrypt de "chauf1234"
-    '$2b$12$WGCFd0bDVfqZXuLGqk6LneHPR0.3V5Ht/Kkb.kOV7sZMCGHXBFQW',
+    '$2b$10$fZd5RUdq6jorJMsasXvuhOmA1IzHMa0RKasLtA0dHNBzfiS58QZgC',
     'chauffeur'
 );
 
