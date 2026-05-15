@@ -41,6 +41,10 @@ import SuiviPage              from './pages/SuiviPage'
 import DocumentsPage          from './pages/DocumentsPage'
 import RapportsPage           from './pages/RapportsPage'
 import NotFoundPage           from './pages/NotFoundPage'
+import FinancePage            from './pages/FinancePage'
+import MaintenancePage        from './pages/MaintenancePage'
+import IncidentsPage          from './pages/IncidentsPage'
+import IncidentDetailPage     from './pages/IncidentDetailPage'
 
 function App() {
   return (
@@ -96,6 +100,12 @@ function App() {
 
             {/* Sprint 6 : Rapports & Exports (admin/gestionnaire uniquement) */}
             <Route path="rapports" element={<RapportsPage />} />
+
+            {/* Sprint 7 : Finance, Maintenance, Incidents */}
+            <Route path="finance"          element={<FinancePage />} />
+            <Route path="maintenance"      element={<MaintenancePage />} />
+            <Route path="incidents"        element={<IncidentsPage />} />
+            <Route path="incidents/:id"    element={<IncidentDetailPage />} />
           </Route>
 
           {/* Toute URL inconnue → page 404 */}

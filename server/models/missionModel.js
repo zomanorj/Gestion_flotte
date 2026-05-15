@@ -1,4 +1,4 @@
-﻿/**
+/**
  * missionModel.js
  * Modèle de données pour la gestion des missions — TransiFlow.
  *
@@ -111,6 +111,11 @@ async function findAll({
       m.chargement,
       m.poids_tonne,
       m.distance_km,
+      m.depart_lat,
+      m.depart_lng,
+      m.arrivee_lat,
+      m.arrivee_lng,
+      m.trajet_points,
       m.statut,
       m.notes,
       m.created_by,
@@ -159,6 +164,11 @@ async function findAll({
       chargement: row.chargement,
       poids_tonne: row.poids_tonne,
       distance_km: row.distance_km,
+      depart_lat: row.depart_lat ? parseFloat(row.depart_lat) : null,
+      depart_lng: row.depart_lng ? parseFloat(row.depart_lng) : null,
+      arrivee_lat: row.arrivee_lat ? parseFloat(row.arrivee_lat) : null,
+      arrivee_lng: row.arrivee_lng ? parseFloat(row.arrivee_lng) : null,
+      trajet_points: row.trajet_points,
       statut: row.statut,
       notes: row.notes,
       created_by: row.created_by,
@@ -211,6 +221,11 @@ async function findById(id) {
       m.chargement,
       m.poids_tonne,
       m.distance_km,
+      m.depart_lat,
+      m.depart_lng,
+      m.arrivee_lat,
+      m.arrivee_lng,
+      m.trajet_points,
       m.statut,
       m.notes,
       m.created_by,
@@ -248,6 +263,11 @@ async function findById(id) {
       chargement: row.chargement,
       poids_tonne: row.poids_tonne,
       distance_km: row.distance_km,
+      depart_lat: row.depart_lat ? parseFloat(row.depart_lat) : null,
+      depart_lng: row.depart_lng ? parseFloat(row.depart_lng) : null,
+      arrivee_lat: row.arrivee_lat ? parseFloat(row.arrivee_lat) : null,
+      arrivee_lng: row.arrivee_lng ? parseFloat(row.arrivee_lng) : null,
+      trajet_points: row.trajet_points,
       statut: row.statut,
       notes: row.notes,
       created_by: row.created_by,
@@ -291,6 +311,11 @@ async function findByDate(date) {
       m.chargement,
       m.poids_tonne,
       m.distance_km,
+      m.depart_lat,
+      m.depart_lng,
+      m.arrivee_lat,
+      m.arrivee_lng,
+      m.trajet_points,
       m.statut,
       m.notes,
       m.created_at,
@@ -324,6 +349,11 @@ async function findByDate(date) {
       chargement: row.chargement,
       poids_tonne: row.poids_tonne,
       distance_km: row.distance_km,
+      depart_lat: row.depart_lat ? parseFloat(row.depart_lat) : null,
+      depart_lng: row.depart_lng ? parseFloat(row.depart_lng) : null,
+      arrivee_lat: row.arrivee_lat ? parseFloat(row.arrivee_lat) : null,
+      arrivee_lng: row.arrivee_lng ? parseFloat(row.arrivee_lng) : null,
+      trajet_points: row.trajet_points,
       statut: row.statut,
       notes: row.notes,
       created_at: row.created_at,
@@ -428,6 +458,11 @@ async function create(data) {
     chargement,
     poids_tonne,
     distance_km,
+    depart_lat,
+    depart_lng,
+    arrivee_lat,
+    arrivee_lng,
+    trajet_points,
     statut = 'brouillon',
     notes,
     created_by,
@@ -445,11 +480,16 @@ async function create(data) {
       chargement,
       poids_tonne,
       distance_km,
+      depart_lat,
+      depart_lng,
+      arrivee_lat,
+      arrivee_lng,
+      trajet_points,
       statut,
       notes,
       created_by
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
     RETURNING *
   `
 
@@ -464,6 +504,11 @@ async function create(data) {
     chargement || null,
     poids_tonne || null,
     distance_km || null,
+    depart_lat || null,
+    depart_lng || null,
+    arrivee_lat || null,
+    arrivee_lng || null,
+    trajet_points || null,
     statut,
     notes || null,
     created_by || null,
@@ -489,7 +534,8 @@ async function update(id, data) {
   const champsAutorises = [
     'vehicle_id', 'driver_id', 'lieu_depart', 'lieu_arrivee',
     'date_mission', 'heure_depart', 'heure_arrivee_prevue',
-    'chargement', 'poids_tonne', 'distance_km', 'notes'
+    'chargement', 'poids_tonne', 'distance_km', 'notes',
+    'depart_lat', 'depart_lng', 'arrivee_lat', 'arrivee_lng', 'trajet_points'
   ]
 
   // Construction dynamique des champs à mettre à jour

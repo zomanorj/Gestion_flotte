@@ -10,7 +10,7 @@
  *   - Liens vers les fiches véhicule et chauffeur
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
@@ -22,6 +22,15 @@ import { STATUT_COLORS, STATUT_LABELS } from '../types/mission'
 import * as missionService from '../services/missionService'
 import { downloadBonLivraison } from '../services/documentService'
 import { getInitials } from '../utils/avatarColor'
+import * as financeService from '../services/financeService'
+import DepenseFormModal from '../components/finance/DepenseFormModal'
+import { formatMGA, formatDateCourte } from '../utils/format'
+import type { Depense, CategoriDepense } from '../types/finance'
+
+const LABELS_CATEGORIE: Record<CategoriDepense, string> = {
+  carburant: '⛽ Carburant', peage: '🛣 Péage',
+  salaire: '👷 Salaire', maintenance: '🔧 Maintenance', autre: '📦 Autre',
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Skeleton de chargement
@@ -81,6 +90,12 @@ export default function MissionDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [downloadLoading, setDownloadLoading] = useState(false)
 
+  // États pour la section coûts
+  const [depenses, setDepenses]           = useState<Depense[]>([])
+  const [coutTotal, setCoutTotal]         = useState(0)
+  const [loadingDepenses, setLoadingDepenses] = useState(false)
+  const [isDepenseModalOpen, setIsDepenseModalOpen] = useState(false)
+
   // ── Charger la mission ──
   useEffect(() => {
     if (!id) return
@@ -111,6 +126,21 @@ export default function MissionDetailPage() {
       toast.error(message)
     }
   }
+
+  // ── Chargement des coûts de la mission ──
+  const chargerCouts = useCallback(() => {
+    if (!id) return
+    setLoadingDepenses(true)
+    Promise.all([
+      financeService.getDepenses({ mission_id: parseInt(id, 10), limit: 50 }),
+      financeService.getCoutMission(parseInt(id, 10)),
+    ]).then(([dep, cout]) => {
+      setDepenses(dep.donnees)
+      setCoutTotal(cout.total_general)
+    }).catch(() => {}).finally(() => setLoadingDepenses(false))
+  }, [id])
+
+  useEffect(() => { chargerCouts() }, [chargerCouts])
 
   // ── Permissions ──
   const canEdit = utilisateur?.role === 'admin' || utilisateur?.role === 'gestionnaire'
@@ -446,6 +476,60 @@ export default function MissionDetailPage() {
           </div>
         </InfoCard>
 
+        {/* Section Coûts de la mission */}
+        <div className="md:col-span-2">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-800">Coûts de la mission</h3>
+              {canEdit && (
+                <button
+                  onClick={() => setIsDepenseModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Ajouter une dépense
+                </button>
+              )}
+            </div>
+
+            {loadingDepenses ? (
+              <div className="animate-pulse p-6 space-y-3">
+                {[0,1,2].map(i => <div key={i} className="h-4 bg-slate-200 rounded" />)}
+              </div>
+            ) : depenses.length === 0 ? (
+              <div className="px-6 py-8 text-center text-sm text-slate-400">
+                Aucune dépense enregistrée pour cette mission.
+              </div>
+            ) : (
+              <>
+                <div className="divide-y divide-slate-50">
+                  {depenses.map(d => (
+                    <div key={d.id} className="flex items-center justify-between px-6 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-slate-600">{LABELS_CATEGORIE[d.categorie]}</span>
+                        {d.description && (
+                          <span className="text-xs text-slate-400 truncate max-w-[200px]">{d.description}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs text-slate-400">{formatDateCourte(d.date_depense)}</span>
+                        <span className="text-sm font-semibold text-slate-800">{formatMGA(d.montant)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+                  <span className="text-sm font-bold text-slate-800">
+                    Total : {formatMGA(coutTotal)}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Carte Notes (pleine largeur) */}
         {mission.notes && (
           <div className="md:col-span-2">
@@ -463,6 +547,15 @@ export default function MissionDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Modal dépense liée à la mission */}
+      <DepenseFormModal
+        isOpen={isDepenseModalOpen}
+        onClose={() => setIsDepenseModalOpen(false)}
+        onSuccess={chargerCouts}
+        defaultMissionId={mission?.id}
+        defaultVehicleId={mission?.vehicle_id ?? undefined}
+      />
     </div>
   )
 }

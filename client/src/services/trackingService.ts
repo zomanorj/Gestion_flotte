@@ -1,4 +1,4 @@
-﻿/**
+/**
  * trackingService.ts
  * Service de communication avec l'API pour le suivi GPS — TransiFlow.
  *
@@ -28,6 +28,11 @@ export interface TrackingMission {
   mission_id: number
   lieu_depart: string
   lieu_arrivee: string
+  depart_lat: number | null
+  depart_lng: number | null
+  arrivee_lat: number | null
+  arrivee_lng: number | null
+  trajet_points: string | null
   date_mission: string
   heure_depart: string | null
   statut: string

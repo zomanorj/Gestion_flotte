@@ -25,14 +25,18 @@ const fs = require('fs')
 const path = require('path')
 
 // Import des routeurs métier
-const authRoutes     = require('./routes/authRoutes')
-const vehicleRoutes  = require('./routes/vehicleRoutes')
-const driverRoutes   = require('./routes/driverRoutes')
-const missionRoutes  = require('./routes/missionRoutes')
-const trackingRoutes = require('./routes/trackingRoutes')
-const documentRoutes = require('./routes/documentRoutes')
-const statsRoutes    = require('./routes/statsRoutes')
-const exportRoutes   = require('./routes/exportRoutes')
+const authRoutes        = require('./routes/authRoutes')
+const vehicleRoutes     = require('./routes/vehicleRoutes')
+const driverRoutes      = require('./routes/driverRoutes')
+const missionRoutes     = require('./routes/missionRoutes')
+const trackingRoutes    = require('./routes/trackingRoutes')
+const documentRoutes    = require('./routes/documentRoutes')
+const statsRoutes       = require('./routes/statsRoutes')
+const exportRoutes      = require('./routes/exportRoutes')
+// Sprints 7+ : finance, maintenance, incidents
+const financeRoutes     = require('./routes/financeRoutes')
+const maintenanceRoutes = require('./routes/maintenanceRoutes')
+const incidentRoutes    = require('./routes/incidentRoutes')
 
 const app  = express()
 const PORT = process.env.PORT || 5000
@@ -95,6 +99,15 @@ app.use('/api/stats', statsRoutes)
 // Routes d'export Excel : /api/export
 app.use('/api/export', exportRoutes)
 
+// Routes gestion financière : /api/finance
+app.use('/api/finance', financeRoutes)
+
+// Routes maintenance préventive : /api/maintenances
+app.use('/api/maintenances', maintenanceRoutes)
+
+// Routes incidents : /api/incidents
+app.use('/api/incidents', incidentRoutes)
+
 // Route de santé : vérifier que le serveur est opérationnel
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -114,16 +127,26 @@ app.use((_req, res) => {
 // Démarrage
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Au démarrage du serveur, appliquer les migrations
+// Au démarrage du serveur, appliquer les migrations dans l'ordre
 async function runMigrations() {
-  const migrationPath = path.join(__dirname, 'db/migrations/004_add_coords.sql')
-  if (fs.existsSync(migrationPath)) {
-    try {
-      const sql = fs.readFileSync(migrationPath, 'utf8')
-      await pool.query(sql)
-      console.log('✅ Migration 004 appliquée avec succès')
-    } catch (err) {
-      console.error('❌ Erreur lors de la migration 004:', err)
+  const migrations = [
+    '004_add_coords.sql',
+    '005_finance.sql',
+    '006_maintenance.sql',
+    '007_incidents.sql',
+  ]
+
+  for (const fichier of migrations) {
+    const migrationPath = path.join(__dirname, 'db/migrations', fichier)
+    if (fs.existsSync(migrationPath)) {
+      try {
+        const sql = fs.readFileSync(migrationPath, 'utf8')
+        await pool.query(sql)
+        console.log(`✅ Migration ${fichier} appliquée`)
+      } catch (err) {
+        // On log l'erreur mais on continue (idempotent)
+        console.error(`⚠️  Migration ${fichier} :`, err.message)
+      }
     }
   }
 }

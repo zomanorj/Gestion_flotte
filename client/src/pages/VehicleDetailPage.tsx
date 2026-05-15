@@ -16,13 +16,18 @@
  *   - Confirmation + toast pour l'archivage
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 import { useAuth }           from '../contexts/AuthContext'
 import VehicleFormModal      from '../components/vehicles/VehicleFormModal'
 import apiClient             from '../services/api'
+import * as maintenanceService from '../services/maintenanceService'
+import MaintenanceFormModal    from '../components/maintenance/MaintenanceFormModal'
+import { formatMGA, formatDateCourte } from '../utils/format'
+import type { Maintenance } from '../types/maintenance'
+import { LABELS_TYPE_MAINTENANCE, LABELS_STATUT_MAINTENANCE } from '../types/maintenance'
 
 import * as vehicleService   from '../services/vehicleService'
 import type { Vehicle, VehicleFormData } from '../services/vehicleService'
@@ -218,6 +223,25 @@ export default function VehicleDetailPage() {
   const [isModalOpen,  setIsModalOpen]  = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isArchiving,  setIsArchiving]  = useState(false)
+
+  // Historique maintenance
+  const [historiqueMaint,    setHistoriqueMaint]    = useState<Maintenance[]>([])
+  const [prochaineMaint,     setProchaineMaint]     = useState<Maintenance | null>(null)
+  const [isMaintenanceModal, setIsMaintenanceModal] = useState(false)
+
+  // ── Chargement de l'historique de maintenance ──
+  const chargerMaintenance = useCallback(() => {
+    if (!id) return
+    maintenanceService.getHistorique(parseInt(id, 10))
+      .then(h => {
+        setHistoriqueMaint(h)
+        // Prochaine planifiée = la première non terminée
+        setProchaineMaint(h.find(m => m.statut === 'planifiee') ?? null)
+      })
+      .catch(() => {})
+  }, [id])
+
+  useEffect(() => { chargerMaintenance() }, [chargerMaintenance])
 
   // ── Permissions ──
   const peutModifier = utilisateur?.role === 'admin' || utilisateur?.role === 'gestionnaire'
@@ -598,6 +622,122 @@ export default function VehicleDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Section Historique Maintenance ── */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-800">Historique maintenance</h2>
+          {peutModifier && (
+            <button
+              onClick={() => setIsMaintenanceModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Planifier une maintenance
+            </button>
+          )}
+        </div>
+
+        {/* Prochaine maintenance en évidence */}
+        {prochaineMaint && (
+          <div className="mx-6 mt-4 mb-2 bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-orange-700 mb-0.5">Prochaine maintenance planifiée</p>
+              <p className="text-sm font-medium text-slate-800">
+                {LABELS_TYPE_MAINTENANCE[prochaineMaint.type_maintenance]}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {prochaineMaint.date_planifiee ? formatDateCourte(prochaineMaint.date_planifiee) : ''}
+                {prochaineMaint.kilometrage_planifie
+                  ? ` · à ${prochaineMaint.kilometrage_planifie.toLocaleString('fr-FR')} km`
+                  : ''}
+              </p>
+            </div>
+            {vehicle && prochaineMaint.kilometrage_planifie && vehicle.kilometrage && (
+              <div className="text-right">
+                <p className="text-xs text-slate-500">
+                  {(prochaineMaint.kilometrage_planifie - vehicle.kilometrage).toLocaleString('fr-FR')} km restants
+                </p>
+                <div className="w-32 bg-slate-200 rounded-full h-1.5 mt-1">
+                  <div
+                    className="bg-orange-500 h-1.5 rounded-full"
+                    style={{
+                      width: `${Math.min(Math.round(
+                        (vehicle.kilometrage / prochaineMaint.kilometrage_planifie) * 100
+                      ), 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {historiqueMaint.length === 0 ? (
+          <div className="px-6 py-8 text-center text-sm text-slate-400">
+            Aucune maintenance enregistrée pour ce véhicule.
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-50">
+            {historiqueMaint.slice(0, 8).map(m => (
+              <div key={m.id} className="flex items-center gap-4 px-6 py-3 hover:bg-slate-50 transition-colors">
+                {/* Icône statut */}
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  m.statut === 'terminee' ? 'bg-emerald-100 text-emerald-600'
+                  : m.statut === 'annulee' ? 'bg-slate-100 text-slate-400'
+                  : 'bg-orange-100 text-orange-600'
+                }`}>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63" />
+                  </svg>
+                </div>
+                {/* Infos */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800">
+                    {LABELS_TYPE_MAINTENANCE[m.type_maintenance]}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {formatDateCourte(m.date_realisee ?? m.date_planifiee)}
+                    {m.garage ? ` · ${m.garage}` : ''}
+                  </p>
+                </div>
+                {/* KM */}
+                {m.kilometrage_realise && (
+                  <span className="text-xs text-slate-500 shrink-0">
+                    {m.kilometrage_realise.toLocaleString('fr-FR')} km
+                  </span>
+                )}
+                {/* Coût */}
+                {m.cout && (
+                  <span className="text-xs font-medium text-slate-700 shrink-0">
+                    {formatMGA(m.cout)}
+                  </span>
+                )}
+                {/* Badge statut */}
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
+                  m.statut === 'terminee' ? 'bg-emerald-100 text-emerald-700'
+                  : m.statut === 'annulee' ? 'bg-slate-100 text-slate-500'
+                  : 'bg-orange-100 text-orange-700'
+                }`}>
+                  {LABELS_STATUT_MAINTENANCE[m.statut]}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal planification maintenance */}
+      <MaintenanceFormModal
+        isOpen={isMaintenanceModal}
+        onClose={() => setIsMaintenanceModal(false)}
+        onSuccess={chargerMaintenance}
+        mode="creer"
+        defaultVehicleId={vehicle?.id}
+      />
 
       {/* ── Modal de modification ── */}
       <VehicleFormModal

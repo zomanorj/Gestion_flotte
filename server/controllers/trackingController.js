@@ -1,4 +1,4 @@
-﻿/**
+/**
  * trackingController.js
  * Contrôleur HTTP pour le suivi GPS des missions — TransiFlow.
  *
@@ -27,12 +27,11 @@ async function getActiveVehicles(req, res) {
     // Si pas de position GPS réelle, on utilise les coordonnées du lieu de départ
     const missionsAvecPosition = missions.map(mission => {
       if (!mission.position) {
-        // Essayer de trouver les coordonnées du lieu de départ
-        const coordsDepart = trackingModel.trouverCoordonneesVille(mission.lieu_depart)
-        if (coordsDepart) {
+        // Essayer de trouver les coordonnées du lieu de départ depuis la mission
+        if (mission.depart_lat && mission.depart_lng) {
           mission.position = {
-            latitude: coordsDepart.lat,
-            longitude: coordsDepart.lng,
+            latitude: mission.depart_lat,
+            longitude: mission.depart_lng,
             vitesse: 0,
             horodatage: null,
             est_simulee: true,

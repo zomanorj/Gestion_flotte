@@ -1,4 +1,4 @@
-﻿/**
+/**
  * mission.ts
  * Types TypeScript pour la gestion des missions — TransiFlow.
  *
@@ -62,6 +62,11 @@ export interface Mission {
   chargement?:           string | null
   poids_tonne?:          number | null
   distance_km?:          number | null
+  depart_lat?:           number | null
+  depart_lng?:           number | null
+  arrivee_lat?:          number | null
+  arrivee_lng?:          number | null
+  trajet_points?:        string | null
   statut:                MissionStatut
   notes?:                string | null
   created_by?:           number | null
@@ -152,6 +157,11 @@ export interface MissionFormData {
   chargement?:           string | null
   poids_tonne?:          number | null
   distance_km?:          number | null
+  depart_lat?:           number | null
+  depart_lng?:           number | null
+  arrivee_lat?:          number | null
+  arrivee_lng?:          number | null
+  trajet_points?:        string | null
   statut?:               MissionStatut
   notes?:                string | null
 }

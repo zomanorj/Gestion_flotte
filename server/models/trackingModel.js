@@ -1,4 +1,4 @@
-﻿/**
+/**
  * trackingModel.js
  * Modèle de données pour le suivi GPS des missions — TransiFlow.
  *
@@ -15,47 +15,6 @@
 const pool = require('../db/connection')
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Coordonnées des villes principales de Madagascar (pour fallback/simulation)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const COORDONNEES_VILLES = {
-  'Antananarivo': { lat: -18.9137, lng: 47.5361 },
-  'Toamasina':    { lat: -18.1443, lng: 49.4023 },
-  'Mahajanga':    { lat: -15.7167, lng: 46.3167 },
-  'Fianarantsoa': { lat: -21.4545, lng: 47.0833 },
-  'Toliary':      { lat: -23.3500, lng: 43.6667 },
-  'Antsirabe':    { lat: -19.8659, lng: 47.0333 },
-  'Antsiranana':  { lat: -12.2794, lng: 49.2969 },
-}
-
-/**
- * Trouve les coordonnées d'une ville par recherche approximative.
- * @param {string} nomVille - Nom de la ville à rechercher
- * @returns {{ lat: number, lng: number } | null}
- */
-function trouverCoordonneesVille(nomVille) {
-  if (!nomVille) return null
-
-  const nomNormalise = nomVille.toLowerCase().trim()
-
-  // Recherche exacte
-  for (const [ville, coords] of Object.entries(COORDONNEES_VILLES)) {
-    if (ville.toLowerCase() === nomNormalise) {
-      return coords
-    }
-  }
-
-  // Recherche partielle (commence par)
-  for (const [ville, coords] of Object.entries(COORDONNEES_VILLES)) {
-    if (ville.toLowerCase().startsWith(nomNormalise.substring(0, 4))) {
-      return coords
-    }
-  }
-
-  return null
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // findAllActive
 // Récupère toutes les missions en cours avec leur dernière position connue.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,6 +25,11 @@ async function findAllActive() {
       m.id as mission_id,
       m.lieu_depart,
       m.lieu_arrivee,
+      m.depart_lat,
+      m.depart_lng,
+      m.arrivee_lat,
+      m.arrivee_lng,
+      m.trajet_points,
       m.date_mission,
       m.heure_depart,
       m.statut as mission_statut,
@@ -102,6 +66,11 @@ async function findAllActive() {
       mission_id: row.mission_id,
       lieu_depart: row.lieu_depart,
       lieu_arrivee: row.lieu_arrivee,
+      depart_lat: row.depart_lat ? parseFloat(row.depart_lat) : null,
+      depart_lng: row.depart_lng ? parseFloat(row.depart_lng) : null,
+      arrivee_lat: row.arrivee_lat ? parseFloat(row.arrivee_lat) : null,
+      arrivee_lng: row.arrivee_lng ? parseFloat(row.arrivee_lng) : null,
+      trajet_points: row.trajet_points,
       date_mission: row.date_mission,
       heure_depart: row.heure_depart,
       statut: row.mission_statut,
@@ -271,6 +240,4 @@ module.exports = {
   findByMission,
   upsertPosition,
   getLastPosition,
-  COORDONNEES_VILLES,
-  trouverCoordonneesVille,
 }

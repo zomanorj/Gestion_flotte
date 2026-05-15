@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SuiviPage.tsx
  * Page de suivi en temps réel des missions — TransiFlow.
  *
@@ -176,35 +176,8 @@ const createTruckIcon = (progression: number, theme: string) => {
   })
 }
 
-// Icône pour les villes (grise, discrète)
-const cityIcon = L.divIcon({
-  className: 'city-marker',
-  html: `
-    <div style="
-      background-color: #94a3b8;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-    "></div>
-  `,
-  iconSize: [12, 12],
-  iconAnchor: [6, 6],
-})
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Coordonnées des villes principales de Madagascar
-// ─────────────────────────────────────────────────────────────────────────────
 
-const VILLES_PRINCIPALES = [
-  { nom: 'Antananarivo', lat: -18.9137, lng: 47.5361 },
-  { nom: 'Toamasina', lat: -18.1443, lng: 49.4023 },
-  { nom: 'Mahajanga', lat: -15.7167, lng: 46.3167 },
-  { nom: 'Fianarantsoa', lat: -21.4545, lng: 47.0833 },
-  { nom: 'Toliary', lat: -23.35, lng: 43.6667 },
-  { nom: 'Antsirabe', lat: -19.8659, lng: 47.0333 },
-  { nom: 'Antsiranana', lat: -12.2794, lng: 49.2969 },
-]
 
 // Centre de la carte (Madagascar)
 const MAP_CENTRE: [number, number] = [-19.0, 46.5]
@@ -350,37 +323,40 @@ export default function SuiviPage() {
     return null
   }
 
-  // Obtenir les coordonnées d'une ville
-  const getCityCoords = (cityName: string): [number, number] | null => {
-    const city = VILLES_PRINCIPALES.find(
-      v => v.nom.toLowerCase() === cityName.toLowerCase() ||
-           v.nom.toLowerCase().startsWith(cityName.toLowerCase().substring(0, 4))
-    )
-    return city ? [city.lat, city.lng] : null
-  }
-
   // Ligne de trajet pour la mission sélectionnée
   const getTrajetLine = (): [number, number][] | null => {
     if (!selectedMission) return null
 
-    const depart = getCityCoords(selectedMission.lieu_depart)
-    const arrivee = getCityCoords(selectedMission.lieu_arrivee)
-
-    if (depart && arrivee) {
-      return [depart, arrivee]
+    if (selectedMission.trajet_points) {
+      try {
+        const points = JSON.parse(selectedMission.trajet_points)
+        if (Array.isArray(points) && points.length > 0) {
+          return points as [number, number][]
+        }
+      } catch (e) {
+        console.error('Erreur parsing trajet JSON', e)
+      }
     }
+
+    // Fallback à la ligne droite
+    if (selectedMission.depart_lat && selectedMission.depart_lng &&
+        selectedMission.arrivee_lat && selectedMission.arrivee_lng) {
+      return [
+        [selectedMission.depart_lat, selectedMission.depart_lng],
+        [selectedMission.arrivee_lat, selectedMission.arrivee_lng]
+      ]
+    }
+    
     return null
   }
 
   // Calculer la progression (0 à 100%)
   const getProgression = (mission: TrackingMission): number => {
     if (!mission.position) return 0
-    const depart = getCityCoords(mission.lieu_depart)
-    const arrivee = getCityCoords(mission.lieu_arrivee)
-    if (!depart || !arrivee) return 50
+    if (!mission.depart_lat || !mission.depart_lng || !mission.arrivee_lat || !mission.arrivee_lng) return 50
     
-    const startLatLng = L.latLng(depart[0], depart[1])
-    const endLatLng = L.latLng(arrivee[0], arrivee[1])
+    const startLatLng = L.latLng(mission.depart_lat, mission.depart_lng)
+    const endLatLng = L.latLng(mission.arrivee_lat, mission.arrivee_lng)
     const currentLatLng = L.latLng(mission.position.latitude, mission.position.longitude)
     
     const totalDist = startLatLng.distanceTo(endLatLng)
@@ -672,7 +648,7 @@ export default function SuiviPage() {
                     </Tooltip>
                   </CircleMarker>
                   <CircleMarker
-                    center={getTrajetLine()![1]}
+                    center={getTrajetLine()![getTrajetLine()!.length - 1]}
                     radius={8}
                     fillColor={theme === 'sombre' ? '#F87171' : '#DC2626'}
                     fillOpacity={1}
@@ -686,20 +662,7 @@ export default function SuiviPage() {
                 </>
               )}
 
-              {/* Marqueurs des villes principales */}
-              {VILLES_PRINCIPALES.map((ville) => (
-                <Marker
-                  key={ville.nom}
-                  position={[ville.lat, ville.lng]}
-                  icon={cityIcon}
-                >
-                  <Popup>
-                    <div className="text-sm">
-                      <p className="font-medium">{ville.nom}</p>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+
 
               {/* Marqueurs des véhicules */}
               {missions.map((mission) => {

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * missionController.js
  * Contrôleur HTTP pour la gestion des missions — TransiFlow.
  *
@@ -180,6 +180,11 @@ async function createMission(req, res) {
       chargement,
       poids_tonne,
       distance_km,
+      depart_lat,
+      depart_lng,
+      arrivee_lat,
+      arrivee_lng,
+      trajet_points,
       statut,
       notes,
     } = req.body
@@ -277,6 +282,11 @@ async function createMission(req, res) {
       chargement: chargement || null,
       poids_tonne: poids_tonne || null,
       distance_km: distance_km || null,
+      depart_lat: depart_lat || null,
+      depart_lng: depart_lng || null,
+      arrivee_lat: arrivee_lat || null,
+      arrivee_lng: arrivee_lng || null,
+      trajet_points: trajet_points || null,
       statut: statut || 'brouillon',
       notes: notes || null,
       created_by: req.utilisateur?.id || null,
@@ -317,6 +327,11 @@ async function updateMission(req, res) {
       chargement,
       poids_tonne,
       distance_km,
+      depart_lat,
+      depart_lng,
+      arrivee_lat,
+      arrivee_lng,
+      trajet_points,
       notes,
     } = req.body
 
@@ -410,6 +425,11 @@ async function updateMission(req, res) {
       chargement,
       poids_tonne,
       distance_km,
+      depart_lat,
+      depart_lng,
+      arrivee_lat,
+      arrivee_lng,
+      trajet_points,
       notes,
     })
 
