@@ -10,16 +10,21 @@
  *
  * Arborescence des routes :
  *   /login            → LoginPage (publique)
- *   /                 → DashboardLayout > DashboardPage (privée)
- *   /vehicles         → DashboardLayout > VehiclesPage (Sprint 2)
- *   /vehicles/:id     → DashboardLayout > VehicleDetailPage (Sprint 2)
- *   /chauffeurs       → DashboardLayout > placeholder (Sprint 3)
- *   /missions         → DashboardLayout > placeholder (Sprint 4)
- *   /*                → Redirection vers /
+ *   /                 → DashboardLayout > DashboardPage
+ *   /vehicles         → DashboardLayout > VehiclesPage
+ *   /vehicles/:id     → DashboardLayout > VehicleDetailPage
+ *   /drivers          → DashboardLayout > DriversPage
+ *   /drivers/:id      → DashboardLayout > DriverDetailPage
+ *   /missions         → DashboardLayout > MissionsPage
+ *   /missions/:id     → DashboardLayout > MissionDetailPage
+ *   /suivi            → DashboardLayout > SuiviPage
+ *   /documents        → DashboardLayout > DocumentsPage
+ *   /rapports         → DashboardLayout > RapportsPage (admin/gestionnaire)
+ *   /*                → NotFoundPage
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { Toaster }        from 'react-hot-toast'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Toaster }                      from 'react-hot-toast'
 
 import { AuthProvider }       from './contexts/AuthContext'
 import PrivateRoute           from './components/PrivateRoute'
@@ -34,6 +39,8 @@ import MissionsPage           from './pages/MissionsPage'
 import MissionDetailPage      from './pages/MissionDetailPage'
 import SuiviPage              from './pages/SuiviPage'
 import DocumentsPage          from './pages/DocumentsPage'
+import RapportsPage           from './pages/RapportsPage'
+import NotFoundPage           from './pages/NotFoundPage'
 
 function App() {
   return (
@@ -72,7 +79,7 @@ function App() {
             <Route index element={<DashboardPage />} />
 
             {/* Sprint 2 : Gestion de la flotte */}
-            <Route path="vehicles"    element={<VehiclesPage />} />
+            <Route path="vehicles"     element={<VehiclesPage />} />
             <Route path="vehicles/:id" element={<VehicleDetailPage />} />
 
             {/* Sprint 3 : Chauffeurs */}
@@ -84,12 +91,15 @@ function App() {
             <Route path="missions/:id"   element={<MissionDetailPage />} />
 
             {/* Sprint 5 : Suivi et documents */}
-            <Route path="suivi"       element={<SuiviPage />} />
-            <Route path="documents"   element={<DocumentsPage />} />
+            <Route path="suivi"      element={<SuiviPage />} />
+            <Route path="documents"  element={<DocumentsPage />} />
+
+            {/* Sprint 6 : Rapports & Exports (admin/gestionnaire uniquement) */}
+            <Route path="rapports" element={<RapportsPage />} />
           </Route>
 
-          {/* Toute URL inconnue → accueil */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Toute URL inconnue → page 404 */}
+          <Route path="*" element={<NotFoundPage />} />
 
         </Routes>
       </BrowserRouter>

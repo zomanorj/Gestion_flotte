@@ -18,6 +18,7 @@ import toast from 'react-hot-toast'
 import { useMissions } from '../hooks/useMissions'
 import { useAuth } from '../contexts/AuthContext'
 import MissionFormModal from '../components/missions/MissionFormModal'
+import EmptyState from '../components/ui/EmptyState'
 
 import type { Mission, MissionFormData, MissionStatut } from '../types/mission'
 import { STATUT_COLORS, STATUT_LABELS } from '../types/mission'
@@ -494,19 +495,34 @@ export default function MissionsPage() {
                 Array.from({ length: 5 }).map((_, i) => <TableSkeleton key={i} />)
               ) : missions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center">
-                    <svg
-                      className="w-16 h-16 text-slate-300 mx-auto mb-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1}
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round"
-                        d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H3m16.5 0h-.375M3.75 18.75V7.5A2.25 2.25 0 016 5.25h10.5A2.25 2.25 0 0118.75 7.5v6.75m-15 4.5h.375m14.625 0h.375m-14.625 0H3.75M18.75 14.25h-3.375a.75.75 0 01-.75-.75v-3a.75.75 0 01.75-.75h2.625c.621 0 1.125.504 1.125 1.125v3.375z" />
-                    </svg>
-                    <p className="text-slate-500 text-sm">Aucune mission trouvée</p>
-                    <p className="text-slate-400 text-xs mt-1">Essayez de modifier vos filtres</p>
+                  <td colSpan={7}>
+                    {filters.search ? (
+                      <EmptyState
+                        icon={
+                          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round"
+                              d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                          </svg>
+                        }
+                        title={`Aucun résultat pour « ${filters.search} »`}
+                        description="Essayez avec d'autres mots-clés ou réinitialisez les filtres."
+                        actionLabel="Réinitialiser les filtres"
+                        onAction={() => { setFilters({ search: '', page: 1 }); setSearchInput('') }}
+                      />
+                    ) : (
+                      <EmptyState
+                        icon={
+                          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round"
+                              d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+                          </svg>
+                        }
+                        title="Aucune mission planifiée"
+                        description="Créez votre première mission pour commencer."
+                        actionLabel={canCreateEdit ? 'Créer une mission' : undefined}
+                        onAction={canCreateEdit ? handleOpenCreate : undefined}
+                      />
+                    )}
                   </td>
                 </tr>
               ) : (

@@ -25,9 +25,10 @@ import { useAuth } from '../contexts/AuthContext'
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ItemNavigation {
-  libelle: string
-  chemin:  string
-  icone:   React.ReactNode
+  libelle:        string
+  chemin:         string
+  icone:          React.ReactNode
+  rolesAutorises?: string[]  // Si absent : visible par tous
 }
 
 /** Tableau de bord */
@@ -99,7 +100,7 @@ function IcSuivi() {
   )
 }
 
-/** Documents / Rapports */
+/** Documents */
 function IcDocuments() {
   return (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -112,23 +113,46 @@ function IcDocuments() {
   )
 }
 
+/** Rapports & Exports */
+function IcRapports() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75
+           C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z
+           M9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25
+           c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625z
+           M16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75
+           c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+    </svg>
+  )
+}
+
 const NAVIGATION: ItemNavigation[] = [
-  { libelle: 'Tableau de bord', chemin: '/',           icone: <IcDashboard /> },
-  { libelle: 'Flotte',          chemin: '/vehicles',   icone: <IcCamion />    },
-  { libelle: 'Chauffeurs',      chemin: '/drivers',    icone: <IcChauffeur /> },
-  { libelle: 'Missions',        chemin: '/missions',   icone: <IcMission />   },
-  { libelle: 'Suivi',           chemin: '/suivi',      icone: <IcSuivi />     },
-  { libelle: 'Documents',       chemin: '/documents',  icone: <IcDocuments /> },
+  { libelle: 'Tableau de bord', chemin: '/',          icone: <IcDashboard /> },
+  { libelle: 'Flotte',          chemin: '/vehicles',  icone: <IcCamion />    },
+  { libelle: 'Chauffeurs',      chemin: '/drivers',   icone: <IcChauffeur /> },
+  { libelle: 'Missions',        chemin: '/missions',  icone: <IcMission />   },
+  { libelle: 'Suivi',           chemin: '/suivi',     icone: <IcSuivi />     },
+  { libelle: 'Documents',       chemin: '/documents', icone: <IcDocuments /> },
+  // Rapports : visible uniquement pour admin et gestionnaire
+  {
+    libelle:        'Rapports',
+    chemin:         '/rapports',
+    icone:          <IcRapports />,
+    rolesAutorises: ['admin', 'gestionnaire'],
+  },
 ]
 
 // Labels des chemins pour le breadcrumb
 const LABELS_CHEMINS: Record<string, string> = {
-  '/':           'Tableau de bord',
-  '/vehicles':   'Flotte',
-  '/drivers':    'Chauffeurs',
-  '/missions':   'Missions',
-  '/suivi':      'Suivi',
-  '/documents':  'Documents',
+  '/':          'Tableau de bord',
+  '/vehicles':  'Flotte',
+  '/drivers':   'Chauffeurs',
+  '/missions':  'Missions',
+  '/suivi':     'Suivi',
+  '/documents': 'Documents',
+  '/rapports':  'Rapports & Exports',
 }
 
 // Labels des rôles en français
@@ -196,35 +220,42 @@ function Sidebar({ onFermer }: SidebarProps) {
 
       {/* ── Navigation ── */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-0.5">
-        {NAVIGATION.map((item) => (
-          <NavLink
-            key={item.chemin}
-            to={item.chemin}
-            // end=true pour "/" : actif seulement sur / exact, pas sur /vehicules etc.
-            end={item.chemin === '/'}
-            onClick={onFermer}
-            className={({ isActive }) =>
-              `relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
-               ${isActive
-                 ? 'bg-blue-50 text-blue-800'
-                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-               }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {/* Barre verticale bleue pour l'item actif */}
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-800 rounded-r-full" />
-                )}
-                <span className={isActive ? 'text-blue-700' : 'text-slate-400 group-hover:text-slate-600'}>
-                  {item.icone}
-                </span>
-                {item.libelle}
-              </>
-            )}
-          </NavLink>
-        ))}
+        {NAVIGATION
+          // Filtrer les items restreints selon le rôle de l'utilisateur
+          .filter(item =>
+            !item.rolesAutorises ||
+            item.rolesAutorises.includes(utilisateur?.role ?? '')
+          )
+          .map((item) => (
+            <NavLink
+              key={item.chemin}
+              to={item.chemin}
+              // end=true pour "/" : actif seulement sur / exact, pas sur /vehicules etc.
+              end={item.chemin === '/'}
+              onClick={onFermer}
+              className={({ isActive }) =>
+                `relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
+                 ${isActive
+                   ? 'bg-blue-50 text-blue-800'
+                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                 }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {/* Barre verticale bleue pour l'item actif */}
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-800 rounded-r-full" />
+                  )}
+                  <span className={isActive ? 'text-blue-700' : 'text-slate-400 group-hover:text-slate-600'}>
+                    {item.icone}
+                  </span>
+                  {item.libelle}
+                </>
+              )}
+            </NavLink>
+          ))
+        }
       </nav>
 
       {/* ── Profil utilisateur + Déconnexion ── */}
