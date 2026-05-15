@@ -16,6 +16,7 @@ import * as maintenanceService from '../services/maintenanceService'
 import * as vehicleService     from '../services/vehicleService'
 import MaintenanceFormModal    from '../components/maintenance/MaintenanceFormModal'
 import EmptyState              from '../components/ui/EmptyState'
+import { useConfirm }          from '../hooks/useConfirm'
 import { formatDateCourte } from '../utils/format'
 import type { Maintenance, StatutMaintenance, TypeMaintenance } from '../types/maintenance'
 import {
@@ -78,6 +79,7 @@ function SkeletonTable() {
 export default function MaintenancePage() {
   const { utilisateur } = useAuth()
   const canEdit = utilisateur?.role === 'admin' || utilisateur?.role === 'gestionnaire'
+  const { confirm, ConfirmModalComponent } = useConfirm()
 
   const [maintenances,  setMaintenances]  = useState<Maintenance[]>([])
   const [urgentes,      setUrgentes]      = useState<Maintenance[]>([])
@@ -120,7 +122,13 @@ export default function MaintenancePage() {
   useEffect(() => { charger() }, [charger])
 
   const handleAnnuler = async (m: Maintenance) => {
-    if (!window.confirm('Annuler cette maintenance ?')) return
+    const ok = await confirm({
+      title: 'Annuler la maintenance',
+      message: 'Voulez-vous vraiment annuler cette maintenance planifiée ?',
+      confirmLabel: 'Annuler la maintenance',
+      variant: 'warning',
+    })
+    if (!ok) return
     try {
       await updateMaintenance(m.id, { statut: 'annulee' as StatutMaintenance })
       toast.success('Maintenance annulée')
@@ -433,6 +441,7 @@ export default function MaintenancePage() {
         maintenance={selectedMaint}
         vehicles={vehicles}
       />
+      {ConfirmModalComponent}
     </div>
   )
 }

@@ -86,8 +86,7 @@ export default function MissionFormModal({
   const [carburant, setCarburant] = useState<number | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
 
-  // ── État pour les conflits ──
-  const [conflits, setConflits] = useState<{ vehicle?: boolean; driver?: boolean }>({})
+  // ── État pour les ressources occupées ──
   const [occupiedVehicleIds, setOccupiedVehicleIds] = useState<number[]>([])
   const [occupiedDriverIds, setOccupiedDriverIds] = useState<number[]>([])
 
@@ -129,7 +128,6 @@ export default function MissionFormModal({
       setItineraire(null)
       setCarburant(null)
     }
-    setConflits({})
     setSubmitError(null)
   }, [initialData, isOpen])
 
@@ -238,56 +236,13 @@ export default function MissionFormModal({
     setArriveeVille(null)
     setItineraire(null)
     setCarburant(null)
-    setConflits({})
     setSubmitError(null)
     onClose()
   }
 
-  // ── Vérification des conflits ──
-  const checkConflits = async () => {
-    if (!formData.date_mission || (!formData.vehicle_id && !formData.driver_id)) {
-      setConflits({})
-      return
-    }
-
-    try {
-      const payload: MissionFormData = {
-        ...formData,
-        statut: 'brouillon',
-      }
-      if (departVille) {
-        payload.lieu_depart = departVille.nom
-        payload.depart_lat = departVille.lat
-        payload.depart_lng = departVille.lng
-      }
-      if (arriveeVille) {
-        payload.lieu_arrivee = arriveeVille.nom
-        payload.arrivee_lat = arriveeVille.lat
-        payload.arrivee_lng = arriveeVille.lng
-      }
-      if (itineraire) {
-        payload.distance_km = itineraire.distance_km
-        payload.trajet_points = JSON.stringify(itineraire.points)
-      }
-
-      const response = await missionService.createMission(payload)
-
-      if (!response.succes) {
-        // Gérer la réponse d'erreur
-      }
-    } catch (error: unknown) {
-      const response = error as { response?: { data?: { conflits?: { vehicle?: unknown; driver?: unknown } } } }
-      if (response.response?.data?.conflits) {
-        setConflits({
-          vehicle: !!response.response.data.conflits.vehicle,
-          driver: !!response.response.data.conflits.driver,
-        })
-      }
-    }
-  }
-
   // ── Soumission ──
   const handleSubmit = async (statut: MissionStatut) => {
+    if (isSubmitting) return
     setSubmitError(null)
 
     // Validation
@@ -325,8 +280,12 @@ export default function MissionFormModal({
     }
 
     // Vérifier les conflits pour une mission planifiée
-    if (statut === 'planifiee' && (conflits.vehicle || conflits.driver)) {
-      setSubmitError('Conflit détecté : le véhicule ou le chauffeur est déjà occupé à cette date')
+    if (statut === 'planifiee' && formData.vehicle_id && occupiedVehicleIds.includes(Number(formData.vehicle_id))) {
+      setSubmitError('Conflit détecté : ce véhicule est déjà occupé à cette date')
+      return
+    }
+    if (statut === 'planifiee' && formData.driver_id && occupiedDriverIds.includes(Number(formData.driver_id))) {
+      setSubmitError('Conflit détecté : ce chauffeur est déjà occupé à cette date')
       return
     }
 
@@ -567,7 +526,6 @@ export default function MissionFormModal({
               <select
                 value={formData.vehicle_id || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, vehicle_id: e.target.value ? Number(e.target.value) : null }))}
-                onBlur={checkConflits}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               >
                 <option value="">Sélectionner un véhicule...</option>
@@ -594,7 +552,7 @@ export default function MissionFormModal({
                     )
                   })}
               </select>
-              {conflits.vehicle && (
+              {formData.vehicle_id && occupiedVehicleIds.includes(Number(formData.vehicle_id)) && (
                 <p className="mt-1.5 text-xs text-orange-600 flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round"
@@ -615,7 +573,6 @@ export default function MissionFormModal({
               <select
                 value={formData.driver_id || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, driver_id: e.target.value ? Number(e.target.value) : null }))}
-                onBlur={checkConflits}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               >
                 <option value="">Sélectionner un chauffeur...</option>
@@ -642,7 +599,7 @@ export default function MissionFormModal({
                     )
                   })}
               </select>
-              {conflits.driver && (
+              {formData.driver_id && occupiedDriverIds.includes(Number(formData.driver_id)) && (
                 <p className="mt-1.5 text-xs text-orange-600 flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round"

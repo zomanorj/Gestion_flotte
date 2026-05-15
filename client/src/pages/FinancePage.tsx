@@ -22,6 +22,7 @@ import * as vehicleService    from '../services/vehicleService'
 import * as missionService    from '../services/missionService'
 import DepenseFormModal       from '../components/finance/DepenseFormModal'
 import EmptyState             from '../components/ui/EmptyState'
+import { useConfirm }         from '../hooks/useConfirm'
 import { formatMGA, formatDateCourte } from '../utils/format'
 import type { Depense, StatsFinancieres, Budget, CategoriDepense } from '../types/finance'
 import type { Vehicle }       from '../services/vehicleService'
@@ -95,6 +96,7 @@ function SkeletonTable() {
 
 export default function FinancePage() {
   const { utilisateur } = useAuth()
+  const { confirm, ConfirmModalComponent } = useConfirm()
 
   const [periode, setPeriode]           = useState<Periode>('mois')
   const [dateDebut, setDateDebut]       = useState('')
@@ -158,7 +160,13 @@ export default function FinancePage() {
   useEffect(() => { chargerDepenses() }, [chargerDepenses])
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Supprimer cette dépense ?')) return
+    const ok = await confirm({
+      title: 'Supprimer la dépense',
+      message: 'Voulez-vous vraiment supprimer cette dépense ? Cette action est irréversible.',
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    })
+    if (!ok) return
     try {
       await financeService.deleteDepense(id)
       toast.success('Dépense supprimée')
@@ -496,6 +504,7 @@ export default function FinancePage() {
         vehicles={vehicles}
         missions={missions as Mission[]}
       />
+      {ConfirmModalComponent}
     </div>
   )
 }

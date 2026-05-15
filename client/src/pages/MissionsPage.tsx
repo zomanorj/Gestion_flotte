@@ -19,6 +19,7 @@ import { useMissions } from '../hooks/useMissions'
 import { useAuth } from '../contexts/AuthContext'
 import MissionFormModal from '../components/missions/MissionFormModal'
 import EmptyState from '../components/ui/EmptyState'
+import { useConfirm } from '../hooks/useConfirm'
 
 import type { Mission, MissionFormData, MissionStatut } from '../types/mission'
 import { STATUT_COLORS, STATUT_LABELS } from '../types/mission'
@@ -173,6 +174,7 @@ function PlanningView({ missions, onMissionClick, onSlotClick, semaineOffset }: 
 export default function MissionsPage() {
   const navigate = useNavigate()
   const { utilisateur } = useAuth()
+  const { confirm, ConfirmModalComponent } = useConfirm()
 
   // ── Hook missions ──
   const {
@@ -278,9 +280,13 @@ export default function MissionsPage() {
   }
 
   const handleAnnuler = async (mission: Mission) => {
-    if (!window.confirm(`Voulez-vous vraiment annuler la mission #${String(mission.id).padStart(4, '0')} ?`)) {
-      return
-    }
+    const ok = await confirm({
+      title: 'Annuler la mission',
+      message: `Voulez-vous vraiment annuler la mission #${String(mission.id).padStart(4, '0')} ?`,
+      confirmLabel: 'Annuler la mission',
+      variant: 'danger',
+    })
+    if (!ok) return
 
     try {
       await deleteMissionAction(mission.id)
@@ -675,6 +681,7 @@ export default function MissionsPage() {
         drivers={drivers}
         isLoading={isSubmitting}
       />
+      {ConfirmModalComponent}
     </div>
   )
 }

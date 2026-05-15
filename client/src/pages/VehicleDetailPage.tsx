@@ -21,6 +21,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 import { useAuth }           from '../contexts/AuthContext'
+import { useConfirm }        from '../hooks/useConfirm'
 import VehicleFormModal      from '../components/vehicles/VehicleFormModal'
 import apiClient             from '../services/api'
 import * as maintenanceService from '../services/maintenanceService'
@@ -214,6 +215,7 @@ export default function VehicleDetailPage() {
   const { id }      = useParams<{ id: string }>()
   const navigate    = useNavigate()
   const { utilisateur } = useAuth()
+  const { confirm, ConfirmModalComponent } = useConfirm()
 
   // ── État de la page ──
   const [vehicle,      setVehicle]      = useState<Vehicle | null>(null)
@@ -302,11 +304,13 @@ export default function VehicleDetailPage() {
   // ── Handler : archiver le véhicule ──
   const handleArchiver = async () => {
     if (!vehicle) return
-    const confirme = window.confirm(
-      `Voulez-vous vraiment archiver le véhicule ${vehicle.immatriculation} ?\n` +
-      'Cette action est réversible via le formulaire de modification.'
-    )
-    if (!confirme) return
+    const ok = await confirm({
+      title: 'Archiver le véhicule',
+      message: `Voulez-vous vraiment archiver ${vehicle.immatriculation} ? Cette action est réversible via le formulaire de modification.`,
+      confirmLabel: 'Archiver',
+      variant: 'warning',
+    })
+    if (!ok) return
 
     setIsArchiving(true)
     try {
@@ -747,6 +751,7 @@ export default function VehicleDetailPage() {
         initialData={vehicle}
         isLoading={isSubmitting}
       />
+      {ConfirmModalComponent}
     </div>
   )
 }

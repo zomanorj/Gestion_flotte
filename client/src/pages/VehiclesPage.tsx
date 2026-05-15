@@ -19,6 +19,7 @@ import { useVehicles } from '../hooks/useVehicles'
 import { useAuth } from '../contexts/AuthContext'
 import VehicleFormModal from '../components/vehicles/VehicleFormModal'
 import EmptyState from '../components/ui/EmptyState'
+import { useConfirm } from '../hooks/useConfirm'
 
 import type { Vehicle, VehicleFormData, VehicleStatut } from '../services/vehicleService'
 import {
@@ -70,6 +71,7 @@ function TableSkeleton() {
 export default function VehiclesPage() {
   const navigate = useNavigate()
   const { utilisateur } = useAuth()
+  const { confirm, ConfirmModalComponent } = useConfirm()
 
   // ── Hook véhicules ──
   const {
@@ -174,9 +176,13 @@ export default function VehiclesPage() {
   }
 
   const handleArchive = async (vehicle: Vehicle) => {
-    if (!window.confirm(`Voulez-vous vraiment archiver le véhicule ${vehicle.immatriculation} ?`)) {
-      return
-    }
+    const ok = await confirm({
+      title: 'Archiver le véhicule',
+      message: `Voulez-vous vraiment archiver le véhicule ${vehicle.immatriculation} ? Cette action est réversible.`,
+      confirmLabel: 'Archiver',
+      variant: 'warning',
+    })
+    if (!ok) return
 
     try {
       await deleteVehicle(vehicle.id)
@@ -552,6 +558,7 @@ export default function VehiclesPage() {
         initialData={selectedVehicle}
         isLoading={isSubmitting}
       />
+      {ConfirmModalComponent}
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 import { useAuth }          from '../contexts/AuthContext'
+import { useConfirm }       from '../hooks/useConfirm'
 import * as incidentService from '../services/incidentService'
 import IncidentFormModal    from '../components/incidents/IncidentFormModal'
 import { formatMGA, formatDateFR } from '../utils/format'
@@ -33,6 +34,7 @@ export default function IncidentDetailPage() {
   const [vehicles,    setVehicles]    = useState<Vehicle[]>([])
 
   const canEdit = utilisateur?.role === 'admin' || utilisateur?.role === 'gestionnaire'
+  const { confirm, ConfirmModalComponent } = useConfirm()
 
   useEffect(() => {
     if (!id) return
@@ -54,7 +56,13 @@ export default function IncidentDetailPage() {
 
   const handleClore = async () => {
     if (!incident) return
-    if (!window.confirm('Clore définitivement cet incident ?')) return
+    const ok = await confirm({
+      title: 'Clore l\'incident',
+      message: 'Clore définitivement cet incident ? Cette action est irréversible.',
+      confirmLabel: 'Clore définitivement',
+      variant: 'danger',
+    })
+    if (!ok) return
     try {
       await incidentService.cloreIncident(incident.id)
       toast.success('Incident clos')
@@ -287,6 +295,7 @@ export default function IncidentDetailPage() {
         incident={incident}
         vehicles={vehicles}
       />
+      {ConfirmModalComponent}
     </div>
   )
 }

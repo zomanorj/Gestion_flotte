@@ -15,6 +15,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 import { useAuth } from '../contexts/AuthContext'
+import { useConfirm } from '../hooks/useConfirm'
 import * as driverService from '../services/driverService'
 import type { Driver, Mission } from '../types/driver'
 import {
@@ -34,6 +35,7 @@ export default function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { utilisateur } = useAuth()
+  const { confirm, ConfirmModalComponent } = useConfirm()
 
   // ── États ──
   const [driver, setDriver] = useState<Driver | null>(null)
@@ -78,9 +80,13 @@ export default function DriverDetailPage() {
   const handleDesactiver = async () => {
     if (!driver) return
 
-    if (!window.confirm(`Voulez-vous vraiment désactiver le chauffeur ${driver.prenom} ${driver.nom} ?`)) {
-      return
-    }
+    const ok = await confirm({
+      title: 'Désactiver le chauffeur',
+      message: `Voulez-vous vraiment désactiver ${driver.prenom} ${driver.nom} ?`,
+      confirmLabel: 'Désactiver',
+      variant: 'warning',
+    })
+    if (!ok) return
 
     setIsSubmitting(true)
     try {
@@ -413,6 +419,7 @@ export default function DriverDetailPage() {
           </div>
         </div>
       )}
+      {ConfirmModalComponent}
     </div>
   )
 }

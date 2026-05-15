@@ -20,6 +20,7 @@ import * as vehicleService   from '../services/vehicleService'
 import * as driverService    from '../services/driverService'
 import IncidentFormModal     from '../components/incidents/IncidentFormModal'
 import EmptyState            from '../components/ui/EmptyState'
+import { useConfirm }        from '../hooks/useConfirm'
 import { formatMGA, formatDateCourte } from '../utils/format'
 import type { Incident, TypeIncident, GraviteIncident, StatutIncident,
               StatsIncidents } from '../types/incident'
@@ -63,6 +64,7 @@ function SkeletonTable() {
 export default function IncidentsPage() {
   const { utilisateur } = useAuth()
   const navigate        = useNavigate()
+  const { confirm, ConfirmModalComponent } = useConfirm()
 
   const [incidents,    setIncidents]    = useState<Incident[]>([])
   const [incCritiques, setIncCritiques] = useState<Incident[]>([])
@@ -112,7 +114,13 @@ export default function IncidentsPage() {
   useEffect(() => { charger() }, [charger])
 
   const handleClore = async (inc: Incident) => {
-    if (!window.confirm('Clore définitivement cet incident ? Cette action est irréversible.')) return
+    const ok = await confirm({
+      title: 'Clore l\'incident',
+      message: 'Clore définitivement cet incident ? Cette action est irréversible.',
+      confirmLabel: 'Clore définitivement',
+      variant: 'danger',
+    })
+    if (!ok) return
     try {
       await incidentService.cloreIncident(inc.id)
       toast.success('Incident clos')
@@ -356,6 +364,7 @@ export default function IncidentsPage() {
         vehicles={vehicles}
         drivers={drivers}
       />
+      {ConfirmModalComponent}
     </div>
   )
 }

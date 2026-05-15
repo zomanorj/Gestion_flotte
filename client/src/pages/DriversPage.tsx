@@ -20,6 +20,7 @@ import { useDrivers } from '../hooks/useDrivers'
 import { useAuth } from '../contexts/AuthContext'
 import DriverFormModal from '../components/drivers/DriverFormModal'
 import EmptyState from '../components/ui/EmptyState'
+import { useConfirm } from '../hooks/useConfirm'
 
 import type { Driver, DriverFormData, DriverStatut } from '../types/driver'
 import {
@@ -72,6 +73,7 @@ function CardSkeleton() {
 export default function DriversPage() {
   const navigate = useNavigate()
   const { utilisateur } = useAuth()
+  const { confirm, ConfirmModalComponent } = useConfirm()
 
   // ── Hook chauffeurs ──
   const {
@@ -175,9 +177,13 @@ export default function DriversPage() {
   }
 
   const handleDesactiver = async (driver: Driver) => {
-    if (!window.confirm(`Voulez-vous vraiment désactiver le chauffeur ${driver.prenom} ${driver.nom} ?`)) {
-      return
-    }
+    const ok = await confirm({
+      title: 'Désactiver le chauffeur',
+      message: `Voulez-vous vraiment désactiver ${driver.prenom} ${driver.nom} ?`,
+      confirmLabel: 'Désactiver',
+      variant: 'warning',
+    })
+    if (!ok) return
 
     try {
       await deleteDriver(driver.id)
@@ -497,6 +503,7 @@ export default function DriversPage() {
         initialData={selectedDriver}
         isLoading={isSubmitting}
       />
+      {ConfirmModalComponent}
     </div>
   )
 }
