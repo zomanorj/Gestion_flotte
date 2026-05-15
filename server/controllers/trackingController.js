@@ -58,6 +58,8 @@ async function getActiveVehicles(req, res) {
     res.status(500).json({
       succes: false,
       message: 'Erreur serveur lors de la récupération des véhicules actifs',
+      // Détail exposé uniquement en développement pour faciliter le débogage
+      detail: process.env.NODE_ENV !== 'production' ? erreur.message : undefined,
     })
   }
 }
