@@ -52,8 +52,12 @@ export interface Mission {
   id:                    number
   vehicle_id:            number
   driver_id:             number
+  client_id?:            number | null  // Client associé à la mission
+  client_nom?:           string | null  // Nom du client (jointure)
+  client_telephone?:     string | null  // Téléphone du client (jointure)
   vehicle?:              Vehicle | null
   driver?:               Driver | null
+  client?:               import('./client').Client | null
   lieu_depart:           string
   lieu_arrivee:          string
   date_mission:          string        // Format YYYY-MM-DD
@@ -149,6 +153,7 @@ export interface MissionConflitResponse {
 export interface MissionFormData {
   vehicle_id:            number | null
   driver_id:             number | null
+  client_id?:            number | null  // Client associé à la mission
   lieu_depart:           string
   lieu_arrivee:          string
   date_mission:          string

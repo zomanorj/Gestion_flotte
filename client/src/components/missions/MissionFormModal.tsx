@@ -19,7 +19,9 @@ import { useState, useEffect, useRef } from 'react'
 import type { Mission, MissionFormData, MissionStatut } from '../../types/mission'
 import type { Vehicle } from '../../services/vehicleService'
 import type { Driver } from '../../types/driver'
+import type { Client } from '../../types/client'
 import * as missionService from '../../services/missionService'
+import { getClients } from '../../services/clientService'
 import CityAutocomplete from '../ui/CityAutocomplete'
 import { calculerItineraire, calculerCarburant } from '../../services/geoService'
 import type { Ville, Itineraire } from '../../services/geoService'
@@ -89,6 +91,9 @@ export default function MissionFormModal({
   // ── État pour les ressources occupées ──
   const [occupiedVehicleIds, setOccupiedVehicleIds] = useState<number[]>([])
   const [occupiedDriverIds, setOccupiedDriverIds] = useState<number[]>([])
+
+  // ── État pour les clients ──
+  const [clients, setClients] = useState<Client[]>([])
 
   // ── Référence pour le modal ──
   const modalRef = useRef<HTMLDivElement>(null)
@@ -202,6 +207,24 @@ export default function MissionFormModal({
     if (!vehicule) return
     setCarburant(calculerCarburant(itineraire.distance_km, vehicule.type))
   }, [itineraire, formData.vehicle_id, vehicles])
+
+  // ── Charger la liste des clients actifs ──
+  useEffect(() => {
+    if (isOpen) {
+      loadClients()
+    }
+  }, [isOpen])
+
+  const loadClients = async () => {
+    try {
+      const response = await getClients({ statut: 'actif', limit: 100 })
+      if (response.succes) {
+        setClients(response.donnees)
+      }
+    } catch (error) {
+      console.error('Erreur chargement clients:', error)
+    }
+  }
 
   // ── Charger les véhicules/chauffeurs occupés pour la date sélectionnée ──
   useEffect(() => {
@@ -383,6 +406,25 @@ export default function MissionFormModal({
                 </svg>
               </div>
               <h3 className="text-sm font-semibold text-slate-700">Trajet</h3>
+            </div>
+
+            {/* Client associé */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Client (optionnel)
+              </label>
+              <select
+                value={formData.client_id || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, client_id: e.target.value ? Number(e.target.value) : null }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              >
+                <option value="">Sans client (mission interne)</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.nom}{client.telephone ? ` — ${client.telephone}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

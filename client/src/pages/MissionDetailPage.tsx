@@ -26,6 +26,9 @@ import * as financeService from '../services/financeService'
 import DepenseFormModal from '../components/finance/DepenseFormModal'
 import { formatMGA, formatDateCourte } from '../utils/format'
 import type { Depense, CategoriDepense } from '../types/finance'
+import type { Client } from '../types/client'
+import { getClient } from '../services/clientService'
+import * as factureService from '../services/factureService'
 
 const LABELS_CATEGORIE: Record<CategoriDepense, string> = {
   carburant: '⛽ Carburant', peage: '🛣 Péage',
@@ -96,6 +99,10 @@ export default function MissionDetailPage() {
   const [loadingDepenses, setLoadingDepenses] = useState(false)
   const [isDepenseModalOpen, setIsDepenseModalOpen] = useState(false)
 
+  // États pour le client lié
+  const [client, setClient] = useState<Client | null>(null)
+  const [loadingClient, setLoadingClient] = useState(false)
+
   // ── Charger la mission ──
   useEffect(() => {
     if (!id) return
@@ -112,6 +119,57 @@ export default function MissionDetailPage() {
         setIsLoading(false)
       })
   }, [id])
+
+  // ── Charger le client lié à la mission ──
+  useEffect(() => {
+    if (mission?.client_id) {
+      setLoadingClient(true)
+      getClient(mission.client_id)
+        .then(clientData => {
+          setClient(clientData)
+        })
+        .catch(() => {
+          console.error('Erreur chargement client')
+        })
+        .finally(() => {
+          setLoadingClient(false)
+        })
+    } else {
+      setClient(null)
+    }
+  }, [mission?.client_id])
+
+  // ── Vérifier si une facture existe déjà pour cette mission ──
+  const canGenerateInvoice = mission && mission.statut === 'terminee' && client && !loadingClient
+
+  // ── Générer une facture depuis la mission ──
+  const handleGenerateInvoice = async () => {
+    if (!mission || !client) return
+
+    try {
+      // Calculer un montant HT basé sur la distance (tarif exemple: 3000 MGA/km)
+      const montantHT = (mission.distance_km || 0) * 3000
+      const tauxTVA = 20
+
+      const factureData = {
+        client_id: client.id,
+        mission_id: mission.id,
+        description: `Transport ${mission.lieu_depart} → ${mission.lieu_arrivee} le ${mission.date_mission}`,
+        montant_ht: montantHT,
+        taux_tva: tauxTVA,
+        date_emission: new Date().toISOString().split('T')[0],
+        date_echeance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        statut: 'brouillon' as const,
+      }
+
+      const facture = await factureService.createFacture(factureData)
+      toast.success(`Facture ${facture.numero || 'créée'} avec succès`)
+      navigate(`/factures/${facture.id || ''}`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Une erreur est survenue'
+      toast.error(message)
+    }
+  }
 
   // ── Gestion du changement de statut ──
   const handleStatutChange = async (nouveauStatut: MissionStatut) => {
@@ -228,6 +286,36 @@ export default function MissionDetailPage() {
         <span className="text-slate-800 font-medium">Mission #{String(mission.id).padStart(4, '0')}</span>
       </div>
 
+      {/* ── Bandeau client lié à la mission ── */}
+      {mission.client_id && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-100 rounded-lg">
+          {/* Icône immeuble */}
+          <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+            <svg className="w-4 h-4 text-blue-700" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+            </svg>
+          </div>
+          {/* Infos client */}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-slate-500">Client</p>
+            <p className="text-sm font-medium text-slate-800 truncate">{mission.client_nom}</p>
+            {mission.client_telephone && (
+              <p className="text-xs text-slate-500">
+                <span className="mr-1">📞</span>{mission.client_telephone}
+              </p>
+            )}
+          </div>
+          {/* Lien vers fiche client */}
+          <Link
+            to={`/clients/${mission.client_id}`}
+            className="text-xs font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap transition-colors"
+          >
+            Voir la fiche &rarr;
+          </Link>
+        </div>
+      )}
+
       {/* ── Hero Section ── */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
@@ -246,7 +334,7 @@ export default function MissionDetailPage() {
               {mission.heure_depart && ` à ${mission.heure_depart.substring(0, 5)}`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {canDownloadBL && (
               <button
                 onClick={handleDownloadBL}
@@ -257,6 +345,17 @@ export default function MissionDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                 </svg>
                 {downloadLoading ? '...' : 'Bon de livraison'}
+              </button>
+            )}
+            {canGenerateInvoice && (
+              <button
+                onClick={handleGenerateInvoice}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                Générer facture
               </button>
             )}
             <button

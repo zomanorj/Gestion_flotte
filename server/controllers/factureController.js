@@ -7,14 +7,13 @@ const PDFDocument = require('pdfkit')
 const factureModel = require('../models/factureModel')
 const clientModel = require('../models/clientModel')
 
-// Utilitaire de formatage de la monnaie (MGA)
-const formatMGA = (montant) => {
-  return new Intl.NumberFormat('fr-MG', {
-    style: 'currency',
-    currency: 'MGA',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(montant).replace('MGA', 'Ar')
+/**
+ * Formate un montant en MGA pour le PDF.
+ * Utilise fr-FR (espace insécable comme séparateur milliers) — jamais de slash.
+ * Résultat : "2 000 000 Ar"
+ */
+function formatMontant(n) {
+  return new Intl.NumberFormat('fr-FR').format(Math.round(n || 0)) + ' Ar'
 }
 
 // Utilitaire de formatage de date
@@ -175,7 +174,8 @@ async function getStatsFactures(req, res) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // generatePDF
-// Génère un PDF pour une facture spécifique.
+// Génère un PDF facture tenant sur une seule page A4 (842pt).
+// Structure : en-tête → client → tableau prestation → totaux → signature → pied
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function generatePDF(req, res) {
@@ -186,116 +186,184 @@ async function generatePDF(req, res) {
     const facture = await factureModel.findById(id)
     if (!facture) return res.status(404).json({ succes: false, message: 'Facture introuvable' })
 
-    // Configuration PDF
+    // Marges compactes pour tenir sur une page A4
     const doc = new PDFDocument({
-      size: 'A4',
-      margins: { top: 50, bottom: 50, left: 50, right: 50 }
+      size:    'A4',
+      margins: { top: 40, bottom: 40, left: 50, right: 50 },
+      autoFirstPage: true,
     })
 
     const filename = `Facture-${facture.numero}.pdf`
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.setHeader('Cache-Control', 'no-cache')
-
     doc.pipe(res)
 
-    // ── En-tête de la facture ──
-    doc.rect(50, 50, 495, 80).stroke('#1e3a5f')
+    // ── Constantes de mise en page ──
+    const L = 50    // marge gauche
+    const R = 545   // marge droite (595 - 50)
+    const W = 495   // largeur utile
 
-    // Logo (placeholder) et Titre
-    doc.fontSize(24).font('Helvetica-Bold').text('FACTURE', 70, 70, { align: 'center', color: '#1e3a5f' })
-    doc.fontSize(10).font('Helvetica').text('TransiFlow', 70, 100, { align: 'center', color: '#64748b' })
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1. EN-TETE (y: 40-115)
+    // ─────────────────────────────────────────────────────────────────────────
+    let y = 40
 
-    // Infos Facture
-    doc.fontSize(11).font('Helvetica-Bold').text(`N° ${facture.numero}`, 70, 145, { color: '#1e3a5f' })
-    doc.fontSize(10).font('Helvetica').text(`Date d'émission : ${formaterDateFR(facture.date_emission)}`, 350, 145, { align: 'right' })
+    // Rectangle titre bleu marine
+    doc.rect(L, y, W, 50).fill('#1E3A5F')
+
+    // Titre FACTURE à gauche
+    doc.fillColor('white').font('Helvetica-Bold').fontSize(18)
+       .text('FACTURE', L + 12, y + 16)
+
+    // Numéro + société à droite
+    doc.font('Helvetica').fontSize(9)
+       .text(facture.numero, R - 130, y + 10, { width: 120, align: 'right' })
+    doc.fillColor('#BFD7FF').fontSize(8)
+       .text('TransiFlow - Transport & Logistique', R - 180, y + 24, { width: 170, align: 'right' })
+
+    y += 55
+
+    // Ligne de dates (émission + échéance)
+    doc.fillColor('#334155').font('Helvetica').fontSize(9)
+       .text(`Emis le : ${formaterDateFR(facture.date_emission)}`, L, y)
     if (facture.date_echeance) {
-      doc.text(`Échéance : ${formaterDateFR(facture.date_echeance)}`, 350, 160, { align: 'right' })
+      doc.text(`Echeance : ${formaterDateFR(facture.date_echeance)}`, L + 160, y)
+    }
+    // Statut payée en vert à droite
+    if (facture.statut === 'payee') {
+      doc.fillColor('#16A34A').font('Helvetica-Bold').fontSize(10)
+         .text('ACQUITTEE', R - 100, y - 2, { width: 100, align: 'right' })
+      if (facture.date_paiement) {
+        doc.fillColor('#16A34A').font('Helvetica').fontSize(8)
+           .text(`le ${formaterDateFR(facture.date_paiement)}`, R - 100, y + 12, { width: 100, align: 'right' })
+      }
     }
 
-    // ── Client ──
-    doc.fontSize(12).font('Helvetica-Bold').text('FACTURER À :', 70, 190, { color: '#1e3a5f' })
-    doc.moveTo(70, 205).lineTo(250, 205).stroke('#e2e8f0')
+    y += 18
+    // Séparateur horizontal
+    doc.moveTo(L, y).lineTo(R, y).strokeColor('#CBD5E1').lineWidth(0.5).stroke()
 
-    doc.fontSize(10).font('Helvetica-Bold').text(facture.client_nom, 70, 215)
-    if (facture.client_adresse) doc.font('Helvetica').text(facture.client_adresse, 70, 230)
-    if (facture.client_ville) doc.text(facture.client_ville, 70, 245)
-    
-    let infoFiscalesY = 260
-    if (facture.client_nif) { doc.text(`NIF: ${facture.client_nif}`, 70, infoFiscalesY); infoFiscalesY += 15; }
-    if (facture.client_stat) { doc.text(`STAT: ${facture.client_stat}`, 70, infoFiscalesY); }
+    // ─────────────────────────────────────────────────────────────────────────
+    // 2. BLOC CLIENT (y: 118-185)
+    // ─────────────────────────────────────────────────────────────────────────
+    y += 10
 
-    // ── Tableau Désignation ──
-    const startTableY = 320
-    doc.rect(50, startTableY, 495, 20).fill('#f8fafc').stroke()
-    
-    doc.fillColor('#1e3a5f').fontSize(10).font('Helvetica-Bold')
-    doc.text('DÉSIGNATION', 60, startTableY + 5)
-    doc.text('MONTANT HT', 400, startTableY + 5, { width: 135, align: 'right' })
+    doc.fillColor('#1E3A5F').font('Helvetica-Bold').fontSize(8)
+       .text('FACTURER A :', L, y)
+    y += 12
 
-    doc.fillColor('#000').font('Helvetica')
-    
-    // Contenu
-    const contentY = startTableY + 30
-    
-    let desc = facture.description || ''
+    // Nom client en gras
+    doc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(10)
+       .text(facture.client_nom || '-', L, y)
+    y += 13
+
+    doc.font('Helvetica').fontSize(9).fillColor('#475569')
+    if (facture.client_adresse) { doc.text(facture.client_adresse, L, y); y += 11 }
+    if (facture.client_ville)   { doc.text(facture.client_ville,   L, y); y += 11 }
+    if (facture.client_nif)     { doc.text(`NIF : ${facture.client_nif}`,   L, y); y += 11 }
+    if (facture.client_stat)    { doc.text(`STAT : ${facture.client_stat}`, L, y); y += 11 }
+
+    y += 6
+    doc.moveTo(L, y).lineTo(R, y).strokeColor('#CBD5E1').lineWidth(0.5).stroke()
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 3. TABLEAU DESIGNATION (y: 195-265)
+    // ─────────────────────────────────────────────────────────────────────────
+    y += 10
+
+    // En-tête de tableau (fond bleu)
+    const COL_PRIX = R - 110  // colonne prix à partir de x
+    doc.rect(L, y, W, 18).fill('#1E40AF')
+    doc.fillColor('white').font('Helvetica-Bold').fontSize(8.5)
+       .text('DESIGNATION', L + 8, y + 5)
+       .text('MONTANT HT', COL_PRIX, y + 5, { width: 100, align: 'right' })
+    y += 18
+
+    // Ligne de contenu
+    // Remplacer → par " - " pour compatibilité pdfkit
+    let desc = (facture.description || '').replace(/→/g, ' - ').replace(/→/g, ' - ')
     if (!desc && facture.lieu_depart && facture.lieu_arrivee) {
-      desc = `Transport ${facture.lieu_depart} → ${facture.lieu_arrivee}`
+      desc = `Transport ${facture.lieu_depart} - ${facture.lieu_arrivee}`
       if (facture.date_mission) desc += ` le ${formaterDateFR(facture.date_mission)}`
     }
-    
-    doc.text(desc, 60, contentY, { width: 320 })
+
+    // Hauteur de la ligne prestation (variable selon la longueur de la description)
+    const ligneH = 30
+    doc.rect(L, y, W, ligneH).stroke('#E2E8F0')
+    doc.fillColor('#1E293B').font('Helvetica').fontSize(9)
+       .text(desc, L + 8, y + 7, { width: COL_PRIX - L - 20 })
+
     if (facture.mission_id) {
-      doc.fontSize(9).fillColor('#64748b').text(`Réf mission: #${String(facture.mission_id).padStart(4, '0')}`, 60, contentY + 15)
+      doc.fillColor('#94A3B8').fontSize(7.5)
+         .text(`Ref. mission #${String(facture.mission_id).padStart(4, '0')}`, L + 8, y + 20)
     }
+    doc.fillColor('#1E293B').font('Helvetica').fontSize(9)
+       .text(formatMontant(facture.montant_ht), COL_PRIX, y + 7, { width: 100, align: 'right' })
 
-    doc.fontSize(10).fillColor('#000').text(formatMGA(facture.montant_ht), 400, contentY, { width: 135, align: 'right' })
+    y += ligneH + 10
 
-    // Ligne bas du tableau
-    const endTableY = contentY + 50
-    doc.moveTo(50, startTableY).lineTo(50, endTableY).stroke()
-    doc.moveTo(545, startTableY).lineTo(545, endTableY).stroke()
-    doc.moveTo(50, endTableY).lineTo(545, endTableY).stroke()
+    // ─────────────────────────────────────────────────────────────────────────
+    // 4. RECAPITULATIF TOTAUX (y: 275-330)
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // ── Récapitulatif Total ──
-    const summaryY = endTableY + 20
-    doc.rect(345, summaryY, 200, 70).stroke('#e2e8f0')
+    // Bloc totaux à droite
+    const BX = R - 180  // x du bloc totaux
+    const BW = 180       // largeur du bloc
 
-    doc.text('Sous-total HT :', 355, summaryY + 10)
-    doc.text(formatMGA(facture.montant_ht), 400, summaryY + 10, { width: 135, align: 'right' })
+    doc.rect(BX, y, BW, 52).fill('#F8FAFC').stroke('#E2E8F0')
 
-    doc.text(`TVA (${parseFloat(facture.taux_tva)}%) :`, 355, summaryY + 30)
-    doc.text(formatMGA(facture.montant_tva), 400, summaryY + 30, { width: 135, align: 'right' })
+    doc.fillColor('#475569').font('Helvetica').fontSize(9)
+    doc.text('Sous-total HT :',         BX + 8, y + 8)
+    doc.text(formatMontant(facture.montant_ht),  BX + 90, y + 8,  { width: BW - 98, align: 'right' })
 
-    doc.font('Helvetica-Bold').text('TOTAL TTC :', 355, summaryY + 55)
-    doc.text(formatMGA(facture.montant_ttc), 400, summaryY + 55, { width: 135, align: 'right' })
+    doc.text(`TVA (${parseFloat(facture.taux_tva || 20)} %) :`, BX + 8, y + 22)
+    doc.text(formatMontant(facture.montant_tva), BX + 90, y + 22, { width: BW - 98, align: 'right' })
 
-    // ── Conditions & Infos de paiement ──
-    const infoY = summaryY + 90
-    doc.font('Helvetica-Bold').text('INFORMATIONS DE PAIEMENT', 70, infoY, { color: '#1e3a5f' })
-    doc.moveTo(70, infoY + 15).lineTo(250, infoY + 15).stroke('#e2e8f0')
+    // Ligne TOTAL TTC en gras
+    doc.rect(BX, y + 33, BW, 19).fill('#1E3A5F')
+    doc.fillColor('white').font('Helvetica-Bold').fontSize(9.5)
+    doc.text('TOTAL TTC :',             BX + 8, y + 37)
+    doc.text(formatMontant(facture.montant_ttc), BX + 90, y + 37, { width: BW - 98, align: 'right' })
 
-    doc.font('Helvetica').fillColor('#000')
-    let currentInfoY = infoY + 25
+    y += 60
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 5. CONDITIONS + SIGNATURE (y: 340-430)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    doc.fillColor('#1E3A5F').font('Helvetica-Bold').fontSize(8)
+       .text('CONDITIONS DE PAIEMENT', L, y)
+    y += 12
+
+    doc.fillColor('#475569').font('Helvetica').fontSize(9)
     if (facture.conditions_paiement) {
-      doc.text(`Conditions : ${facture.conditions_paiement}`, 70, currentInfoY)
-      currentInfoY += 15
+      doc.text(facture.conditions_paiement, L, y); y += 12
     }
     if (facture.mode_paiement) {
-      doc.text(`Mode de paiement attendu/reçu : ${facture.mode_paiement.toUpperCase()}`, 70, currentInfoY)
+      doc.text(`Mode : ${facture.mode_paiement.toUpperCase()}`, L, y); y += 12
     }
 
-    if (facture.statut === 'payee') {
-      doc.fontSize(16).fillColor('#22c55e').font('Helvetica-Bold').text('ACQUITTÉE', 400, infoY + 20, { align: 'center' })
-      doc.fontSize(10).fillColor('#000').font('Helvetica').text(`Le ${formaterDateFR(facture.date_paiement)}`, 400, infoY + 40, { align: 'center' })
-    }
+    y += 10
 
-    // ── Pied de page ──
-    const pageHeight = doc.page.height
-    doc.fontSize(8).fillColor('#94a3b8').text(
-      'TransiFlow - Système de Gestion de Transport',
-      70, pageHeight - 40, { align: 'center' }
-    )
+    // Bloc signature à droite
+    doc.fillColor('#334155').font('Helvetica').fontSize(9)
+       .text('Signature et cachet :', R - 160, y)
+    doc.moveTo(R - 160, y + 35).lineTo(R, y + 35).strokeColor('#94A3B8').lineWidth(0.5).stroke()
+    doc.fillColor('#94A3B8').fontSize(8)
+       .text('Nom & Signature', R - 160, y + 38)
+
+    y += 50
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 6. PIED DE PAGE (positionné à y=800 pour A4)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    doc.moveTo(L, 800).lineTo(R, 800).strokeColor('#E2E8F0').lineWidth(0.5).stroke()
+    doc.fillColor('#94A3B8').font('Helvetica').fontSize(7.5)
+       .text('TransiFlow - Systeme de Gestion de Transport', L, 806, {
+          width: W, align: 'center',
+        })
 
     doc.end()
 

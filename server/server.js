@@ -37,6 +37,9 @@ const exportRoutes      = require('./routes/exportRoutes')
 const financeRoutes     = require('./routes/financeRoutes')
 const maintenanceRoutes = require('./routes/maintenanceRoutes')
 const incidentRoutes    = require('./routes/incidentRoutes')
+const clientRoutes      = require('./routes/clientRoutes')
+const factureRoutes     = require('./routes/factureRoutes')
+const paiementRoutes    = require('./routes/paiementRoutes')
 
 const app  = express()
 const PORT = process.env.PORT || 5000
@@ -108,6 +111,15 @@ app.use('/api/maintenances', maintenanceRoutes)
 // Routes incidents : /api/incidents
 app.use('/api/incidents', incidentRoutes)
 
+// Routes clients : /api/clients
+app.use('/api/clients', clientRoutes)
+
+// Routes factures : /api/factures
+app.use('/api/factures', factureRoutes)
+
+// Routes paiements progressifs : /api/factures/:id/paiements
+app.use('/api/factures/:id/paiements', paiementRoutes)
+
 // Route de santé : vérifier que le serveur est opérationnel
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -134,6 +146,8 @@ async function runMigrations() {
     '005_finance.sql',
     '006_maintenance.sql',
     '007_incidents.sql',
+    '008_clients.sql',
+    '009_paiements.sql',
   ]
 
   for (const fichier of migrations) {

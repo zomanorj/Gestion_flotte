@@ -1,7 +1,7 @@
 // client/src/services/factureService.ts
 
 import api from './api'
-import type { Facture, FactureStats } from '../types/client'
+import type { Facture, FactureStats, Paiement, PaiementsResponse } from '../types/client'
 
 export const getFactures = async (params?: {
   client_id?: number
@@ -70,4 +70,29 @@ export const downloadFacturePDF = async (id: number, numero: string) => {
     console.error('Erreur lors du téléchargement du PDF:', error)
     throw error
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Paiements progressifs
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Récupère les paiements d'une facture + solde restant */
+export const getPaiements = async (factureId: number): Promise<PaiementsResponse> => {
+  const response = await api.get(`/api/factures/${factureId}/paiements`)
+  return response.data.donnees as PaiementsResponse
+}
+
+/** Enregistre un paiement (acompte ou solde) */
+export const addPaiement = async (
+  factureId: number,
+  data: {
+    montant:        number
+    mode_paiement:  string
+    date_paiement?: string
+    reference?:     string
+    notes?:         string
+  }
+): Promise<{ paiement: Paiement; montant_paye: number; solde_restant: number; statut_facture: string }> => {
+  const response = await api.post(`/api/factures/${factureId}/paiements`, data)
+  return response.data.donnees
 }

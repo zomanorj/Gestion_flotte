@@ -1,4 +1,4 @@
-﻿/**
+/**
  * App.tsx
  * Composant racine de l'application TransiFlow.
  *
@@ -45,6 +45,9 @@ import FinancePage            from './pages/FinancePage'
 import MaintenancePage        from './pages/MaintenancePage'
 import IncidentsPage          from './pages/IncidentsPage'
 import IncidentDetailPage     from './pages/IncidentDetailPage'
+import ClientsPage            from './pages/ClientsPage'
+import ClientDetailPage       from './pages/ClientDetailPage'
+import FacturesPage           from './pages/FacturesPage'
 
 function App() {
   return (
@@ -106,7 +109,13 @@ function App() {
             <Route path="maintenance"      element={<MaintenancePage />} />
             <Route path="incidents"        element={<IncidentsPage />} />
             <Route path="incidents/:id"    element={<IncidentDetailPage />} />
+
+            {/* Sprint 8 : Clients et Facturation */}
+            <Route path="clients"          element={<ClientsPage />} />
+            <Route path="clients/:id"      element={<ClientDetailPage />} />
+            <Route path="factures"         element={<FacturesPage />} />
           </Route>
+
 
           {/* Toute URL inconnue → page 404 */}
           <Route path="*" element={<NotFoundPage />} />

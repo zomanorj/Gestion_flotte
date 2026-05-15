@@ -228,6 +228,7 @@ async function findById(id) {
       m.trajet_points,
       m.statut,
       m.notes,
+      m.client_id,
       m.created_by,
       m.created_at,
       m.updated_at,
@@ -238,10 +239,14 @@ async function findById(id) {
       -- Jointure avec drivers
       d.nom as driver_nom,
       d.prenom as driver_prenom,
-      d.numero_permis as driver_numero_permis
+      d.numero_permis as driver_numero_permis,
+      -- Jointure avec clients
+      c.nom as client_nom,
+      c.telephone as client_telephone
     FROM missions m
-    LEFT JOIN vehicles v ON m.vehicle_id = v.id
-    LEFT JOIN drivers d ON m.driver_id = d.id
+    LEFT JOIN vehicles  v ON m.vehicle_id  = v.id
+    LEFT JOIN drivers   d ON m.driver_id   = d.id
+    LEFT JOIN clients   c ON m.client_id   = c.id
     WHERE m.id = $1
   `
 
@@ -270,6 +275,9 @@ async function findById(id) {
       trajet_points: row.trajet_points,
       statut: row.statut,
       notes: row.notes,
+      client_id: row.client_id || null,
+      client_nom: row.client_nom || null,
+      client_telephone: row.client_telephone || null,
       created_by: row.created_by,
       created_at: row.created_at,
       updated_at: row.updated_at,

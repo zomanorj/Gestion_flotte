@@ -25,7 +25,10 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\" -Recurse -Force | Where-Object { $_.PSIsContainer } | ForEach-Object { $_.FullName } | Sort-Object)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\\\\client\\\\src\" -Recurse -Force -File | ForEach-Object { $_.FullName } | Sort-Object)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\manoa\\\\OneDrive\\\\Bureau\\\\GESTION-FLOTTE\\\\server\" -Recurse -Force -File | ForEach-Object { $_.FullName } | Sort-Object)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(node -e \"try { require\\('pdfkit'\\); console.log\\('pdfkit OK'\\) } catch\\(e\\) { console.log\\('pdfkit MISSING:', e.message\\) }\")",
+      "Bash(node -e \"const pool = require\\('./db/connection'\\); pool.query\\('SELECT table_name FROM information_schema.tables WHERE table_schema=\\\\'public\\\\' AND table_name IN \\(\\\\'clients\\\\',\\\\'factures\\\\'\\)'\\).then\\(r => { console.log\\('Tables:', r.rows.map\\(r=>r.table_name\\)\\); pool.end\\(\\); }\\).catch\\(e => { console.log\\('DB error:', e.message\\); pool.end\\(\\); }\\)\")",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const pool = require\\('./db/connection'\\); pool.query\\('SELECT table_name FROM information_schema.tables WHERE table_schema=\\\\'public\\\\' AND table_name IN \\(\\\\'clients\\\\',\\\\'factures\\\\'\\)'\\).then\\(r => { console.log\\('Tables:', r.rows.map\\(r=>r.table_name\\)\\); pool.end\\(\\); }\\).catch\\(e => { console.log\\('DB error:', e.message\\); pool.end\\(\\); }\\)\")"
     ]
   }
 }
