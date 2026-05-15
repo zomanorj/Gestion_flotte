@@ -106,7 +106,7 @@ async function getStats(date_debut, date_fin) {
     pool.query(`SELECT type_incident, COUNT(*) as count FROM incidents ${w} GROUP BY type_incident ORDER BY count DESC`, params),
     pool.query(`SELECT gravite, COUNT(*) as count FROM incidents ${w} GROUP BY gravite`, params),
     pool.query(`SELECT statut, COUNT(*) as count FROM incidents ${w} GROUP BY statut`, params),
-    pool.query(`SELECT COALESCE(SUM(cout_reparation),0) as total FROM incidents ${w} AND cout_reparation IS NOT NULL`.replace('WHERE  AND','WHERE'), params),
+    pool.query(`SELECT COALESCE(SUM(cout_reparation),0) as total FROM incidents ${w ? w + ' AND' : 'WHERE'} cout_reparation IS NOT NULL`, params),
     pool.query(`SELECT AVG(EXTRACT(EPOCH FROM (date_resolution - date_incident))/3600) as heures FROM incidents WHERE statut IN ('resolu','clos') AND date_resolution IS NOT NULL ${date_debut ? 'AND date_incident BETWEEN $1 AND $2' : ''}`, params),
   ])
 
