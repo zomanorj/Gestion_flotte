@@ -89,9 +89,10 @@ export async function calculerItineraire(
 ): Promise<Itineraire> {
   try {
     // IMPORTANT : OSRM attend lng,lat (pas lat,lng)
+    // overview=simplified : ~10× moins de points que full, suffisant pour afficher le tracé
     const url = `https://router.project-osrm.org/route/v1/driving/`
       + `${depart.lng},${depart.lat};${arrivee.lng},${arrivee.lat}`
-      + `?overview=full&geometries=geojson&steps=false`
+      + `?overview=simplified&geometries=geojson&steps=false`
 
     const response = await fetch(url)
     const data = await response.json()

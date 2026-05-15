@@ -1,4 +1,4 @@
-﻿/**
+/**
  * server.js
  * Point d'entrée principal du serveur Express — TransiFlow.
  *
@@ -20,7 +20,9 @@ dotenv.config()
 
 // Initialisation de la connexion au pool PostgreSQL
 // L'import déclenche le pool.connect() de vérification dans connection.js
-require('./db/connection')
+const pool = require('./db/connection')
+const fs = require('fs')
+const path = require('path')
 
 // Import des routeurs métier
 const authRoutes     = require('./routes/authRoutes')
@@ -55,7 +57,8 @@ app.use(cors({
 }))
 
 // Parsing automatique du corps des requêtes JSON
-app.use(express.json())
+// Limite relevée à 5 Mo : trajet_points (géométrie OSRM) peut dépasser le défaut de 100 ko
+app.use(express.json({ limit: '5mb' }))
 
 // Log minimaliste de chaque requête reçue (utile en développement)
 app.use((req, _res, next) => {
@@ -110,7 +113,23 @@ app.use((_req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Démarrage
 // ─────────────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
+
+// Au démarrage du serveur, appliquer les migrations
+async function runMigrations() {
+  const migrationPath = path.join(__dirname, 'db/migrations/004_add_coords.sql')
+  if (fs.existsSync(migrationPath)) {
+    try {
+      const sql = fs.readFileSync(migrationPath, 'utf8')
+      await pool.query(sql)
+      console.log('✅ Migration 004 appliquée avec succès')
+    } catch (err) {
+      console.error('❌ Erreur lors de la migration 004:', err)
+    }
+  }
+}
+
+app.listen(PORT, async () => {
+  await runMigrations()
   console.log('')
   console.log('┌─────────────────────────────────────────┐')
   console.log('│       🚌 Serveur TransiFlow          │')
