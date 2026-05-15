@@ -15,9 +15,9 @@ export default {
 
   theme: {
     extend: {
-      // Palette de couleurs TransiFlow
+      // Palette de couleurs TransiFlow (clé en minuscules pour compatibilité Tailwind)
       colors: {
-        TransiFlow: {
+        transiflow: {
           bleu:       '#1E3A5F', // Bleu marine principal
           bleuClair:  '#2E6DA4', // Bleu pour les accents
           orange:     '#E87722', // Orange pour les actions importantes

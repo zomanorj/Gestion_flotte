@@ -14,20 +14,20 @@
 @layer base {
   /* Police par défaut et couleur de fond */
   body {
-    @apply bg-TransiFlow-gris text-gray-800 font-sans antialiased;
+    @apply bg-transiflow-gris text-gray-800 font-sans antialiased;
   }
 
   /* Titres principaux */
   h1 {
-    @apply text-3xl font-bold text-TransiFlow-bleu;
+    @apply text-3xl font-bold text-transiflow-bleu;
   }
 
   h2 {
-    @apply text-2xl font-semibold text-TransiFlow-bleu;
+    @apply text-2xl font-semibold text-transiflow-bleu;
   }
 
   h3 {
-    @apply text-xl font-medium text-TransiFlow-bleuClair;
+    @apply text-xl font-medium text-transiflow-bleuClair;
   }
 }
 
@@ -35,13 +35,13 @@
 @layer components {
   /* Bouton d'action principal (orange) */
   .btn-primary {
-    @apply bg-TransiFlow-orange text-white px-6 py-2 rounded-lg font-semibold
+    @apply bg-transiflow-orange text-white px-6 py-2 rounded-lg font-semibold
            hover:bg-orange-600 transition-colors duration-200 cursor-pointer;
   }
 
   /* Bouton secondaire (bleu) */
   .btn-secondary {
-    @apply bg-TransiFlow-bleu text-white px-6 py-2 rounded-lg font-semibold
+    @apply bg-transiflow-bleu text-white px-6 py-2 rounded-lg font-semibold
            hover:bg-blue-900 transition-colors duration-200 cursor-pointer;
   }
 
