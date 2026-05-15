@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, CircleMarker, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -32,33 +32,149 @@ L.Icon.Default.mergeOptions({
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Thèmes de carte
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TILE_LAYERS = {
+  sombre: {
+    label: 'Sombre',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+  },
+  clair: {
+    label: 'Clair',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+  },
+  standard: {
+    label: 'Standard',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors',
+  },
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sélecteur de thème
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ThemeControlProps {
+  theme: string;
+  setTheme: (theme: string) => void;
+}
+
+const ThemeControl = ({ theme, setTheme }: ThemeControlProps) => {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: '10px',
+      right: '10px',
+      zIndex: 1000,
+      display: 'flex',
+      gap: '4px',
+      background: 'rgba(0,0,0,0.4)',
+      padding: '4px',
+      borderRadius: '10px',
+      backdropFilter: 'blur(4px)'
+    }}>
+      {(Object.keys(TILE_LAYERS) as Array<keyof typeof TILE_LAYERS>).map((t) => {
+        let icon = ''
+        if (t === 'clair') icon = '☀'
+        if (t === 'sombre') icon = '☾'
+        if (t === 'standard') icon = '🌍'
+        
+        const isActive = theme === t
+        return (
+          <button
+            key={t}
+            onClick={() => setTheme(t)}
+            style={{
+              background: isActive ? 'white' : 'transparent',
+              color: isActive ? '#1E293B' : 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 200ms ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: isActive ? '600' : '400'
+            }}
+            title={TILE_LAYERS[t].label}
+          >
+            <span>{icon}</span>
+            <span className="hidden md:inline">{TILE_LAYERS[t].label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Icône personnalisée pour les véhicules
 // ─────────────────────────────────────────────────────────────────────────────
 
-const createTruckIcon = (isSelected: boolean) =>
-  L.divIcon({
-    className: 'custom-truck-marker',
+const createTruckIcon = (progression: number, theme: string) => {
+  let color = ''
+  if (theme === 'sombre') {
+    if (progression < 34) color = '#60A5FA'
+    else if (progression < 67) color = '#FBBF24'
+    else if (progression < 100) color = '#34D399'
+    else color = '#10B981'
+  } else {
+    if (progression < 34) color = '#1E40AF'
+    else if (progression < 67) color = '#D97706'
+    else if (progression < 100) color = '#059669'
+    else color = '#065F46'
+  }
+
+  return L.divIcon({
     html: `
       <div style="
-        background-color: ${isSelected ? '#1e40af' : '#1e3a5f'};
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        border: 3px solid ${isSelected ? '#3b82f6' : '#fff'};
+        position: relative;
+        width: 32px;
+        height: 32px;
       ">
-        <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
-          <path d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H3m16.5 0h-.375M3.75 18.75V7.5A2.25 2.25 0 016 5.25h10.5A2.25 2.25 0 0118.75 7.5v6.75m-15 4.5h.375m14.625 0h.375m-14.625 0H3.75M18.75 14.25h-3.375a.75.75 0 01-.75-.75v-3a.75.75 0 01.75-.75h2.625c.621 0 1.125.504 1.125 1.125v3.375z"/>
-        </svg>
+        <!-- Halo lumineux -->
+        <div style="
+          position: absolute;
+          inset: -6px;
+          border-radius: 50%;
+          background: ${color};
+          opacity: 0.25;
+          animation: pulse 2s infinite;
+        "></div>
+        <!-- Corps du marqueur -->
+        <div style="
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: ${color};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        ">
+          <!-- SVG camion blanc -->
+          <svg width="18" height="18" viewBox="0 0 24 24"
+               fill="white" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z"/>
+            <circle cx="5.5" cy="18.5" r="2.5"/>
+            <circle cx="18.5" cy="18.5" r="2.5"/>
+          </svg>
+        </div>
       </div>
     `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    popupAnchor: [0, -18],
+    className: '',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -20],
   })
+}
 
 // Icône pour les villes (grise, discrète)
 const cityIcon = L.divIcon({
@@ -143,6 +259,16 @@ export default function SuiviPage() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [downloadLoading, setDownloadLoading] = useState(false)
+
+  // Thème de la carte
+  const [theme, setTheme] = useState<string>(() => {
+    return localStorage.getItem('transiflow_map_theme') || 'sombre'
+  })
+
+  // Persister le thème
+  useEffect(() => {
+    localStorage.setItem('transiflow_map_theme', theme)
+  }, [theme])
 
   // Rafraîchir les données
   const fetchMissions = async (showToast = false) => {
@@ -246,6 +372,29 @@ export default function SuiviPage() {
     return null
   }
 
+  // Calculer la progression (0 à 100%)
+  const getProgression = (mission: TrackingMission): number => {
+    if (!mission.position) return 0
+    const depart = getCityCoords(mission.lieu_depart)
+    const arrivee = getCityCoords(mission.lieu_arrivee)
+    if (!depart || !arrivee) return 50
+    
+    const startLatLng = L.latLng(depart[0], depart[1])
+    const endLatLng = L.latLng(arrivee[0], arrivee[1])
+    const currentLatLng = L.latLng(mission.position.latitude, mission.position.longitude)
+    
+    const totalDist = startLatLng.distanceTo(endLatLng)
+    if (totalDist === 0) return 100
+    
+    const currentDist = startLatLng.distanceTo(currentLatLng)
+    let prog = Math.round((currentDist / totalDist) * 100)
+    
+    if (prog > 100) prog = 100
+    if (prog < 0) prog = 0
+    
+    return prog
+  }
+
   if (isLoading) {
     return <SuiviSkeleton />
   }
@@ -303,9 +452,13 @@ export default function SuiviPage() {
         {/* ── Colonne gauche : Liste des missions (40%) ── */}
         <div className="lg:col-span-2 space-y-4">
           {/* Liste des missions actives */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100">
-              <h2 className="text-sm font-semibold text-slate-700">Missions en cours</h2>
+          <div className={`rounded-xl border overflow-hidden transition-colors duration-200 ${
+            theme === 'sombre' ? 'bg-[#0F172A] border-[#334155]' : 'bg-white border-slate-200'
+          }`}>
+            <div className={`px-4 py-3 border-b ${theme === 'sombre' ? 'border-[#334155]' : 'border-slate-100'}`}>
+              <h2 className={`text-sm font-semibold ${theme === 'sombre' ? 'text-[#F1F5F9]' : 'text-slate-700'}`}>
+                Missions en cours
+              </h2>
             </div>
 
             {missions.length === 0 ? (
@@ -326,63 +479,68 @@ export default function SuiviPage() {
                 <p className="text-slate-500 text-sm">Aucune mission en cours</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 max-h-[450px] overflow-y-auto">
-                {missions.map((mission) => (
-                  <button
-                    key={mission.mission_id}
-                    onClick={() => handleSelectMission(mission)}
-                    className={`w-full text-left p-4 transition-colors ${
-                      selectedMission?.mission_id === mission.mission_id
-                        ? 'bg-blue-50 border-l-4 border-blue-500'
-                        : 'hover:bg-slate-50 border-l-4 border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-slate-800">
-                            {mission.vehicle.immatriculation}
-                          </span>
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                            <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
-                            En cours
-                          </span>
+              <div className={`divide-y max-h-[450px] overflow-y-auto ${theme === 'sombre' ? 'divide-[#334155]' : 'divide-slate-100'}`}>
+                {missions.map((mission) => {
+                  const isSelected = selectedMission?.mission_id === mission.mission_id
+                  const bgClass = theme === 'sombre'
+                    ? (isSelected ? 'bg-[#1E3A5F] border-l-4 border-[#3B82F6]' : 'bg-[#1E293B] hover:bg-[#1E3A5F] border-l-4 border-transparent')
+                    : (isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : 'bg-white hover:bg-slate-50 border-l-4 border-transparent')
+
+                  return (
+                    <button
+                      key={mission.mission_id}
+                      onClick={() => handleSelectMission(mission)}
+                      className={`w-full text-left p-4 transition-colors ${bgClass}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`font-semibold ${theme === 'sombre' ? 'text-[#F1F5F9]' : 'text-slate-800'}`}>
+                              {mission.vehicle.immatriculation}
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                              <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
+                              En cours
+                            </span>
+                          </div>
+                          <p className={`text-sm ${theme === 'sombre' ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
+                            {mission.driver.prenom} {mission.driver.nom.toUpperCase()}
+                          </p>
+                          <div className={`flex items-center gap-1 text-xs mt-1 ${theme === 'sombre' ? 'text-[#94A3B8]' : 'text-slate-400'}`}>
+                            <span>{mission.lieu_depart}</span>
+                            <span className="text-blue-400">→</span>
+                            <span>{mission.lieu_arrivee}</span>
+                          </div>
                         </div>
-                        <p className="text-sm text-slate-600">
-                          {mission.driver.prenom} {mission.driver.nom.toUpperCase()}
-                        </p>
-                        <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
-                          <span>{mission.lieu_depart}</span>
-                          <span className="text-blue-400">→</span>
-                          <span>{mission.lieu_arrivee}</span>
-                        </div>
+                        {mission.position && (
+                          <div className="text-xs text-slate-400 text-right shrink-0">
+                            <p>{mission.position.vitesse} km/h</p>
+                            {mission.position.est_simulee ? (
+                              <span className="text-slate-300">~</span>
+                            ) : (
+                              <span className="text-emerald-500">●</span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      {mission.position && (
-                        <div className="text-xs text-slate-400 text-right shrink-0">
-                          <p>{mission.position.vitesse} km/h</p>
-                          {mission.position.est_simulee ? (
-                            <span className="text-slate-300">~</span>
-                          ) : (
-                            <span className="text-emerald-500">●</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
 
           {/* ── Panneau détail (visible si mission sélectionnée) ── */}
           {selectedMission && (
-            <div className="bg-white rounded-xl border border-slate-200 p-4 animate-in slide-in-from-bottom-4 duration-300">
+            <div className={`rounded-xl border p-4 animate-in slide-in-from-bottom-4 duration-300 ${
+              theme === 'sombre' ? 'bg-[#1E293B] border-[#334155]' : 'bg-white border-slate-200'
+            }`}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h3 className="font-semibold text-slate-800">
+                  <h3 className={`font-semibold ${theme === 'sombre' ? 'text-[#F1F5F9]' : 'text-slate-800'}`}>
                     Mission #{String(selectedMission.mission_id).padStart(4, '0')}
                   </h3>
-                  <p className="text-sm text-slate-500">
+                  <p className={`text-sm ${theme === 'sombre' ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
                     {new Date(selectedMission.date_mission).toLocaleDateString('fr-FR', {
                       day: 'numeric',
                       month: 'long',
@@ -393,7 +551,7 @@ export default function SuiviPage() {
                 </div>
                 <button
                   onClick={() => setSelectedMission(null)}
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  className={`${theme === 'sombre' ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'} transition-colors`}
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -403,34 +561,34 @@ export default function SuiviPage() {
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Véhicule</span>
-                  <span className="font-medium text-slate-800">{selectedMission.vehicle.immatriculation}</span>
+                  <span className={theme === 'sombre' ? 'text-[#94A3B8]' : 'text-slate-500'}>Véhicule</span>
+                  <span className={`font-medium ${theme === 'sombre' ? 'text-[#F1F5F9]' : 'text-slate-800'}`}>{selectedMission.vehicle.immatriculation}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Type</span>
-                  <span className="font-medium text-slate-800">{selectedMission.vehicle.type}</span>
+                  <span className={theme === 'sombre' ? 'text-[#94A3B8]' : 'text-slate-500'}>Type</span>
+                  <span className={`font-medium ${theme === 'sombre' ? 'text-[#F1F5F9]' : 'text-slate-800'}`}>{selectedMission.vehicle.type}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Chauffeur</span>
-                  <span className="font-medium text-slate-800">
+                  <span className={theme === 'sombre' ? 'text-[#94A3B8]' : 'text-slate-500'}>Chauffeur</span>
+                  <span className={`font-medium ${theme === 'sombre' ? 'text-[#F1F5F9]' : 'text-slate-800'}`}>
                     {selectedMission.driver.prenom} {selectedMission.driver.nom.toUpperCase()}
                   </span>
                 </div>
                 {selectedMission.driver.telephone && (
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Téléphone</span>
-                    <span className="font-medium text-slate-800">{selectedMission.driver.telephone}</span>
+                    <span className={theme === 'sombre' ? 'text-[#94A3B8]' : 'text-slate-500'}>Téléphone</span>
+                    <span className={`font-medium ${theme === 'sombre' ? 'text-[#F1F5F9]' : 'text-slate-800'}`}>{selectedMission.driver.telephone}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Trajet</span>
-                  <span className="font-medium text-slate-800 text-right max-w-[200px]">
+                  <span className={theme === 'sombre' ? 'text-[#94A3B8]' : 'text-slate-500'}>Trajet</span>
+                  <span className={`font-medium text-right max-w-[200px] ${theme === 'sombre' ? 'text-[#F1F5F9]' : 'text-slate-800'}`}>
                     {selectedMission.lieu_depart} → {selectedMission.lieu_arrivee}
                   </span>
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
+              <div className={`flex gap-2 mt-4 pt-4 border-t ${theme === 'sombre' ? 'border-[#334155]' : 'border-slate-100'}`}>
                 <button
                   onClick={() => navigate(`/missions/${selectedMission.mission_id}`)}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
@@ -457,16 +615,17 @@ export default function SuiviPage() {
 
         {/* ── Colonne droite : Carte (60%) ── */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden h-[500px]">
+          <div className="relative bg-white rounded-xl border border-slate-200 overflow-hidden h-[500px]">
+            <ThemeControl theme={theme} setTheme={setTheme} />
             <MapContainer
               center={MAP_CENTRE}
               zoom={MAP_ZOOM}
-              style={{ width: '100%', height: '100%' }}
+              style={{ width: '100%', height: '100%', zIndex: 0 }}
               scrollWheelZoom={true}
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution={TILE_LAYERS[theme as keyof typeof TILE_LAYERS].attribution}
+                url={TILE_LAYERS[theme as keyof typeof TILE_LAYERS].url}
               />
 
               {/* Centrer sur la mission sélectionnée */}
@@ -474,15 +633,57 @@ export default function SuiviPage() {
                 <CenterMap position={getMapPosition(selectedMission)} zoom={9} />
               )}
 
-              {/* Ligne de trajet pour la mission sélectionnée */}
+              {/* Lignes et points de trajet pour la mission sélectionnée */}
               {selectedMission && getTrajetLine() && (
-                <Polyline
-                  positions={getTrajetLine()!}
-                  color="#3b82f6"
-                  dashArray="10, 10"
-                  weight={2}
-                  opacity={0.7}
-                />
+                <>
+                  {/* Trajet complet (pointillé) */}
+                  <Polyline
+                    positions={getTrajetLine()!}
+                    color={theme === 'sombre' ? '#475569' : '#94A3B8'}
+                    weight={2}
+                    dashArray="6 6"
+                    opacity={theme === 'sombre' ? 0.6 : 0.7}
+                  />
+
+                  {/* Portion parcourue (pleine) */}
+                  {selectedMission.position && (
+                    <Polyline
+                      positions={[
+                        getTrajetLine()![0],
+                        [selectedMission.position.latitude, selectedMission.position.longitude]
+                      ]}
+                      color={theme === 'sombre' ? '#60A5FA' : '#1E40AF'}
+                      weight={3}
+                      opacity={0.9}
+                    />
+                  )}
+
+                  {/* Marqueurs Départ et Arrivée */}
+                  <CircleMarker
+                    center={getTrajetLine()![0]}
+                    radius={8}
+                    fillColor={theme === 'sombre' ? '#34D399' : '#059669'}
+                    fillOpacity={1}
+                    color="white"
+                    weight={2}
+                  >
+                    <Tooltip permanent direction="top" offset={[0, -10]}>
+                      <span style={{ fontSize: '11px' }}>🟢 Départ</span>
+                    </Tooltip>
+                  </CircleMarker>
+                  <CircleMarker
+                    center={getTrajetLine()![1]}
+                    radius={8}
+                    fillColor={theme === 'sombre' ? '#F87171' : '#DC2626'}
+                    fillOpacity={1}
+                    color="white"
+                    weight={2}
+                  >
+                    <Tooltip permanent direction="top" offset={[0, -10]}>
+                      <span style={{ fontSize: '11px' }}>🔴 Arrivée</span>
+                    </Tooltip>
+                  </CircleMarker>
+                </>
               )}
 
               {/* Marqueurs des villes principales */}
@@ -505,51 +706,139 @@ export default function SuiviPage() {
                 const position = getMapPosition(mission)
                 if (!position) return null
 
-                const isSelected = selectedMission?.mission_id === mission.mission_id
+                const progression = getProgression(mission)
 
                 return (
                   <Marker
                     key={mission.mission_id}
                     position={position}
-                    icon={createTruckIcon(isSelected)}
+                    icon={createTruckIcon(progression, theme)}
                     eventHandlers={{
                       click: () => handleSelectMission(mission),
                     }}
                   >
-                    <Popup>
-                      <div className="space-y-2 min-w-[200px]">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-slate-800">
-                            {mission.vehicle.immatriculation}
-                          </span>
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                            En cours
-                          </span>
-                        </div>
-                        <p className="text-sm text-slate-600">
-                          {mission.driver.prenom} {mission.driver.nom.toUpperCase()}
-                        </p>
-                        <div className="text-sm">
-                          <span className="text-slate-500">Trajet : </span>
-                          <span className="text-slate-800">
-                            {mission.lieu_depart} → {mission.lieu_arrivee}
-                          </span>
-                        </div>
-                        {mission.heure_depart && (
-                          <div className="text-sm">
-                            <span className="text-slate-500">Départ : </span>
-                            <span className="text-slate-800">{mission.heure_depart.substring(0, 5)}</span>
+                    <Popup className={theme === 'sombre' ? 'leaflet-popup-dark' : ''}>
+                      {theme === 'sombre' ? (
+                        <div style={{ padding: '14px' }}>
+                          {/* Header */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            marginBottom: '10px',
+                            paddingBottom: '10px',
+                            borderBottom: '1px solid #334155',
+                          }}>
+                            <div style={{ fontSize: '20px' }}>🚛</div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '14px' }}>
+                                {mission.vehicle.immatriculation}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#94A3B8' }}>
+                                {mission.driver.prenom} {mission.driver.nom.toUpperCase()}
+                              </div>
+                            </div>
                           </div>
-                        )}
-                        <div className="pt-2 border-t border-slate-100">
-                          <Link
-                            to={`/missions/${mission.mission_id}`}
-                            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                          >
+
+                          {/* Trajet */}
+                          <div style={{ fontSize: '12px', marginBottom: '8px', color: '#CBD5E1' }}>
+                            📍 {mission.lieu_depart} → {mission.lieu_arrivee}
+                          </div>
+
+                          {/* Vitesse/Position actuelle */}
+                          <div style={{
+                            fontSize: '12px',
+                            color: '#60A5FA',
+                            marginBottom: '10px',
+                          }}>
+                            Vitesse actuelle : {mission.position?.vitesse ?? 0} km/h
+                          </div>
+
+                          {/* Barre de progression */}
+                          <div style={{ marginBottom: '10px' }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              fontSize: '11px',
+                              color: '#94A3B8',
+                              marginBottom: '4px',
+                            }}>
+                              <span>Progression</span>
+                              <span>{progression}%</span>
+                            </div>
+                            <div style={{
+                              height: '6px',
+                              background: '#334155',
+                              borderRadius: '3px',
+                              overflow: 'hidden',
+                            }}>
+                              <div style={{
+                                height: '100%',
+                                width: `${progression}%`,
+                                background: 'linear-gradient(90deg, #3B82F6, #34D399)',
+                                borderRadius: '3px',
+                                transition: 'width 0.5s',
+                              }}></div>
+                            </div>
+                          </div>
+
+                          {/* Heure départ */}
+                          {mission.heure_depart && (
+                            <div style={{ fontSize: '11px', color: '#64748B', marginBottom: '12px' }}>
+                              ⏱ Départ : {mission.heure_depart.substring(0, 5)}
+                            </div>
+                          )}
+
+                          {/* Bouton */}
+                          <Link to={`/missions/${mission.mission_id}`} style={{
+                            display: 'block',
+                            textAlign: 'center',
+                            background: '#1E40AF',
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            textDecoration: 'none',
+                            fontWeight: 500,
+                          }}>
                             Voir la mission →
                           </Link>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="space-y-2 min-w-[200px]">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-800">
+                              {mission.vehicle.immatriculation}
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                              En cours
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-600">
+                            {mission.driver.prenom} {mission.driver.nom.toUpperCase()}
+                          </p>
+                          <div className="text-sm">
+                            <span className="text-slate-500">Trajet : </span>
+                            <span className="text-slate-800">
+                              {mission.lieu_depart} → {mission.lieu_arrivee}
+                            </span>
+                          </div>
+                          {mission.heure_depart && (
+                            <div className="text-sm">
+                              <span className="text-slate-500">Départ : </span>
+                              <span className="text-slate-800">{mission.heure_depart.substring(0, 5)}</span>
+                            </div>
+                          )}
+                          <div className="pt-2 border-t border-slate-100">
+                            <Link
+                              to={`/missions/${mission.mission_id}`}
+                              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              Voir la mission →
+                            </Link>
+                          </div>
+                        </div>
+                      )}
                     </Popup>
                   </Marker>
                 )
