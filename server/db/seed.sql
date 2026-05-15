@@ -1,13 +1,13 @@
--- =============================================================================
+﻿-- =============================================================================
 -- seed.sql
--- Données de test pour le développement local du système Transport STTA.
+-- Données de test pour le développement local du système TransiFlow.
 --
 -- Ce fichier insère des données réalistes pour pouvoir tester l'application
 -- sans avoir à saisir manuellement des données.
 --
 -- ⚠️  NE PAS exécuter sur la base de données de production.
 --
--- Exécution : psql -U postgres -d transport_stta -f seed.sql
+-- Exécution : psql -U postgres -d transiflow_db -f seed.sql
 -- (Exécuter schema.sql d'abord pour créer les tables)
 -- =============================================================================
 
@@ -17,26 +17,26 @@
 -- Hashes bcrypt générés réellement avec bcryptjs (coût 10) — valides pour le login.
 --
 -- Comptes de test :
---   admin@stta.mg        / admin1234
---   gestionnaire@stta.mg / gest1234
---   chauffeur@stta.mg    / chauf1234
+--   admin@transiflow.app        / admin1234
+--   gestionnaire@transiflow.app / gest1234
+--   chauffeur@transiflow.app    / chauf1234
 -- =============================================================================
 INSERT INTO users (nom, email, mot_de_passe, role) VALUES
 (
-    'Administrateur STTA',
-    'admin@stta.mg',
+    'Administrateur TransiFlow',
+    'admin@transiflow.app',
     '$2b$10$UK0u2Cuu0iupV7T5SwgHkOx.yxRKDlyOeOP4.hF0pQVg14vsHHCZO',
     'admin'
 ),
 (
     'Rakoto Jean',
-    'gestionnaire@stta.mg',
+    'gestionnaire@transiflow.app',
     '$2b$10$.PVepOCTqeNgpcwl5eSIE.ztN26a0hauzY16zYK.jngBUtpJVa62G',
     'gestionnaire'
 ),
 (
     'Rabe Fidy',
-    'chauffeur@stta.mg',
+    'chauffeur@transiflow.app',
     '$2b$10$fZd5RUdq6jorJMsasXvuhOmA1IzHMa0RKasLtA0dHNBzfiS58QZgC',
     'chauffeur'
 );
@@ -69,7 +69,7 @@ INSERT INTO drivers (user_id, nom, prenom, telephone, numero_permis, date_expira
 INSERT INTO missions (vehicle_id, driver_id, lieu_depart, lieu_arrivee, date_mission, chargement, statut) VALUES
 (
     1, 1,
-    'Siège STTA - Antananarivo',
+    'Siège TransiFlow - Antananarivo',
     'Aéroport Ivato',
     NOW() + INTERVAL '2 hours',
     '3 passagers + bagages',

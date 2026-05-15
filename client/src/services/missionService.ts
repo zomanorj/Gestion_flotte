@@ -1,6 +1,6 @@
-/**
+﻿/**
  * missionService.ts
- * Service de communication avec l'API pour la gestion des missions — Transport STTA.
+ * Service de communication avec l'API pour la gestion des missions — TransiFlow.
  *
  * Ce module centralise tous les appels HTTP vers les endpoints missions.
  *

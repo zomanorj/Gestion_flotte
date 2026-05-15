@@ -1,6 +1,6 @@
-/**
+﻿/**
  * LoginPage.tsx
- * Page de connexion au système Transport STTA.
+ * Page de connexion au système TransiFlow.
  *
  * Design : carte blanche centrée sur fond slate-50, avec logo, formulaire soigné,
  * gestion des états de chargement et d'erreur, et transitions fluides.
@@ -153,7 +153,7 @@ function LoginPage() {
 
           <h1 className="text-2xl font-bold text-slate-800 mb-1">Bienvenue</h1>
           <p className="text-sm text-slate-500 text-center">
-            Connectez-vous à votre espace Transport STTA
+            Connectez-vous à votre espace TransiFlow
           </p>
         </div>
 
@@ -180,7 +180,7 @@ function LoginPage() {
                 required
                 value={emailSaisi}
                 onChange={(e) => setEmailSaisi(e.target.value)}
-                placeholder="nom@stta.mg"
+                placeholder="nom@transiflow.app"
                 className="
                   w-full pl-10 pr-4 py-2.5 text-sm
                   border border-slate-300 rounded-lg
@@ -281,7 +281,7 @@ function LoginPage() {
 
         {/* Pied de carte */}
         <p className="text-center text-xs text-slate-400 mt-6">
-          NP AKADIN / STTA Madagascar — Système de gestion de flotte
+          TransiFlow — Système de gestion de flotte
         </p>
       </div>
     </div>

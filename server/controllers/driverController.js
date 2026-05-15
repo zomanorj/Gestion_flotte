@@ -1,6 +1,6 @@
-/**
+﻿/**
  * driverController.js
- * Contrôleur HTTP pour la gestion des chauffeurs — Transport STTA.
+ * Contrôleur HTTP pour la gestion des chauffeurs — TransiFlow.
  *
  * Ce module fait le lien entre les routes HTTP et le modèle de données.
  * Il valide les entrées, appelle le modèle, et formate les réponses JSON.

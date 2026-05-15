@@ -1,6 +1,6 @@
-/**
+﻿/**
  * NotFoundPage.tsx
- * Page 404 — Transport STTA.
+ * Page 404 — TransiFlow.
  *
  * Affichée quand l'utilisateur accède à une URL inexistante.
  * Design sobre avec un SVG camion stylisé et un bouton de retour.
@@ -87,7 +87,7 @@ export default function NotFoundPage() {
 
       {/* Lien secondaire */}
       <a
-        href="mailto:support@stta.mg"
+        href="mailto:support@transiflow.app"
         className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
       >
         Signaler un problème

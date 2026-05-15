@@ -1,6 +1,6 @@
-/**
+﻿/**
  * AccueilPage.tsx
- * Page d'accueil de l'application Transport STTA.
+ * Page d'accueil de l'application TransiFlow.
  * Elle présente un résumé visuel des fonctionnalités principales
  * et sert de point d'entrée avant la connexion.
  */
@@ -18,21 +18,21 @@ const statistiquesDemo = [
 
 function AccueilPage() {
   return (
-    <div className="min-h-screen bg-stta-gris">
+    <div className="min-h-screen bg-TransiFlow-gris">
       {/* Barre de navigation en haut */}
       <NavBar />
 
       {/* Section héro : titre principal */}
-      <section className="bg-stta-bleu text-white py-16 px-6 text-center">
+      <section className="bg-TransiFlow-bleu text-white py-16 px-6 text-center">
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-          Transport STTA
+          TransiFlow
         </h1>
         <p className="text-lg text-blue-200 max-w-xl mx-auto">
-          Système de gestion de flotte et de missions — NP AKADIN / STTA Madagascar
+          Système de gestion de flotte et de missions — TransiFlow
         </p>
         <div className="mt-8 flex gap-4 justify-center flex-wrap">
           <button className="btn-primary">Nouvelle mission</button>
-          <button className="bg-white text-stta-bleu px-6 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
+          <button className="bg-white text-TransiFlow-bleu px-6 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
             Voir la flotte
           </button>
         </div>
@@ -40,7 +40,7 @@ function AccueilPage() {
 
       {/* Tableau de bord rapide : statistiques clés */}
       <section className="max-w-5xl mx-auto px-6 py-12">
-        <h2 className="text-2xl font-semibold text-stta-bleu mb-6">
+        <h2 className="text-2xl font-semibold text-TransiFlow-bleu mb-6">
           Tableau de bord
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -58,7 +58,7 @@ function AccueilPage() {
 
       {/* Section modules : présentation des grandes fonctionnalités */}
       <section className="max-w-5xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-semibold text-stta-bleu mb-6">
+        <h2 className="text-2xl font-semibold text-TransiFlow-bleu mb-6">
           Modules disponibles
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -81,8 +81,8 @@ function AccueilPage() {
       </section>
 
       {/* Pied de page */}
-      <footer className="bg-stta-bleu text-blue-200 text-center py-4 text-sm">
-        © {new Date().getFullYear()} NP AKADIN / STTA Madagascar — Tous droits réservés
+      <footer className="bg-TransiFlow-bleu text-blue-200 text-center py-4 text-sm">
+        © {new Date().getFullYear()} TransiFlow — Tous droits réservés
       </footer>
     </div>
   )
@@ -101,7 +101,7 @@ function ModuleCard({ titre, description, icone }: ModuleCardProps) {
   return (
     <div className="card hover:shadow-lg transition-shadow cursor-pointer border border-gray-100">
       <div className="text-4xl mb-3">{icone}</div>
-      <h3 className="text-lg font-semibold text-stta-bleu mb-2">{titre}</h3>
+      <h3 className="text-lg font-semibold text-TransiFlow-bleu mb-2">{titre}</h3>
       <p className="text-sm text-gray-600">{description}</p>
     </div>
   )

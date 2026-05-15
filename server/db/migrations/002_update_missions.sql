@@ -1,10 +1,10 @@
--- =============================================================================
+﻿-- =============================================================================
 -- migrations/002_update_missions.sql
 -- Migration Sprint 4 : mise à jour de la table missions.
 --
 -- Ajoute les colonnes manquantes sans supprimer les données existantes.
 --
--- Exécution : psql -U postgres -d transport_stta -f server/db/migrations/002_update_missions.sql
+-- Exécution : psql -U postgres -d transiflow_db -f server/db/migrations/002_update_missions.sql
 -- ⚠️  Déjà appliquée sur l'environnement de développement le 2026-05-14
 -- =============================================================================
 

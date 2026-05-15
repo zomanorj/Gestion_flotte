@@ -1,6 +1,6 @@
-/**
+﻿/**
  * MissionsPage.tsx
- * Page de gestion des missions — Transport STTA.
+ * Page de gestion des missions — TransiFlow.
  *
  * Fonctionnalités :
  *   - Toggle vue Liste / Planning

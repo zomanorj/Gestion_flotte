@@ -1,6 +1,6 @@
-/**
+﻿/**
  * trackingModel.js
- * Modèle de données pour le suivi GPS des missions — Transport STTA.
+ * Modèle de données pour le suivi GPS des missions — TransiFlow.
  *
  * Ce module contient toutes les requêtes SQL brutes pour manipuler
  * la table `tracking` de la base de données PostgreSQL.

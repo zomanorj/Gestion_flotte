@@ -1,6 +1,6 @@
-/**
+﻿/**
  * driverModel.js
- * Modèle de données pour la gestion des chauffeurs — Transport STTA.
+ * Modèle de données pour la gestion des chauffeurs — TransiFlow.
  *
  * Ce module contient toutes les requêtes SQL brutes (sans ORM) pour
  * manipuler la table `drivers` de la base de données PostgreSQL.

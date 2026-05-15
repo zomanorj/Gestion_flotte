@@ -1,6 +1,6 @@
-/**
+﻿/**
  * statsController.js
- * Contrôleur HTTP pour les statistiques et le tableau de bord — Transport STTA.
+ * Contrôleur HTTP pour les statistiques et le tableau de bord — TransiFlow.
  *
  * Ce module fournit des endpoints pour :
  *   - Les statistiques globales du dashboard

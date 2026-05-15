@@ -1,7 +1,7 @@
-{
-  "name": "transport-stta-server",
+﻿{
+  "name": "transiflow-server",
   "version": "1.0.0",
-  "description": "API REST pour le système de gestion de transport STTA Madagascar",
+  "description": "API REST pour le système de gestion de transport TransiFlow",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,17 +11,18 @@
   },
   "keywords": [
     "transport",
-    "stta",
+    "TransiFlow",
     "madagascar",
     "fleet-management"
   ],
-  "author": "NP AKADIN / STTA Madagascar",
+  "author": "TransiFlow",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "pdfkit": "^0.18.0",

@@ -1,6 +1,6 @@
-/**
+﻿/**
  * MissionFormModal.tsx
- * Modal de création/modification d'une mission — Transport STTA.
+ * Modal de création/modification d'une mission — TransiFlow.
  *
  * Formulaire en 3 sections :
  *   1. Trajet : lieux, date, heures, distance

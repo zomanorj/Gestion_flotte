@@ -1,6 +1,6 @@
-/**
+﻿/**
  * eslint.config.js
- * Configuration ESLint pour le serveur Node.js/Express Transport STTA.
+ * Configuration ESLint pour le serveur Node.js/Express TransiFlow.
  * Utilise le nouveau format "flat config" d'ESLint v9+.
  */
 

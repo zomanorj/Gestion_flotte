@@ -1,6 +1,6 @@
-/**
+﻿/**
  * DashboardPage.tsx
- * Page tableau de bord principal du système Transport STTA.
+ * Page tableau de bord principal du système TransiFlow.
  *
  * Sprint 6 : refonte complète avec un seul appel API pour les KPIs,
  *   graphiques Recharts et tableau des dernières missions.

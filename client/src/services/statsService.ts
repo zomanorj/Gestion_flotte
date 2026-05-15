@@ -1,6 +1,6 @@
-/**
+﻿/**
  * statsService.ts
- * Service de communication avec l'API pour les statistiques — Transport STTA.
+ * Service de communication avec l'API pour les statistiques — TransiFlow.
  *
  * Ce module centralise tous les appels HTTP vers les endpoints statistiques.
  *

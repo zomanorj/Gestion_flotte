@@ -1,6 +1,6 @@
-/**
+﻿/**
  * driver.ts
- * Types TypeScript pour la gestion des chauffeurs — Transport STTA.
+ * Types TypeScript pour la gestion des chauffeurs — TransiFlow.
  *
  * Ce module définit toutes les interfaces et types utilisés
  * pour la manipulation des données de chauffeurs.

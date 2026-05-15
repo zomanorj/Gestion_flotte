@@ -1,6 +1,6 @@
-/**
+﻿/**
  * VehicleDetailPage.tsx
- * Page de détail d'un véhicule de la flotte — Transport STTA.
+ * Page de détail d'un véhicule de la flotte — TransiFlow.
  *
  * Affiche toutes les informations d'un véhicule identifié par son :id dans l'URL :
  *   - Header : breadcrumb, bouton retour, immatriculation, badge statut, actions

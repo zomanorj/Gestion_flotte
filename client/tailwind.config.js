@@ -1,8 +1,8 @@
-/**
+﻿/**
  * tailwind.config.js
- * Configuration de Tailwind CSS pour le projet Transport STTA.
+ * Configuration de Tailwind CSS pour le projet TransiFlow.
  * On indique à Tailwind où chercher les classes utilisées (purge)
- * et on étend le thème avec les couleurs de la charte graphique STTA.
+ * et on étend le thème avec les couleurs de la charte graphique TransiFlow.
  */
 
 /** @type {import('tailwindcss').Config} */
@@ -15,9 +15,9 @@ export default {
 
   theme: {
     extend: {
-      // Palette de couleurs STTA
+      // Palette de couleurs TransiFlow
       colors: {
-        stta: {
+        TransiFlow: {
           bleu:       '#1E3A5F', // Bleu marine principal
           bleuClair:  '#2E6DA4', // Bleu pour les accents
           orange:     '#E87722', // Orange pour les actions importantes

@@ -1,6 +1,6 @@
-/**
+﻿/**
  * exportService.ts
- * Service de communication avec l'API pour l'export de données Excel — Transport STTA.
+ * Service de communication avec l'API pour l'export de données Excel — TransiFlow.
  *
  * Ce module gère le téléchargement des fichiers Excel (.xlsx) :
  *   - Export des missions avec filtres optionnels

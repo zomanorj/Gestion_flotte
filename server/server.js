@@ -1,6 +1,6 @@
-/**
+﻿/**
  * server.js
- * Point d'entrée principal du serveur Express — Transport STTA.
+ * Point d'entrée principal du serveur Express — TransiFlow.
  *
  * Responsabilités :
  *  1. Charger les variables d'environnement (.env)
@@ -29,6 +29,8 @@ const driverRoutes   = require('./routes/driverRoutes')
 const missionRoutes  = require('./routes/missionRoutes')
 const trackingRoutes = require('./routes/trackingRoutes')
 const documentRoutes = require('./routes/documentRoutes')
+const statsRoutes    = require('./routes/statsRoutes')
+const exportRoutes   = require('./routes/exportRoutes')
 
 const app  = express()
 const PORT = process.env.PORT || 5000
@@ -84,11 +86,17 @@ app.use('/api/tracking', trackingRoutes)
 // Routes de génération de documents : /api/documents
 app.use('/api/documents', documentRoutes)
 
+// Routes de statistiques : /api/stats
+app.use('/api/stats', statsRoutes)
+
+// Routes d'export Excel : /api/export
+app.use('/api/export', exportRoutes)
+
 // Route de santé : vérifier que le serveur est opérationnel
 app.get('/api/health', (_req, res) => {
   res.json({
     statut:      'ok',
-    message:     'Serveur Transport STTA opérationnel',
+    message:     'Serveur TransiFlow opérationnel',
     environnement: process.env.NODE_ENV || 'development',
     horodatage:  new Date().toISOString(),
   })
@@ -105,7 +113,7 @@ app.use((_req, res) => {
 app.listen(PORT, () => {
   console.log('')
   console.log('┌─────────────────────────────────────────┐')
-  console.log('│       🚌 Serveur Transport STTA          │')
+  console.log('│       🚌 Serveur TransiFlow          │')
   console.log('├─────────────────────────────────────────┤')
   console.log(`│  Port      : ${PORT}                        │`)
   console.log(`│  Env       : ${(process.env.NODE_ENV || 'development').padEnd(27)}│`)
@@ -117,6 +125,8 @@ console.log(`│  Drivers   : http://localhost:${PORT}/api/drivers │`)
 console.log(`│  Missions  : http://localhost:${PORT}/api/missions│`)
 console.log(`│  Tracking  : http://localhost:${PORT}/api/tracking│`)
 console.log(`│  Documents : http://localhost:${PORT}/api/documents│`)
+console.log(`│  Stats     : http://localhost:${PORT}/api/stats   │`)
+console.log(`│  Export    : http://localhost:${PORT}/api/export  │`)
 console.log('└─────────────────────────────────────────┘')
   console.log('')
 })

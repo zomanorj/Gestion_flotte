@@ -1,6 +1,6 @@
-/**
+﻿/**
  * DriversPage.tsx
- * Page de gestion des chauffeurs — Transport STTA.
+ * Page de gestion des chauffeurs — TransiFlow.
  *
  * Fonctionnalités :
  *   - Liste des chauffeurs en cartes (pas de tableau — plus humain)

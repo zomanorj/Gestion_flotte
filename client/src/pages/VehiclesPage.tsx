@@ -1,6 +1,6 @@
-/**
+﻿/**
  * VehiclesPage.tsx
- * Page de gestion de la flotte de véhicules — Transport STTA.
+ * Page de gestion de la flotte de véhicules — TransiFlow.
  *
  * Fonctionnalités :
  *   - Liste paginée des véhicules avec filtres (recherche, statut)

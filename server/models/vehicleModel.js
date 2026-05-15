@@ -1,6 +1,6 @@
-/**
+﻿/**
  * vehicleModel.js
- * Modèle de données pour la gestion des véhicules — Transport STTA.
+ * Modèle de données pour la gestion des véhicules — TransiFlow.
  *
  * Ce module contient toutes les requêtes SQL brutes (sans ORM) pour
  * manipuler la table `vehicles` de la base de données PostgreSQL.

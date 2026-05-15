@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CarteStatistique.tsx
  * Composant réutilisable pour afficher une statistique clé sur le tableau de bord.
  * Accepte un titre, une valeur numérique, une icône et une couleur de badge.
@@ -21,7 +21,7 @@ function CarteStatistique({ titre, valeur, icone, couleur }: CarteStatistiquePro
 
       {/* Valeur et libellé */}
       <div>
-        <p className="text-2xl font-bold text-stta-bleu">{valeur}</p>
+        <p className="text-2xl font-bold text-TransiFlow-bleu">{valeur}</p>
         <p className="text-sm text-gray-500">{titre}</p>
       </div>
     </div>

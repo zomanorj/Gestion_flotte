@@ -1,6 +1,6 @@
-/**
+﻿/**
  * SuiviPage.tsx
- * Page de suivi en temps réel des missions — Transport STTA.
+ * Page de suivi en temps réel des missions — TransiFlow.
  *
  * Fonctionnalités :
  *   - Carte interactive Leaflet avec les véhicules en mission

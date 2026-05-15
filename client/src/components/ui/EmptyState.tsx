@@ -1,6 +1,6 @@
-/**
+﻿/**
  * EmptyState.tsx
- * Composant réutilisable pour afficher un état vide — Transport STTA.
+ * Composant réutilisable pour afficher un état vide — TransiFlow.
  *
  * Utilisé sur toutes les pages de liste quand aucune donnée n'est disponible
  * ou quand une recherche ne retourne aucun résultat.

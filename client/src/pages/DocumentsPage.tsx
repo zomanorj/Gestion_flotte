@@ -1,6 +1,6 @@
-/**
+﻿/**
  * DocumentsPage.tsx
- * Page de gestion des documents PDF — Transport STTA.
+ * Page de gestion des documents PDF — TransiFlow.
  *
  * Fonctionnalités :
  *   - Liste des bons de livraison pour les missions terminées

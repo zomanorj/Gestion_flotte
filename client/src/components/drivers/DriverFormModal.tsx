@@ -1,6 +1,6 @@
-/**
+﻿/**
  * DriverFormModal.tsx
- * Modal de formulaire pour créer ou modifier un chauffeur — Transport STTA.
+ * Modal de formulaire pour créer ou modifier un chauffeur — TransiFlow.
  *
  * Ce composant est réutilisable pour les deux modes (création et modification).
  * Il inclut :

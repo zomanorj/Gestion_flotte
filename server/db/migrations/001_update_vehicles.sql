@@ -1,11 +1,11 @@
--- =============================================================================
+﻿-- =============================================================================
 -- migrations/001_update_vehicles.sql
 -- Migration Sprint 2 : mise à jour de la table vehicles.
 --
 -- Ajoute les colonnes manquantes sans supprimer les données existantes.
 -- IMPORTANT : la mise à jour des statuts doit précéder l'ajout de la contrainte.
 --
--- Exécution : psql -U postgres -d transport_stta -f server/db/migrations/001_update_vehicles.sql
+-- Exécution : psql -U postgres -d transiflow_db -f server/db/migrations/001_update_vehicles.sql
 -- ⚠️  Déjà appliquée sur l'environnement de développement le 2026-05-14
 -- =============================================================================
 

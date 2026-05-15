@@ -1,6 +1,6 @@
-/**
+﻿/**
  * useVehicles.ts
- * Hook React personnalisé pour la gestion de l'état des véhicules — Transport STTA.
+ * Hook React personnalisé pour la gestion de l'état des véhicules — TransiFlow.
  *
  * Ce hook centralise toute la logique métier liée aux véhicules :
  *   - Chargement des véhicules avec pagination et filtres

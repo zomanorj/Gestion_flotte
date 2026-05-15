@@ -1,6 +1,6 @@
-/**
+﻿/**
  * RapportsPage.tsx
- * Page statistiques et exports — Transport STTA.
+ * Page statistiques et exports — TransiFlow.
  *
  * Accessible uniquement aux rôles admin et gestionnaire.
  * Affiche des graphiques analytiques et permet l'export de données Excel.

@@ -1,6 +1,6 @@
-/**
+﻿/**
  * useDrivers.ts
- * Hook React personnalisé pour la gestion de l'état des chauffeurs — Transport STTA.
+ * Hook React personnalisé pour la gestion de l'état des chauffeurs — TransiFlow.
  *
  * Ce hook centralise toute la logique métier liée aux chauffeurs :
  *   - Chargement des chauffeurs avec pagination et filtres

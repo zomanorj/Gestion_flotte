@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DashboardLayout.tsx
  * Layout principal de l'application avec sidebar fixe et zone de contenu.
  *
@@ -203,8 +203,8 @@ function Sidebar({ onFermer }: SidebarProps) {
           ST
         </div>
         <div className="min-w-0">
-          <p className="font-bold text-slate-800 text-sm leading-tight truncate">Transport STTA</p>
-          <p className="text-xs text-slate-400 truncate">NP AKADIN Madagascar</p>
+          <p className="font-bold text-slate-800 text-sm leading-tight truncate">TransiFlow</p>
+          <p className="text-xs text-slate-400 truncate">TransiFlow Madagascar</p>
         </div>
         {/* Bouton fermer (mobile uniquement) */}
         <button
@@ -354,7 +354,7 @@ function DashboardLayout() {
 
           {/* Breadcrumb */}
           <nav className="flex items-center gap-1.5 text-sm text-slate-500 flex-1 min-w-0">
-            <span className="truncate">Transport STTA</span>
+            <span className="truncate">TransiFlow</span>
             <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>

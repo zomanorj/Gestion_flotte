@@ -1,6 +1,6 @@
-/**
+﻿/**
  * documentController.js
- * Contrôleur HTTP pour la génération de documents PDF — Transport STTA.
+ * Contrôleur HTTP pour la génération de documents PDF — TransiFlow.
  *
  * Ce module génère des documents PDF professionnels :
  *   - Bons de livraison pour les missions
@@ -91,7 +91,7 @@ async function generateBonLivraison(req, res) {
     })
 
     // Headers pour le téléchargement
-    const filename = `BL-${missionId}-${mission.date_mission}.pdf`
+    const filename = `BL-transiflow-${missionId}.pdf`
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.setHeader('Cache-Control', 'no-cache')
@@ -110,7 +110,7 @@ async function generateBonLivraison(req, res) {
     })
 
     // Sous-titre
-    doc.fontSize(10).font('Helvetica').text('NP AKADIN / STTA Madagascar', 70, 100, {
+    doc.fontSize(10).font('Helvetica').text('TransiFlow', 70, 100, {
       align: 'center',
       color: '#64748b',
     })
@@ -259,7 +259,7 @@ async function generateBonLivraison(req, res) {
     )
 
     doc.text(
-      'NP AKADIN / STTA Madagascar - Système de Gestion de Transport',
+      'TransiFlow - Système de Gestion de Transport',
       70,
       pageHeight - 25,
       { align: 'center', color: '#94a3b8' }
@@ -344,7 +344,7 @@ async function generateRapportMissions(req, res) {
       color: '#1e3a5f',
     })
 
-    doc.fontSize(10).font('Helvetica').text('NP AKADIN / STTA Madagascar', 60, 85, {
+    doc.fontSize(10).font('Helvetica').text('TransiFlow', 60, 85, {
       color: '#64748b',
     })
 

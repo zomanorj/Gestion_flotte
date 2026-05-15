@@ -1,6 +1,6 @@
-/**
+﻿/**
  * mission.ts
- * Types TypeScript pour la gestion des missions — Transport STTA.
+ * Types TypeScript pour la gestion des missions — TransiFlow.
  *
  * Ce module définit toutes les interfaces et types utilisés
  * pour la manipulation des données de missions.

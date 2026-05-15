@@ -1,6 +1,6 @@
-/**
+﻿/**
  * driverService.ts
- * Service de communication avec l'API pour la gestion des chauffeurs — Transport STTA.
+ * Service de communication avec l'API pour la gestion des chauffeurs — TransiFlow.
  *
  * Ce module centralise tous les appels HTTP vers les endpoints chauffeurs.
  * Il définit également les types TypeScript pour les données chauffeurs.

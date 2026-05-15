@@ -1,6 +1,6 @@
-/**
+﻿/**
  * vehicleService.ts
- * Service de communication avec l'API pour la gestion des véhicules — Transport STTA.
+ * Service de communication avec l'API pour la gestion des véhicules — TransiFlow.
  *
  * Ce module centralise tous les appels HTTP vers les endpoints véhicules.
  * Il définit également les types TypeScript pour les données véhicules.

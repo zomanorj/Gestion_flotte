@@ -1,6 +1,6 @@
-/**
+﻿/**
  * avatarColor.ts
- * Utilitaire pour générer des couleurs d'avatar basées sur un nom — Transport STTA.
+ * Utilitaire pour générer des couleurs d'avatar basées sur un nom — TransiFlow.
  *
  * Ce module génère une couleur consistente pour un chauffeur donné
  * en se basant sur son nom. La même entrée produit toujours la même couleur.

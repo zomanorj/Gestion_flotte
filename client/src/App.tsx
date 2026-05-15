@@ -1,6 +1,6 @@
-/**
+﻿/**
  * App.tsx
- * Composant racine de l'application Transport STTA.
+ * Composant racine de l'application TransiFlow.
  *
  * Configure :
  *   1. AuthProvider  : fournit l'état d'authentification à toute l'application

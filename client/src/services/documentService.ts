@@ -1,6 +1,6 @@
-/**
+﻿/**
  * documentService.ts
- * Service de communication avec l'API pour la génération de documents PDF — Transport STTA.
+ * Service de communication avec l'API pour la génération de documents PDF — TransiFlow.
  *
  * Ce module gère le téléchargement des documents PDF :
  *   - Bons de livraison

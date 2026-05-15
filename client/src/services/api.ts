@@ -1,6 +1,6 @@
-/**
+﻿/**
  * api.ts
- * Instance Axios centralisée pour toutes les requêtes vers l'API Transport STTA.
+ * Instance Axios centralisée pour toutes les requêtes vers l'API TransiFlow.
  *
  * Ce fichier configure :
  *   1. L'URL de base (depuis .env pour éviter les valeurs en dur)

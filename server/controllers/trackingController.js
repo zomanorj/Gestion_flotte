@@ -1,6 +1,6 @@
-/**
+﻿/**
  * trackingController.js
- * Contrôleur HTTP pour le suivi GPS des missions — Transport STTA.
+ * Contrôleur HTTP pour le suivi GPS des missions — TransiFlow.
  *
  * Ce module fait le lien entre les routes HTTP et le modèle de données.
  * Il valide les entrées, appelle le modèle, et formate les réponses JSON.

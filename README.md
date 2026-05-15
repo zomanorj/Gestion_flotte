@@ -1,8 +1,9 @@
-# 🚛 Système de Gestion de Transport — STTA / NP AKADIN
+﻿# 🚛 TransiFlow — Système de Gestion de Transport
 
 ## 📋 Présentation
 
-Application web full-stack de gestion de flotte de transport développée dans le cadre d'un stage L3 Informatique chez **NP AKADIN / STTA Madagascar**.
+Application web full-stack de gestion de flotte de transport.
+Projet de fin d'études — Licence Informatique.
 
 Le système permet de gérer l'intégralité des opérations de transport :
 - Suivi de la flotte de véhicules et de leurs documents
@@ -48,10 +49,10 @@ cd GESTION-FLOTTE
 
 ```bash
 psql -U postgres
-CREATE DATABASE transport_stta;
+CREATE DATABASE transiflow_db;
 \q
-psql -U postgres -d transport_stta -f server/db/schema.sql
-psql -U postgres -d transport_stta -f server/db/seed.sql
+psql -U postgres -d transiflow_db -f server/db/schema.sql
+psql -U postgres -d transiflow_db -f server/db/seed.sql
 ```
 
 ### 3. Configuration des variables d'environnement
@@ -65,7 +66,7 @@ Contenu du fichier `.env` :
 
 ```env
 PORT=5000
-DATABASE_URL=postgresql://postgres:motdepasse@localhost:5432/transport_stta
+DATABASE_URL=postgresql://postgres:motdepasse@localhost:5432/transiflow_db
 JWT_SECRET=votre_secret_jwt_tres_long_et_aleatoire
 NODE_ENV=development
 ```
@@ -97,9 +98,9 @@ cd client && npm run dev
 
 | Email                | Mot de passe | Rôle           |
 |----------------------|--------------|----------------|
-| admin@stta.mg        | Admin123!    | Administrateur |
-| gestionnaire@stta.mg | Gest123!     | Gestionnaire   |
-| chauffeur@stta.mg    | Chauf123!    | Chauffeur      |
+| admin@transiflow.app        | Admin123!    | Administrateur |
+| gestionnaire@transiflow.app | Gest123!     | Gestionnaire   |
+| chauffeur@transiflow.app    | Chauf123!    | Chauffeur      |
 
 ## 📁 Structure du projet
 
@@ -191,9 +192,9 @@ GESTION-FLOTTE/
 
 ## 👨‍💻 Auteur
 
-Développé dans le cadre d'un **stage L3 Informatique**
-NP AKADIN / STTA Madagascar — 2025
+**Projet de fin d'études — Licence Informatique**
+2025
 
 ---
 
-*Projet académique — Stage de fin d'études L3 Informatique*
+*Projet personnel — Licence Informatique*

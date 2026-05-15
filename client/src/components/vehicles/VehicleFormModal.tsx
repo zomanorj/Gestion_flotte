@@ -1,6 +1,6 @@
-/**
+﻿/**
  * VehicleFormModal.tsx
- * Modal de formulaire pour créer ou modifier un véhicule — Transport STTA.
+ * Modal de formulaire pour créer ou modifier un véhicule — TransiFlow.
  *
  * Ce composant est réutilisable pour les deux modes (création et modification).
  * Il inclut :

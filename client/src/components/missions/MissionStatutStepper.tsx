@@ -1,6 +1,6 @@
-/**
+﻿/**
  * MissionStatutStepper.tsx
- * Composant visuel du workflow de statut d'une mission — Transport STTA.
+ * Composant visuel du workflow de statut d'une mission — TransiFlow.
  *
  * Affiche une timeline horizontale avec les 4 étapes principales :
  *   Brouillon → Planifiée → En cours → Terminée

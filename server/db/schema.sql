@@ -1,6 +1,6 @@
--- =============================================================================
+﻿-- =============================================================================
 -- schema.sql
--- Schéma de la base de données PostgreSQL pour le système Transport STTA.
+-- Schéma de la base de données PostgreSQL pour le système TransiFlow.
 --
 -- Ce fichier crée toutes les tables nécessaires à la gestion de flotte :
 --   - users      : comptes utilisateurs et administrateurs
@@ -8,7 +8,7 @@
 --   - drivers    : profils des chauffeurs
 --   - missions   : planification et suivi des missions de transport
 --
--- Exécution : psql -U postgres -d transport_stta -f schema.sql
+-- Exécution : psql -U postgres -d transiflow_db -f schema.sql
 -- =============================================================================
 
 -- On supprime les tables si elles existent déjà (pour faciliter les re-créations en dev)
@@ -37,14 +37,14 @@ CREATE TABLE users (
     created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE  users              IS 'Comptes utilisateurs du système Transport STTA';
+COMMENT ON TABLE  users              IS 'Comptes utilisateurs du système TransiFlow';
 COMMENT ON COLUMN users.role         IS 'admin = accès total | gestionnaire = flotte + missions | chauffeur = lecture seule';
 COMMENT ON COLUMN users.mot_de_passe IS 'Toujours hashé avec bcrypt avant insertion';
 
 
 -- =============================================================================
 -- TABLE : vehicles
--- Inventaire des véhicules de la flotte STTA.
+-- Inventaire des véhicules de la flotte TransiFlow.
 -- =============================================================================
 CREATE TABLE vehicles (
     id                     SERIAL       PRIMARY KEY,
@@ -61,7 +61,7 @@ CREATE TABLE vehicles (
     updated_at             TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE  vehicles              IS 'Inventaire des véhicules de la flotte STTA';
+COMMENT ON TABLE  vehicles              IS 'Inventaire des véhicules de la flotte TransiFlow';
 COMMENT ON COLUMN vehicles.capacite     IS 'Nombre de passagers ou charge utile en tonnes selon le type de véhicule';
 COMMENT ON COLUMN vehicles.statut       IS 'actif = en service | en_revision = en maintenance | archive = hors service';
 
@@ -87,7 +87,7 @@ CREATE TABLE drivers (
     updated_at              TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE  drivers                     IS 'Profils des chauffeurs de la flotte STTA';
+COMMENT ON TABLE  drivers                     IS 'Profils des chauffeurs de la flotte TransiFlow';
 COMMENT ON COLUMN drivers.user_id             IS 'Référence optionnelle vers le compte utilisateur du chauffeur';
 COMMENT ON COLUMN drivers.date_expiration_permis IS 'Une alerte devra être envoyée avant expiration du permis';
 

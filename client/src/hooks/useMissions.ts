@@ -1,6 +1,6 @@
-/**
+﻿/**
  * useMissions.ts
- * Hook React personnalisé pour la gestion de l'état des missions — Transport STTA.
+ * Hook React personnalisé pour la gestion de l'état des missions — TransiFlow.
  *
  * Ce hook centralise toute la logique métier liée aux missions :
  *   - Chargement des missions avec pagination et filtres

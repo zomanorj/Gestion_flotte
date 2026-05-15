@@ -1,6 +1,6 @@
-/**
+﻿/**
  * documentRoutes.js
- * Routes HTTP pour la génération de documents PDF — Transport STTA.
+ * Routes HTTP pour la génération de documents PDF — TransiFlow.
  *
  * Endpoints :
  *   GET /api/documents/bon-livraison/:missionId  → PDF bon de livraison

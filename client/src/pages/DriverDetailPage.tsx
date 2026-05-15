@@ -1,6 +1,6 @@
-/**
+﻿/**
  * DriverDetailPage.tsx
- * Page de détail d'un chauffeur — Transport STTA.
+ * Page de détail d'un chauffeur — TransiFlow.
  *
  * Fonctionnalités :
  *   - Breadcrumb de navigation

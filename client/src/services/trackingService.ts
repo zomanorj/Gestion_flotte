@@ -1,6 +1,6 @@
-/**
+﻿/**
  * trackingService.ts
- * Service de communication avec l'API pour le suivi GPS — Transport STTA.
+ * Service de communication avec l'API pour le suivi GPS — TransiFlow.
  *
  * Ce module centralise tous les appels HTTP vers les endpoints de suivi.
  *

@@ -1,6 +1,6 @@
-/**
+﻿/**
  * MissionDetailPage.tsx
- * Page de détail d'une mission — Transport STTA.
+ * Page de détail d'une mission — TransiFlow.
  *
  * Affiche :
  *   - Breadcrumb de navigation

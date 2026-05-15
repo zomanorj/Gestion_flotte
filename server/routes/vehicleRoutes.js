@@ -1,6 +1,6 @@
-/**
+﻿/**
  * vehicleRoutes.js
- * Définition des routes HTTP pour la gestion des véhicules — Transport STTA.
+ * Définition des routes HTTP pour la gestion des véhicules — TransiFlow.
  *
  * Routes exposées :
  *   GET    /api/vehicles          → liste paginée des véhicules (tous rôles)

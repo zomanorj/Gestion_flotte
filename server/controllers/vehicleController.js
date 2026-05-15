@@ -1,6 +1,6 @@
-/**
+﻿/**
  * vehicleController.js
- * Contrôleur HTTP pour la gestion des véhicules — Transport STTA.
+ * Contrôleur HTTP pour la gestion des véhicules — TransiFlow.
  *
  * Ce module fait le lien entre les routes HTTP et le modèle de données.
  * Il valide les entrées, appelle le modèle, et formate les réponses JSON.
