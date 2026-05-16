@@ -11,6 +11,12 @@ server/node_modules/
 server/.env
 client/.env
 *.env.local
+# Ne pas committer .env.production (contient des URLs de production potentiellement privées)
+# Utiliser les variables d'environnement du dashboard Vercel/Render à la place
+# client/.env.production  ← décommenté si on ne veut pas le committer
+
+# ---- Worktrees Claude Code (dossiers temporaires) ----
+.claude/worktrees/
 
 # ---- Build / compilation ----
 client/dist/

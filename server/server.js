@@ -67,16 +67,18 @@ app.use(helmet({
 // ─────────────────────────────────────────────────────────────────────────────
 
 // CORS : autorise les requêtes depuis l'application React
-// On liste tous les ports Vite possibles en développement (5173, 5174, 5175…)
-const originesAutoriseesDevLocal = [
+// En développement : ports Vite locaux
+// En production    : CLIENT_URL depuis les variables d'environnement (Vercel)
+const originesAutorisees = [
+  process.env.CLIENT_URL,           // URL Vercel en production
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
   'http://localhost:3000',
-]
+].filter(Boolean)                    // Supprimer les valeurs null/undefined
 
 app.use(cors({
-  origin:      originesAutoriseesDevLocal,
+  origin:      originesAutorisees,
   credentials: true,
   methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }))
