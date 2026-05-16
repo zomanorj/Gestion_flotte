@@ -9,9 +9,11 @@
  *   - getMe    : retourner le profil de l'utilisateur actuellement connecté
  */
 
-const bcrypt = require('bcryptjs')
-const jwt    = require('jsonwebtoken')
-const pool   = require('../db/connection')
+const bcrypt              = require('bcryptjs')
+const jwt                 = require('jsonwebtoken')
+const pool                = require('../db/connection')
+const utilisateurModel    = require('../models/utilisateurModel')
+const { logActivite }     = require('../middleware/logMiddleware')
 
 // Coût du hachage bcrypt : chaque incrément double le temps de calcul.
 // 10 est le minimum recommandé par OWASP pour un bon compromis sécurité/performance.
@@ -150,6 +152,19 @@ const login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: DUREE_TOKEN_JWT }
     )
+
+    // Mettre à jour la dernière connexion (fire & forget, silencieux)
+    utilisateurModel.mettreAJourDerniereConnexion(utilisateur.id)
+
+    // Enregistrer la connexion dans le journal d'activité (fire & forget)
+    logActivite({
+      userId:      utilisateur.id,
+      action:      'connexion',
+      entite:      'users',
+      entiteId:    utilisateur.id,
+      description: `Connexion de ${utilisateur.nom} (${utilisateur.email})`,
+      req,
+    })
 
     return res.json({
       token: tokenJWT,

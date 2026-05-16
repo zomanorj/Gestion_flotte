@@ -87,6 +87,23 @@ async function addPaiement(req, res) {
       })
     }
 
+    if (mode_paiement === 'credit') {
+      const clientModel = require('../models/clientModel')
+      const client = await clientModel.findById(facture.client_id)
+      
+      if (!client || (client.solde_credit || 0) < montantNum) {
+        return res.status(400).json({ succes: false, message: 'Solde de crédit insuffisant' })
+      }
+
+      await clientModel.processCreditTransaction(
+        facture.client_id,
+        'debit',
+        montantNum,
+        `Paiement facture #${facture.numero}`,
+        factureId
+      )
+    }
+
     // Créer le paiement
     const resultat = await paiementModel.create({
       facture_id:    factureId,

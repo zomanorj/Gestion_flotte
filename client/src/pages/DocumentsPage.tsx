@@ -17,6 +17,7 @@ import * as missionService from '../services/missionService'
 import { downloadBonLivraison, downloadRapportMissions } from '../services/documentService'
 import type { Mission } from '../types/mission'
 import EmptyState from '../components/ui/EmptyState'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -47,6 +48,7 @@ function DocumentsSkeleton() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DocumentsPage() {
+  usePageTitle('Documents')
   const { utilisateur } = useAuth()
   const [missions, setMissions] = useState<Mission[]>([])
   const [isLoading, setIsLoading] = useState(true)

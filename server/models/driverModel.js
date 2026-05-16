@@ -1,4 +1,4 @@
-﻿/**
+/**
  * driverModel.js
  * Modèle de données pour la gestion des chauffeurs — TransiFlow.
  *
@@ -41,7 +41,7 @@ async function findAll({
   const offset = (page - 1) * limit
 
   // Construction dynamique de la requête selon les filtres
-  let whereClauses = []
+  let whereClauses = ['deleted_at IS NULL']
   let values = []
   let paramIndex = 1
 
@@ -78,6 +78,8 @@ async function findAll({
       photo_url,
       date_embauche,
       notes,
+      salaire_base,
+      prime_mission,
       created_at,
       updated_at
     FROM drivers
@@ -131,10 +133,12 @@ async function findById(id) {
       photo_url,
       date_embauche,
       notes,
+      salaire_base,
+      prime_mission,
       created_at,
       updated_at
     FROM drivers
-    WHERE id = $1
+    WHERE id = $1 AND deleted_at IS NULL
   `
 
   try {
@@ -167,10 +171,13 @@ async function findAvailable(date) {
       d.photo_url,
       d.date_embauche,
       d.notes,
+      d.salaire_base,
+      d.prime_mission,
       d.created_at,
       d.updated_at
     FROM drivers d
     WHERE d.statut = 'actif'
+      AND d.deleted_at IS NULL
       AND d.id NOT IN (
         SELECT driver_id
         FROM missions
@@ -197,7 +204,7 @@ async function findAvailable(date) {
 async function findByNumeroPermis(numero_permis) {
   const query = `
     SELECT id FROM drivers
-    WHERE LOWER(numero_permis) = LOWER($1)
+    WHERE LOWER(numero_permis) = LOWER($1) AND deleted_at IS NULL
   `
 
   try {
@@ -226,6 +233,8 @@ async function create(data) {
     photo_url,
     date_embauche,
     notes,
+    salaire_base,
+    prime_mission,
   } = data
 
   const query = `
@@ -238,9 +247,11 @@ async function create(data) {
       statut,
       photo_url,
       date_embauche,
-      notes
+      notes,
+      salaire_base,
+      prime_mission
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     RETURNING
       id,
       user_id,
@@ -267,6 +278,8 @@ async function create(data) {
     photo_url || null,
     date_embauche || null,
     notes || null,
+    salaire_base || 0,
+    prime_mission || 0,
   ]
 
   try {
@@ -289,7 +302,7 @@ async function update(id, data) {
   const champsAutorises = [
     'nom', 'prenom', 'telephone', 'numero_permis',
     'date_expiration_permis', 'statut', 'photo_url',
-    'date_embauche', 'notes'
+    'date_embauche', 'notes', 'salaire_base', 'prime_mission'
   ]
 
   // Construction dynamique des champs à mettre à jour
@@ -352,7 +365,7 @@ async function update(id, data) {
 async function remove(id) {
   const query = `
     UPDATE drivers
-    SET statut = 'inactif', updated_at = NOW()
+    SET statut = 'inactif', deleted_at = NOW(), updated_at = NOW()
     WHERE id = $1
     RETURNING
       id,
@@ -414,6 +427,7 @@ async function getPermisAlertes() {
       END as message_permis
     FROM drivers
     WHERE statut != 'inactif'
+      AND deleted_at IS NULL
       AND date_expiration_permis <= CURRENT_DATE + INTERVAL '30 days'
     ORDER BY
       CASE
@@ -439,11 +453,11 @@ async function getPermisAlertes() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function count(statut = null) {
-  let query = 'SELECT COUNT(*) as total FROM drivers'
+  let query = 'SELECT COUNT(*) as total FROM drivers WHERE deleted_at IS NULL'
   let values = []
 
   if (statut) {
-    query += ' WHERE statut = $1'
+    query += ' AND statut = $1'
     values.push(statut)
   }
 

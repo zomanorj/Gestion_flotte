@@ -2,29 +2,39 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { getClient, getClientMissions } from '../services/clientService'
 import { getFactures } from '../services/factureService'
-import type { Client, Facture } from '../types/client'
+import type { Client, Facture, Transaction } from '../types/client'
+import type { Mission } from '../types/mission'
 import { formatMGA } from '../utils/format'
 import ClientFormModal from '../components/clients/ClientFormModal'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const clientId = parseInt(id || '0', 10)
 
   const [client, setClient] = useState<Client | null>(null)
-  const [missions, setMissions] = useState<any[]>([])
+  const [missions, setMissions] = useState<Mission[]>([])
   const [factures, setFactures] = useState<Facture[]>([])
   
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'infos' | 'missions' | 'factures'>('infos')
+  const [activeTab, setActiveTab] = useState<'infos' | 'missions' | 'factures' | 'credit'>('infos')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [rechargeAmount, setRechargeAmount] = useState('')
+  const [isRecharging, setIsRecharging] = useState(false)
+
+  /* Titre du navigateur : nom du client une fois chargé */
+  usePageTitle(client?.nom ?? 'Clients')
 
   // Lecture du paramètre tab dans l'URL si existant (ex: ?tab=factures)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const tab = params.get('tab')
-    if (tab === 'missions' || tab === 'factures' || tab === 'infos') {
+    if (tab === 'missions' || tab === 'factures' || tab === 'infos' || tab === 'credit') {
       setActiveTab(tab)
     }
   }, [])
@@ -38,19 +48,44 @@ export default function ClientDetailPage() {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [clientRes, missionsRes, facturesRes] = await Promise.all([
+      const [clientRes, missionsRes, facturesRes, txRes] = await Promise.all([
         getClient(clientId),
         getClientMissions(clientId, { limit: 50 }),
-        getFactures({ client_id: clientId, limit: 50 })
+        getFactures({ client_id: clientId, limit: 50 }),
+        import('../services/clientService').then(m => m.getClientTransactions(clientId))
       ])
       
       setClient(clientRes)
       if (missionsRes.succes) setMissions(missionsRes.donnees)
       if (facturesRes.succes) setFactures(facturesRes.donnees)
+      if (txRes.succes) setTransactions(txRes.donnees)
     } catch (error) {
       console.error('Erreur lors du chargement des détails du client', error)
+      toast.error('Impossible de charger les détails du client')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleRecharge = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!rechargeAmount || isNaN(Number(rechargeAmount)) || Number(rechargeAmount) <= 0) return
+    
+    setIsRecharging(true)
+    try {
+      const { addCreditTransaction } = await import('../services/clientService')
+      await addCreditTransaction(clientId, {
+        type_transaction: 'credit',
+        montant: Number(rechargeAmount),
+        description: 'Recharge manuelle'
+      })
+      setRechargeAmount('')
+      loadData()
+    } catch (error) {
+      console.error('Erreur lors de la recharge', error)
+      toast.error('Erreur lors de la recharge du crédit')
+    } finally {
+      setIsRecharging(false)
     }
   }
 
@@ -166,6 +201,15 @@ export default function ClientDetailPage() {
             </div>
           </div>
         </div>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center text-xl">
+            💳
+          </div>
+          <div>
+            <div className="text-sm text-slate-500 font-medium">Solde de crédit</div>
+            <div className="text-xl font-bold text-slate-800">{formatMGA(client.solde_credit || 0)}</div>
+          </div>
+        </div>
       </div>
 
       {/* Onglets */}
@@ -188,6 +232,12 @@ export default function ClientDetailPage() {
             className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'factures' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
           >
             Factures ({factures.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('credit')}
+            className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'credit' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+          >
+            Compte de Crédit
           </button>
         </div>
 
@@ -359,6 +409,60 @@ export default function ClientDetailPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {activeTab === 'credit' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-800">Historique des transactions</h3>
+                <form onSubmit={handleRecharge} className="flex gap-2">
+                  <input
+                    type="number"
+                    value={rechargeAmount}
+                    onChange={(e) => setRechargeAmount(e.target.value)}
+                    placeholder="Montant à recharger"
+                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                    min="1"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={isRecharging}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {isRecharging ? '...' : '+ Recharger'}
+                  </button>
+                </form>
+              </div>
+              <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-sm text-slate-500">
+                      <th className="p-4 font-medium">Date</th>
+                      <th className="p-4 font-medium">Description</th>
+                      <th className="p-4 font-medium text-right">Débit</th>
+                      <th className="p-4 font-medium text-right">Crédit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm text-slate-700 divide-y divide-slate-100">
+                    {transactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-slate-500">Aucune transaction pour le moment.</td>
+                      </tr>
+                    ) : (
+                      transactions.map(tx => (
+                        <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-4 whitespace-nowrap">{new Date(tx.created_at).toLocaleString('fr-FR')}</td>
+                          <td className="p-4">{tx.description || (tx.type_transaction === 'credit' ? 'Recharge compte' : 'Paiement facture')} {tx.facture_id && <span className="text-xs text-slate-400 ml-2">(Facture #{tx.facture_id})</span>}</td>
+                          <td className="p-4 text-right text-red-600 font-medium">{tx.type_transaction === 'debit' ? `-${formatMGA(tx.montant)}` : '—'}</td>
+                          <td className="p-4 text-right text-emerald-600 font-medium">{tx.type_transaction === 'credit' ? `+${formatMGA(tx.montant)}` : '—'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

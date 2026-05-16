@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 
 import { useAuth }          from '../contexts/AuthContext'
 import { useConfirm }       from '../hooks/useConfirm'
+import { usePageTitle }     from '../hooks/usePageTitle'
 import * as incidentService from '../services/incidentService'
 import IncidentFormModal    from '../components/incidents/IncidentFormModal'
 import { formatMGA, formatDateFR } from '../utils/format'
@@ -36,12 +37,23 @@ export default function IncidentDetailPage() {
   const canEdit = utilisateur?.role === 'admin' || utilisateur?.role === 'gestionnaire'
   const { confirm, ConfirmModalComponent } = useConfirm()
 
+  usePageTitle(incident?.titre ?? 'Incidents')
+
   useEffect(() => {
     if (!id) return
-    vehicleService.getVehicles({ limit: 100 }).then(r => setVehicles(r.donnees)).catch(() => {})
+    vehicleService.getVehicles({ limit: 100 })
+      .then(r => setVehicles(r.donnees))
+      .catch((err: unknown) => {
+        console.error('Erreur liste véhicules (incident):', err)
+        toast.error('Impossible de charger la liste des véhicules.')
+      })
     incidentService.getIncident(parseInt(id))
       .then(setIncident)
-      .catch(() => setNotFound(true))
+      .catch((err: unknown) => {
+        console.error('Erreur chargement incident:', err)
+        toast.error("Impossible de charger l'incident.")
+        setNotFound(true)
+      })
       .finally(() => setLoading(false))
   }, [id])
 
@@ -51,7 +63,10 @@ export default function IncidentDetailPage() {
       await incidentService.updateIncident(incident.id, { statut: 'en_traitement' })
       toast.success('Incident pris en charge')
       setIncident(prev => prev ? { ...prev, statut: 'en_traitement' } : null)
-    } catch { toast.error('Erreur') }
+    } catch (err: unknown) {
+      console.error('Erreur prise en charge incident:', err)
+      toast.error("Impossible de mettre à jour le statut de l'incident.")
+    }
   }
 
   const handleClore = async () => {
@@ -67,7 +82,10 @@ export default function IncidentDetailPage() {
       await incidentService.cloreIncident(incident.id)
       toast.success('Incident clos')
       navigate('/incidents')
-    } catch { toast.error('Erreur') }
+    } catch (err: unknown) {
+      console.error('Erreur clôture incident:', err)
+      toast.error('Impossible de clore cet incident.')
+    }
   }
 
   if (loading) {

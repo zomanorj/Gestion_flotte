@@ -40,7 +40,10 @@ pool.connect((erreurConnexion, client, relacherConnexion) => {
     return
   }
 
-  console.log('✅ Connexion PostgreSQL établie avec succès')
+  /* Message positif réservé au hors-production (audit : réduire le bruit en prod) */
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('✅ Connexion PostgreSQL établie avec succès')
+  }
   // Important : relâcher la connexion pour la remettre dans le pool
   relacherConnexion()
 })

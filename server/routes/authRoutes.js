@@ -11,16 +11,31 @@
  */
 
 const express    = require('express')
+const rateLimit  = require('express-rate-limit')
 const routeur    = express.Router()
 
 const { register, login, getMe } = require('../controllers/authController')
 const { verifierToken }          = require('../middleware/authMiddleware')
 
+/* Limite les tentatives de connexion
+   Max 10 essais par 15 minutes par IP */
+const limiteConnexion = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 10,                     // 10 tentatives max
+  message: {
+    succes: false,
+    message: 'Trop de tentatives de connexion. ' +
+             'Réessayez dans 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
 // Route publique : inscription d'un nouvel utilisateur
 routeur.post('/register', register)
 
 // Route publique : connexion avec email + mot de passe
-routeur.post('/login', login)
+routeur.post('/login', limiteConnexion, login)
 
 // Route protégée : profil de l'utilisateur connecté
 // verifierToken est appliqué avant getMe — il injecte req.user

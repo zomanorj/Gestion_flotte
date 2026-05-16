@@ -16,9 +16,10 @@
  *   - Mobile       : sidebar masquée, révélée par le bouton hamburger
  */
 
-import { useState } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import * as corbeilleService from '../services/corbeilleService'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration de la navigation
@@ -200,6 +201,34 @@ function IcCorbeille() {
   )
 }
 
+/** Utilisateurs */
+function IcUtilisateurs() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952
+           4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07
+           M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766
+           l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0
+           3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0
+           015.25 0z" />
+    </svg>
+  )
+}
+
+/** Journal d'activité */
+function IcActivite() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0
+           1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25
+           2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125
+           C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6V7.5z" />
+    </svg>
+  )
+}
+
 /** Salaires */
 function IcSalaires() {
   return (
@@ -242,6 +271,19 @@ const NAVIGATION: ItemNavigation[] = [
     icone:          <IcCorbeille />,
     rolesAutorises: ['admin'],
   },
+  // Sprint 9 : gestion des utilisateurs + journal d'activité
+  {
+    libelle:        'Utilisateurs',
+    chemin:         '/utilisateurs',
+    icone:          <IcUtilisateurs />,
+    rolesAutorises: ['admin'],
+  },
+  {
+    libelle:        'Activité',
+    chemin:         '/activite',
+    icone:          <IcActivite />,
+    rolesAutorises: ['admin'],
+  },
 ]
 
 // Labels des chemins pour le breadcrumb
@@ -259,7 +301,10 @@ const LABELS_CHEMINS: Record<string, string> = {
   '/clients':     'Clients',
   '/factures':    'Factures',
   '/salaires':    'Salaires',
-  '/corbeille':   'Corbeille',
+  '/corbeille':     'Corbeille',
+  '/utilisateurs':  'Utilisateurs',
+  '/activite':      'Journal d\'activité',
+  '/profil':        'Mon profil',
 }
 
 // Labels des rôles en français
@@ -287,6 +332,15 @@ interface SidebarProps {
 function Sidebar({ onFermer }: SidebarProps) {
   const { utilisateur, logout } = useAuth()
   const navigate = useNavigate()
+
+  // Compteur corbeille — badge rouge si éléments présents
+  const [corbeilleCount, setCorbeilleCount] = useState(0)
+
+  useEffect(() => {
+    corbeilleService.getCount()
+      .then(data => setCorbeilleCount(data.total ?? 0))
+      .catch(() => {})
+  }, [])
 
   /** Calcule les initiales du nom (ex: "Rakoto Jean" → "RJ") */
   const initialesUtilisateur = utilisateur?.nom
@@ -357,7 +411,13 @@ function Sidebar({ onFermer }: SidebarProps) {
                   <span className={isActive ? 'text-blue-700' : 'text-slate-400 group-hover:text-slate-600'}>
                     {item.icone}
                   </span>
-                  {item.libelle}
+                  <span className="flex-1">{item.libelle}</span>
+                  {/* Badge rouge corbeille si des éléments sont présents */}
+                  {item.chemin === '/corbeille' && corbeilleCount > 0 && (
+                    <span className="text-[11px] font-semibold bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center leading-none">
+                      {corbeilleCount}
+                    </span>
+                  )}
                 </>
               )}
             </NavLink>
@@ -367,14 +427,20 @@ function Sidebar({ onFermer }: SidebarProps) {
 
       {/* ── Profil utilisateur + Déconnexion ── */}
       <div className="border-t border-slate-100 p-3 space-y-1">
-        {/* Carte profil */}
-        <div className="flex items-center gap-3 px-2 py-2">
+        {/* Carte profil — cliquable vers /profil */}
+        <Link
+          to="/profil"
+          onClick={onFermer}
+          className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-50 transition-colors group"
+        >
           {/* Avatar initiales */}
           <div className="w-8 h-8 bg-blue-800 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0">
             {initialesUtilisateur}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-slate-800 truncate">{utilisateur?.nom}</p>
+            <p className="text-sm font-medium text-slate-800 truncate group-hover:text-blue-700 transition-colors">
+              {utilisateur?.nom}
+            </p>
             {/* Badge rôle */}
             <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
               COULEURS_BADGE_ROLE[utilisateur?.role ?? 'gestionnaire']
@@ -382,7 +448,10 @@ function Sidebar({ onFermer }: SidebarProps) {
               {LABELS_ROLES[utilisateur?.role ?? 'gestionnaire']}
             </span>
           </div>
-        </div>
+          <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-400 shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </Link>
 
         {/* Bouton déconnexion */}
         <button

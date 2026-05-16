@@ -5,6 +5,7 @@ import type { Facture, FactureStats, Paiement, PaiementsResponse } from '../type
 
 export const getFactures = async (params?: {
   client_id?: number
+  mission_id?: number
   statut?: string
   date_debut?: string
   date_fin?: string

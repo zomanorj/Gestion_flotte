@@ -22,6 +22,31 @@ export interface Client {
   total_missions?: number
   ca_total?: number
   factures_impayees?: number
+  solde_credit?: number
+}
+
+/** Mouvement sur le compte crédit client (historique détaillé) */
+export interface Transaction {
+  id: number
+  client_id: number
+  facture_id?: number
+  type_transaction: 'debit' | 'credit' | 'ajustement'
+  montant: number
+  solde_avant: number
+  solde_apres: number
+  description?: string
+  created_at: string
+}
+
+/** Transaction sur le compte crédit d'un client */
+export interface ClientTransaction {
+  id: number
+  client_id: number
+  facture_id?: number
+  type_transaction: 'credit' | 'debit'
+  montant: number
+  description?: string
+  created_at: string
 }
 
 /** Statut d'une facture — 'partiel' = acompte versé mais solde restant */

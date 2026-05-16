@@ -15,6 +15,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
+import { usePageTitle } from '../hooks/usePageTitle'
 import { useMissions } from '../hooks/useMissions'
 import { useAuth } from '../contexts/AuthContext'
 import MissionFormModal from '../components/missions/MissionFormModal'
@@ -172,6 +173,7 @@ function PlanningView({ missions, onMissionClick, onSlotClick, semaineOffset }: 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function MissionsPage() {
+  usePageTitle('Missions')
   const navigate = useNavigate()
   const { utilisateur } = useAuth()
   const { confirm, ConfirmModalComponent } = useConfirm()
@@ -491,7 +493,7 @@ export default function MissionsPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Date</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Trajet</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Véhicule</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Chauffeur</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Client</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Statut</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
               </tr>
@@ -568,12 +570,9 @@ export default function MissionsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600">
-                      {mission.driver ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
-                            {mission.driver.prenom[0]}
-                          </div>
-                          <span>{mission.driver.prenom} {mission.driver.nom.toUpperCase()}</span>
+                      {mission.client_nom ? (
+                        <div>
+                          <span className="font-medium">{mission.client_nom}</span>
                         </div>
                       ) : (
                         <span className="text-slate-400">—</span>

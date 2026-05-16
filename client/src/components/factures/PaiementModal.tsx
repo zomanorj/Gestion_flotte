@@ -20,7 +20,7 @@ import { formatMGA } from '../../utils/format'
 // Types internes
 // ─────────────────────────────────────────────────────────────────────────────
 
-type ModePaiement = 'mvola' | 'virement' | 'especes' | 'cheque'
+type ModePaiement = 'mvola' | 'virement' | 'especes' | 'cheque' | 'credit'
 
 interface PaiementFormData {
   montant:       string
@@ -51,6 +51,7 @@ const MODES: { value: ModePaiement; label: string; emoji: string; placeholder: s
   { value: 'virement', label: 'Virement', emoji: '🏦', placeholder: 'VIR-XXXXXXXXXX' },
   { value: 'especes',  label: 'Espèces',  emoji: '💵', placeholder: '' },
   { value: 'cheque',   label: 'Chèque',   emoji: '📄', placeholder: 'N° chèque' },
+  { value: 'credit',   label: 'Crédit',   emoji: '💳', placeholder: '' },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -276,7 +277,7 @@ export default function PaiementModal({
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Mode de paiement <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {MODES.map(mode => (
                     <button
                       key={mode.value}

@@ -21,6 +21,21 @@ export interface Itineraire {
   points: [number, number][] // [[lat,lng], [lat,lng], ...]
 }
 
+/** Réponse brute Nominatim (autocomplétion villes) */
+interface NominatimAdresse {
+  city?: string
+  town?: string
+  village?: string
+}
+
+interface NominatimResultat {
+  name?: string
+  display_name: string
+  lat: string
+  lon: string
+  address?: NominatimAdresse
+}
+
 // --- AUTOCOMPLÉTION ---
 
 /**
@@ -56,14 +71,15 @@ export async function searchVilles(query: string): Promise<Ville[]> {
       throw new Error('Service indisponible')
     }
 
-    const data = await response.json()
+    const data = (await response.json()) as NominatimResultat[]
 
     // Transformer la réponse Nominatim en objets Ville
-    return data.map((item: any) => ({
+    return data.map((item) => ({
       nom: item.address?.city
         || item.address?.town
         || item.address?.village
-        || item.name,
+        || item.name
+        || 'Lieu',
       affichage: item.display_name
         .split(',')
         .slice(0, 3)

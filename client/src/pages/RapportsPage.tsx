@@ -14,6 +14,7 @@
 import { useState, useEffect } from 'react'
 import { Navigate }            from 'react-router-dom'
 import toast                   from 'react-hot-toast'
+import { usePageTitle } from '../hooks/usePageTitle'
 import {
   ResponsiveContainer,
   LineChart,
@@ -138,6 +139,7 @@ function TooltipFlotte({ active, payload }: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function RapportsPage() {
+  usePageTitle('Rapports & Exports')
   const { utilisateur } = useAuth()
 
   // Accès réservé aux admins et gestionnaires

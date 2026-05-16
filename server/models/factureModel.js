@@ -9,15 +9,21 @@ const pool = require('../db/connection')
 // findAll
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function findAll({ client_id = null, statut = '', date_debut = '', date_fin = '', page = 1, limit = 10 }) {
+async function findAll({ client_id = null, mission_id = null, statut = '', date_debut = '', date_fin = '', page = 1, limit = 10 }) {
   const offset = (page - 1) * limit
   const values = []
-  const conditions = []
+  const conditions = ['f.deleted_at IS NULL']
   let paramIndex = 1
 
   if (client_id) {
     conditions.push(`f.client_id = $${paramIndex}`)
     values.push(client_id)
+    paramIndex++
+  }
+
+  if (mission_id) {
+    conditions.push(`f.mission_id = $${paramIndex}`)
+    values.push(mission_id)
     paramIndex++
   }
 
@@ -91,6 +97,7 @@ async function findById(id) {
       c.ville as client_ville,
       c.nif as client_nif,
       c.stat as client_stat,
+      c.telephone as client_telephone,
       c.type_client,
       m.lieu_depart,
       m.lieu_arrivee,
@@ -99,7 +106,7 @@ async function findById(id) {
     FROM factures f
     JOIN clients c ON f.client_id = c.id
     LEFT JOIN missions m ON f.mission_id = m.id
-    WHERE f.id = $1
+    WHERE f.id = $1 AND f.deleted_at IS NULL
   `
   try {
     const result = await pool.query(query, [id])

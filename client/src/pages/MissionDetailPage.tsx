@@ -29,6 +29,7 @@ import type { Depense, CategoriDepense } from '../types/finance'
 import type { Client } from '../types/client'
 import { getClient } from '../services/clientService'
 import * as factureService from '../services/factureService'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const LABELS_CATEGORIE: Record<CategoriDepense, string> = {
   carburant: '⛽ Carburant', peage: '🛣 Péage',
@@ -93,6 +94,14 @@ export default function MissionDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [downloadLoading, setDownloadLoading] = useState(false)
 
+  /* Onglet du navigateur — identifiant mission dès que l'URL ou les données sont connues */
+  const titreMission = mission
+    ? `Mission #${String(mission.id).padStart(4, '0')}`
+    : id
+      ? `Mission #${id.padStart(4, '0')}`
+      : 'Missions'
+  usePageTitle(titreMission)
+
   // États pour la section coûts
   const [depenses, setDepenses]           = useState<Depense[]>([])
   const [coutTotal, setCoutTotal]         = useState(0)
@@ -113,7 +122,9 @@ export default function MissionDetailPage() {
         setError(null)
       })
       .catch(() => {
-        setError('Impossible de charger les détails de la mission')
+        const msg = 'Impossible de charger les détails de la mission'
+        setError(msg)
+        toast.error(msg)
       })
       .finally(() => {
         setIsLoading(false)
@@ -128,8 +139,9 @@ export default function MissionDetailPage() {
         .then(clientData => {
           setClient(clientData)
         })
-        .catch(() => {
-          console.error('Erreur chargement client')
+        .catch((err: unknown) => {
+          console.error('Erreur chargement client', err)
+          toast.error('Impossible de charger les informations du client lié.')
         })
         .finally(() => {
           setLoadingClient(false)
@@ -164,7 +176,7 @@ export default function MissionDetailPage() {
 
       const facture = await factureService.createFacture(factureData)
       toast.success(`Facture ${facture.numero || 'créée'} avec succès`)
-      navigate(`/factures/${facture.id || ''}`)
+      navigate(`/factures?mission=${mission.id}`)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Une erreur est survenue'
       toast.error(message)
@@ -195,7 +207,10 @@ export default function MissionDetailPage() {
     ]).then(([dep, cout]) => {
       setDepenses(dep.donnees)
       setCoutTotal(cout.total_general)
-    }).catch(() => {}).finally(() => setLoadingDepenses(false))
+    }).catch((err: unknown) => {
+      console.error('Erreur chargement coûts mission:', err)
+      toast.error('Impossible de charger les coûts de la mission.')
+    }).finally(() => setLoadingDepenses(false))
   }, [id])
 
   useEffect(() => { chargerCouts() }, [chargerCouts])

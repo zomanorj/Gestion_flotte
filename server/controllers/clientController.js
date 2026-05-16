@@ -161,6 +161,40 @@ async function getClientStats(req, res) {
   }
 }
 
+async function addCreditTransaction(req, res) {
+  try {
+    const client_id = parseInt(req.params.id, 10)
+    if (isNaN(client_id)) return res.status(400).json({ succes: false, message: 'ID invalide' })
+
+    const { type_transaction, montant, description, facture_id } = req.body
+    if (!type_transaction || !['credit', 'debit'].includes(type_transaction)) {
+      return res.status(400).json({ succes: false, message: 'Type de transaction invalide' })
+    }
+    if (!montant || isNaN(montant) || montant <= 0) {
+      return res.status(400).json({ succes: false, message: 'Montant invalide' })
+    }
+
+    const result = await clientModel.processCreditTransaction(client_id, type_transaction, montant, description, facture_id)
+    res.json({ succes: true, donnees: result })
+  } catch (erreur) {
+    console.error('❌ clientController.addCreditTransaction :', erreur.message)
+    res.status(500).json({ succes: false, message: 'Erreur serveur lors de la transaction' })
+  }
+}
+
+async function getClientTransactions(req, res) {
+  try {
+    const client_id = parseInt(req.params.id, 10)
+    if (isNaN(client_id)) return res.status(400).json({ succes: false, message: 'ID invalide' })
+
+    const transactions = await clientModel.getTransactions(client_id)
+    res.json({ succes: true, donnees: transactions })
+  } catch (erreur) {
+    console.error('❌ clientController.getClientTransactions :', erreur.message)
+    res.status(500).json({ succes: false, message: 'Erreur serveur lors de la récupération des transactions' })
+  }
+}
+
 module.exports = {
   getClients,
   getClient,
@@ -168,5 +202,7 @@ module.exports = {
   updateClient,
   deleteClient,
   getClientMissions,
-  getClientStats
+  getClientStats,
+  addCreditTransaction,
+  getClientTransactions
 }

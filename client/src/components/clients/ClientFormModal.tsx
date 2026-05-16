@@ -59,8 +59,11 @@ export default function ClientFormModal({ isOpen, onClose, onSuccess, client }: 
         await createClient(formData)
       }
       onSuccess()
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Une erreur est survenue lors de l'enregistrement")
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined
+      setError(msg || "Une erreur est survenue lors de l'enregistrement")
     } finally {
       setIsSubmitting(false)
     }

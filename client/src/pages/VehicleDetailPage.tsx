@@ -22,6 +22,7 @@ import toast from 'react-hot-toast'
 
 import { useAuth }           from '../contexts/AuthContext'
 import { useConfirm }        from '../hooks/useConfirm'
+import { usePageTitle }      from '../hooks/usePageTitle'
 import VehicleFormModal      from '../components/vehicles/VehicleFormModal'
 import apiClient             from '../services/api'
 import * as maintenanceService from '../services/maintenanceService'
@@ -231,6 +232,8 @@ export default function VehicleDetailPage() {
   const [prochaineMaint,     setProchaineMaint]     = useState<Maintenance | null>(null)
   const [isMaintenanceModal, setIsMaintenanceModal] = useState(false)
 
+  usePageTitle(vehicle ? `${vehicle.immatriculation}` : 'Flotte')
+
   // ── Chargement de l'historique de maintenance ──
   const chargerMaintenance = useCallback(() => {
     if (!id) return
@@ -240,7 +243,10 @@ export default function VehicleDetailPage() {
         // Prochaine planifiée = la première non terminée
         setProchaineMaint(h.find(m => m.statut === 'planifiee') ?? null)
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        console.error('Erreur chargement maintenance véhicule:', err)
+        toast.error("Impossible de charger l'historique de maintenance.")
+      })
   }, [id])
 
   useEffect(() => { chargerMaintenance() }, [chargerMaintenance])

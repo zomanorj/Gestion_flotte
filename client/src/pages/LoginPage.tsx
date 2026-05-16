@@ -11,6 +11,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Icônes SVG inline (extraites de Heroicons 2.0 — outline)
@@ -95,6 +96,7 @@ function SpinnerBouton() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function LoginPage() {
+  usePageTitle('Connexion')
   const { login, isAuthenticated, isLoading: isLoadingAuth } = useAuth()
   const navigate = useNavigate()
 

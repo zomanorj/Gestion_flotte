@@ -35,4 +35,8 @@ router.get('/:id/missions', protect, clientController.getClientMissions)
 // Obtenir les statistiques d'un client
 router.get('/:id/stats', protect, clientController.getClientStats)
 
+// Gérer le compte crédit
+router.post('/:id/transactions', protect, clientController.addCreditTransaction)
+router.get('/:id/transactions', protect, clientController.getClientTransactions)
+
 module.exports = router

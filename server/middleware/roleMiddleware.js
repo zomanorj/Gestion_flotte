@@ -1,5 +1,11 @@
 /**
  * roleMiddleware.js
+ *
+ * NOTE (audit TransiFlow) : ce fichier est conservé pour référence
+ * mais n'est pas utilisé activement dans les routes montées.
+ * Le contrôle des rôles côté API repose surtout sur verifierRole(),
+ * également exporté par ./authMiddleware.js, appliqué route par route.
+ *
  * Middleware de contrôle d'accès basé sur les rôles (RBAC).
  *
  * Ce middleware est utilisé APRÈS authMiddleware (qui injecte req.user).

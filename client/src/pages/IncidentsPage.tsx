@@ -14,6 +14,7 @@ import { useNavigate }   from 'react-router-dom'
 import toast             from 'react-hot-toast'
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
 
+import { usePageTitle } from '../hooks/usePageTitle'
 import { useAuth }           from '../contexts/AuthContext'
 import * as incidentService  from '../services/incidentService'
 import * as vehicleService   from '../services/vehicleService'
@@ -62,6 +63,7 @@ function SkeletonTable() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function IncidentsPage() {
+  usePageTitle('Incidents')
   const { utilisateur } = useAuth()
   const navigate        = useNavigate()
   const { confirm, ConfirmModalComponent } = useConfirm()

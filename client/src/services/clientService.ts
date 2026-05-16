@@ -46,3 +46,16 @@ export const getClientStats = async (id: number) => {
   const response = await api.get(`/api/clients/${id}/stats`)
   return response.data.donnees as ClientStats
 }
+
+export const getClientTransactions = async (id: number) => {
+  const response = await api.get(`/api/clients/${id}/transactions`)
+  return response.data
+}
+
+export const addCreditTransaction = async (
+  id: number,
+  data: { type_transaction: 'credit' | 'debit'; montant: number; description?: string; facture_id?: number }
+) => {
+  const response = await api.post(`/api/clients/${id}/transactions`, data)
+  return response.data
+}

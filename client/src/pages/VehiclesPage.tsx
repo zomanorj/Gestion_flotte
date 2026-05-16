@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { usePageTitle } from '../hooks/usePageTitle'
 import toast from 'react-hot-toast'
 
 import { useVehicles } from '../hooks/useVehicles'
@@ -69,6 +70,7 @@ function TableSkeleton() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function VehiclesPage() {
+  usePageTitle('Flotte de véhicules')
   const navigate = useNavigate()
   const { utilisateur } = useAuth()
   const { confirm, ConfirmModalComponent } = useConfirm()

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * driver.ts
  * Types TypeScript pour la gestion des chauffeurs — TransiFlow.
  *
@@ -33,6 +33,8 @@ export interface Driver {
   photo_url?:             string | null
   date_embauche?:         string | null // Format YYYY-MM-DD
   notes?:                 string | null
+  salaire_base?:          number | null
+  prime_mission?:         number | null
   created_at:             string
   updated_at:             string
 }

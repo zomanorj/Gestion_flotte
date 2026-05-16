@@ -115,8 +115,7 @@ export default function FactureFormModal({
         date_echeance:       facture.date_echeance
           ? facture.date_echeance.split('T')[0] : '',
       })
-      // Charger les missions du client pour l'affichage en mode édition
-      if (facture.client_id) chargerMissions(facture.client_id)
+      // (Les missions seront chargées via le useEffect séparé sur formData.client_id)
     } else {
       // Date d'échéance par défaut : aujourd'hui + 30 jours
       const echeance = new Date()
@@ -131,24 +130,29 @@ export default function FactureFormModal({
     setShowPaiementMode(false)
   }, [isOpen, facture])
 
-  // ── Charger les missions d'un client ──
-  const chargerMissions = async (clientId: number) => {
-    setLoadingMissions(true)
-    try {
-      const res = await getClientMissions(clientId, { limit: 100 })
-      if (res.succes) {
-        // Garder seulement les missions actives (pas brouillon ni annulee)
-        const filtrees = (res.donnees as MissionOption[]).filter(
-          m => STATUTS_VALIDES.includes(m.statut)
-        )
-        setMissions(filtrees)
-      }
-    } catch {
+  // ── Charger les missions d'un client automatiquement ──
+  useEffect(() => {
+    if (!formData.client_id) {
       setMissions([])
-    } finally {
-      setLoadingMissions(false)
+      return
     }
-  }
+    setLoadingMissions(true)
+    getClientMissions(formData.client_id)
+      .then(res => {
+        if (res.succes) {
+          const liste = (res.donnees as MissionOption[]) || []
+          const filtrees = liste.filter(m => STATUTS_VALIDES.includes(m.statut))
+          setMissions(filtrees)
+        } else {
+          setMissions([])
+        }
+      })
+      .catch(err => {
+        console.error('Erreur chargement missions:', err)
+        setMissions([])
+      })
+      .finally(() => setLoadingMissions(false))
+  }, [formData.client_id])
 
   // ── Changement du client ──
   const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -160,8 +164,6 @@ export default function FactureFormModal({
       mission_id:  undefined,
       description: '',
     }))
-    setMissions([])
-    if (cid) chargerMissions(cid)
   }
 
   // ── Sélection d'une mission → pré-remplissage ──
@@ -390,30 +392,26 @@ export default function FactureFormModal({
                       )}
                     </label>
                     <select
-                      value={formData.mission_id ?? ''}
+                      value={formData.mission_id || ''}
                       onChange={handleMissionChange}
-                      disabled={isEditing || !formData.client_id || loadingMissions}
+                      disabled={!formData.client_id || loadingMissions || isEditing}
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-sm disabled:bg-slate-50 disabled:text-slate-500"
                     >
-                      <option value="">Aucune mission liée</option>
+                      <option value="">
+                        {loadingMissions
+                          ? 'Chargement...'
+                          : !formData.client_id
+                            ? "Sélectionnez d'abord un client"
+                            : missions.length === 0
+                              ? 'Aucune mission disponible'
+                              : 'Aucune mission liée (optionnel)'}
+                      </option>
                       {missions.map(m => (
                         <option key={m.id} value={m.id}>
                           #{String(m.id).padStart(4, '0')} &middot; {m.lieu_depart} - {m.lieu_arrivee} &middot; {formatDateCourte(m.date_mission)}
                         </option>
                       ))}
                     </select>
-                    {/* Message d'aide si client non sélectionné */}
-                    {!formData.client_id && !isEditing && (
-                      <p className="mt-1 text-xs text-slate-400">
-                        Sélectionnez d'abord un client pour voir ses missions
-                      </p>
-                    )}
-                    {/* Message si client sélectionné mais aucune mission */}
-                    {formData.client_id && !loadingMissions && missions.length === 0 && (
-                      <p className="mt-1 text-xs text-slate-400">
-                        Aucune mission active pour ce client
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>

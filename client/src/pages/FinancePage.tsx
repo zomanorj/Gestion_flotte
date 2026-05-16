@@ -16,6 +16,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Cell,
 } from 'recharts'
 
+import { usePageTitle } from '../hooks/usePageTitle'
 import { useAuth }            from '../contexts/AuthContext'
 import * as financeService    from '../services/financeService'
 import * as vehicleService    from '../services/vehicleService'
@@ -95,6 +96,7 @@ function SkeletonTable() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function FinancePage() {
+  usePageTitle('Finance')
   const { utilisateur } = useAuth()
   const { confirm, ConfirmModalComponent } = useConfirm()
 

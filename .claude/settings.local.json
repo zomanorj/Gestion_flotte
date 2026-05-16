@@ -28,7 +28,18 @@
       "Bash(npm run *)",
       "Bash(node -e \"try { require\\('pdfkit'\\); console.log\\('pdfkit OK'\\) } catch\\(e\\) { console.log\\('pdfkit MISSING:', e.message\\) }\")",
       "Bash(node -e \"const pool = require\\('./db/connection'\\); pool.query\\('SELECT table_name FROM information_schema.tables WHERE table_schema=\\\\'public\\\\' AND table_name IN \\(\\\\'clients\\\\',\\\\'factures\\\\'\\)'\\).then\\(r => { console.log\\('Tables:', r.rows.map\\(r=>r.table_name\\)\\); pool.end\\(\\); }\\).catch\\(e => { console.log\\('DB error:', e.message\\); pool.end\\(\\); }\\)\")",
-      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const pool = require\\('./db/connection'\\); pool.query\\('SELECT table_name FROM information_schema.tables WHERE table_schema=\\\\'public\\\\' AND table_name IN \\(\\\\'clients\\\\',\\\\'factures\\\\'\\)'\\).then\\(r => { console.log\\('Tables:', r.rows.map\\(r=>r.table_name\\)\\); pool.end\\(\\); }\\).catch\\(e => { console.log\\('DB error:', e.message\\); pool.end\\(\\); }\\)\")"
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const pool = require\\('./db/connection'\\); pool.query\\('SELECT table_name FROM information_schema.tables WHERE table_schema=\\\\'public\\\\' AND table_name IN \\(\\\\'clients\\\\',\\\\'factures\\\\'\\)'\\).then\\(r => { console.log\\('Tables:', r.rows.map\\(r=>r.table_name\\)\\); pool.end\\(\\); }\\).catch\\(e => { console.log\\('DB error:', e.message\\); pool.end\\(\\); }\\)\")",
+      "Bash(grep -v \"//.*console\")",
+      "Bash(grep -v \"//.*any\\\\|'any'\\\\|\\\\\"any\\\\\"\\\\|anyOf\\\\|companyName\\\\|company\\\\|commentary\\\\|monetary\")",
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(grep -v \"//.*local\\\\|//.*session\")",
+      "Bash(git tag *)",
+      "Bash(git push *)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\('JWT_SECRET défini:', !!process.env.JWT_SECRET\\); console.log\\('PORT:', process.env.PORT || '5000 \\(défaut\\)'\\); console.log\\('NODE_ENV:', process.env.NODE_ENV || 'non défini'\\);\")",
+      "Bash(dir client\\\\src\\\\components /s /b)",
+      "Bash(node db/seed.js)",
+      "Bash(curl *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('role:', d['user']['role'], '| email:', d['user']['email'], '| token OK:', len\\(d['token']\\)>0\\)\")"
     ]
   }
 }

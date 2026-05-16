@@ -23,6 +23,7 @@ import type { Client } from '../../types/client'
 import * as missionService from '../../services/missionService'
 import { getClients } from '../../services/clientService'
 import CityAutocomplete from '../ui/CityAutocomplete'
+import QuickClientModal from '../clients/QuickClientModal'
 import { calculerItineraire, calculerCarburant } from '../../services/geoService'
 import type { Ville, Itineraire } from '../../services/geoService'
 
@@ -94,6 +95,7 @@ export default function MissionFormModal({
 
   // ── État pour les clients ──
   const [clients, setClients] = useState<Client[]>([])
+  const [isQuickClientOpen, setIsQuickClientOpen] = useState(false)
 
   // ── Référence pour le modal ──
   const modalRef = useRef<HTMLDivElement>(null)
@@ -104,6 +106,7 @@ export default function MissionFormModal({
       setFormData({
         vehicle_id: initialData.vehicle_id || null,
         driver_id: initialData.driver_id || null,
+        client_id: initialData.client_id || null,
         lieu_depart: initialData.lieu_depart,
         lieu_arrivee: initialData.lieu_arrivee,
         date_mission: initialData.date_mission,
@@ -410,9 +413,18 @@ export default function MissionFormModal({
 
             {/* Client associé */}
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">
-                Client (optionnel)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-slate-600">
+                  Client (optionnel)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickClientOpen(true)}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  + Nouveau
+                </button>
+              </div>
               <select
                 value={formData.client_id || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, client_id: e.target.value ? Number(e.target.value) : null }))}
@@ -738,6 +750,16 @@ export default function MissionFormModal({
           </div>
         </div>
       </div>
+
+      <QuickClientModal
+        isOpen={isQuickClientOpen}
+        onClose={() => setIsQuickClientOpen(false)}
+        onCreated={(newClient) => {
+          setClients(prev => [...prev, newClient])
+          setFormData(prev => ({ ...prev, client_id: newClient.id }))
+          setIsQuickClientOpen(false)
+        }}
+      />
     </div>
   )
 }

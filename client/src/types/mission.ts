@@ -72,6 +72,7 @@ export interface Mission {
   arrivee_lng?:          number | null
   trajet_points?:        string | null
   statut:                MissionStatut
+  facture_numero?:       string | null  // Jointure liste client
   notes?:                string | null
   created_by?:           number | null
   created_at:            string

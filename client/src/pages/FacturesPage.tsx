@@ -1,14 +1,35 @@
 // client/src/pages/FacturesPage.tsx
 
 import { useState, useEffect } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { getFactures, getFactureStats, downloadFacturePDF } from '../services/factureService'
-import type { Facture, FactureStats } from '../types/client'
+import type { Facture, FactureStats, StatutFacture } from '../types/client'
 import { formatMGA } from '../utils/format'
 import FactureFormModal  from '../components/factures/FactureFormModal'
 import PaiementModal     from '../components/factures/PaiementModal'
-import { Link } from 'react-router-dom'
+import { usePageTitle } from '../hooks/usePageTitle'
+
+/** Style du badge selon le statut de la facture */
+function getStatutBadge(statut: StatutFacture) {
+  switch (statut) {
+    case 'payee':
+      return { bg: '#D1FAE5', color: '#065F46', label: 'Payée' }
+    case 'annulee':
+      return { bg: '#FEE2E2', color: '#991B1B', label: 'Annulée' }
+    case 'partiel':
+      return { bg: '#FEF3C7', color: '#92400E', label: 'Partiel' }
+    case 'envoyee':
+      return { bg: '#DBEAFE', color: '#1E40AF', label: 'Envoyée' }
+    default:
+      return { bg: '#F1F5F9', color: '#475569', label: statut }
+  }
+}
 
 export default function FacturesPage() {
+  usePageTitle('Factures')
+  const [searchParams] = useSearchParams()
+  const missionFilter = searchParams.get('mission')
   const [factures, setFactures] = useState<Facture[]>([])
   const [stats, setStats] = useState<FactureStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -25,7 +46,7 @@ export default function FacturesPage() {
 
   useEffect(() => {
     loadData()
-  }, [statutFilter, page])
+  }, [statutFilter, page, missionFilter])
 
   const loadData = async () => {
     setIsLoading(true)
@@ -33,8 +54,9 @@ export default function FacturesPage() {
       const [facturesRes, statsRes] = await Promise.all([
         getFactures({
           statut: statutFilter,
+          mission_id: missionFilter ? parseInt(missionFilter, 10) : undefined,
           page,
-          limit: 15
+          limit: 15,
         }),
         getFactureStats()
       ])
@@ -47,6 +69,7 @@ export default function FacturesPage() {
       setStats(statsRes)
     } catch (error) {
       console.error('Erreur de chargement des factures', error)
+      toast.error('Impossible de charger les factures')
     } finally {
       setIsLoading(false)
     }
@@ -87,6 +110,13 @@ export default function FacturesPage() {
         </button>
       </div>
 
+      {missionFilter && (
+        <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm text-blue-800">
+          Filtre actif : factures de la mission #{missionFilter.padStart(4, '0')}
+          <Link to="/factures" className="ml-2 underline font-medium">Voir toutes</Link>
+        </div>
+      )}
+
       {/* KPIs */}
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -121,6 +151,7 @@ export default function FacturesPage() {
             <option value="tous">Tous les statuts</option>
             <option value="brouillon">Brouillon</option>
             <option value="envoyee">Envoyée</option>
+            <option value="partiel">Partiel</option>
             <option value="payee">Payée</option>
             <option value="annulee">Annulée</option>
           </select>
@@ -157,6 +188,7 @@ export default function FacturesPage() {
               ) : (
                 factures.map(facture => {
                   const enRetard = estEnRetard(facture)
+                  const badge = getStatutBadge(facture.statut)
                   return (
                     <tr key={facture.id} className={`hover:bg-slate-50 transition-colors ${enRetard ? 'bg-orange-50/30' : ''}`}>
                       <td className="p-4 font-semibold text-slate-800">{facture.numero}</td>
@@ -183,13 +215,11 @@ export default function FacturesPage() {
                       <td className="p-4 font-bold text-slate-800">{formatMGA(facture.montant_ttc)}</td>
                       <td className="p-4">
                         <div className="flex flex-col gap-1 items-start">
-                          <span className={`px-2 py-1 rounded-md text-[11px] font-medium uppercase
-                            ${facture.statut === 'payee'    ? 'bg-emerald-100 text-emerald-700' :
-                              facture.statut === 'annulee'  ? 'bg-red-100 text-red-700 line-through' :
-                              facture.statut === 'partiel'  ? 'bg-orange-100 text-orange-700' :
-                              facture.statut === 'envoyee'  ? 'bg-blue-100 text-blue-700' :
-                              'bg-slate-100 text-slate-700'}`}>
-                            {facture.statut === 'partiel' ? '● Partiel' : facture.statut}
+                          <span
+                            className="px-2 py-1 rounded-md text-[11px] font-medium uppercase"
+                            style={{ background: badge.bg, color: badge.color }}
+                          >
+                            {badge.label}
                           </span>
                           {enRetard && (
                             <span className="text-[10px] font-bold text-red-600 uppercase">En retard</span>

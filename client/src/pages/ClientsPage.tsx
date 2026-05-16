@@ -6,8 +6,10 @@ import { getClients } from '../services/clientService'
 import type { Client } from '../types/client'
 import ClientFormModal from '../components/clients/ClientFormModal'
 import { formatMGA } from '../utils/format'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function ClientsPage() {
+  usePageTitle('Clients')
   const [clients, setClients] = useState<Client[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)

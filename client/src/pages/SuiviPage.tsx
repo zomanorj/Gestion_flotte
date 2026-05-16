@@ -15,6 +15,10 @@ import toast from 'react-hot-toast'
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, CircleMarker, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 import * as trackingService from '../services/trackingService'
 import { downloadBonLivraison } from '../services/documentService'
@@ -24,11 +28,13 @@ import type { TrackingMission } from '../services/trackingService'
 // Correction bug icône Leaflet par défaut
 // ─────────────────────────────────────────────────────────────────────────────
 
-delete (L.Icon.Default.prototype as any)._getIconUrl
+// Correction icônes Leaflet (assets locaux, sans CDN)
+interface IconDefaultProto { _getIconUrl?: unknown }
+delete (L.Icon.Default.prototype as IconDefaultProto)._getIconUrl
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -225,6 +231,7 @@ function SuiviSkeleton() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SuiviPage() {
+  usePageTitle('Suivi en temps réel')
   const navigate = useNavigate()
   const [missions, setMissions] = useState<TrackingMission[]>([])
   const [selectedMission, setSelectedMission] = useState<TrackingMission | null>(null)

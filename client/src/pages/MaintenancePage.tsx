@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 
+import { usePageTitle } from '../hooks/usePageTitle'
 import * as maintenanceService from '../services/maintenanceService'
 import * as vehicleService     from '../services/vehicleService'
 import MaintenanceFormModal    from '../components/maintenance/MaintenanceFormModal'
@@ -77,6 +78,7 @@ function SkeletonTable() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function MaintenancePage() {
+  usePageTitle('Maintenance')
   const { utilisateur } = useAuth()
   const canEdit = utilisateur?.role === 'admin' || utilisateur?.role === 'gestionnaire'
   const { confirm, ConfirmModalComponent } = useConfirm()

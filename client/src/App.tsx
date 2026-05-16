@@ -50,6 +50,10 @@ import ClientDetailPage       from './pages/ClientDetailPage'
 import FacturesPage           from './pages/FacturesPage'
 import SalairesPage           from './pages/SalairesPage'
 import CorbeillePage          from './pages/CorbeillePage'
+// Sprint 9 : utilisateurs, profil, activité
+import UtilisateursPage       from './pages/UtilisateursPage'
+import ProfilPage             from './pages/ProfilPage'
+import ActivitePage           from './pages/ActivitePage'
 
 function App() {
   return (
@@ -120,6 +124,11 @@ function App() {
 
             {/* Corbeille — admin uniquement */}
             <Route path="corbeille"        element={<CorbeillePage />} />
+
+            {/* Sprint 9 : utilisateurs, profil, activité */}
+            <Route path="utilisateurs"     element={<UtilisateursPage />} />
+            <Route path="profil"           element={<ProfilPage />} />
+            <Route path="activite"         element={<ActivitePage />} />
           </Route>
 
 

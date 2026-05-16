@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "transiflow-server",
   "version": "1.0.0",
   "description": "API REST pour le système de gestion de transport TransiFlow",
@@ -24,6 +24,8 @@
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "pdfkit": "^0.18.0",
     "pg": "^8.20.0"

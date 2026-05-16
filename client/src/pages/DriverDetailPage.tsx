@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DriverDetailPage.tsx
  * Page de détail d'un chauffeur — TransiFlow.
  *
@@ -16,6 +16,7 @@ import toast from 'react-hot-toast'
 
 import { useAuth } from '../contexts/AuthContext'
 import { useConfirm } from '../hooks/useConfirm'
+import { usePageTitle } from '../hooks/usePageTitle'
 import * as driverService from '../services/driverService'
 import type { Driver, Mission } from '../types/driver'
 import {
@@ -43,6 +44,8 @@ export default function DriverDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  usePageTitle(driver ? `${driver.prenom} ${driver.nom}` : 'Chauffeurs')
+
   // ── Vérifier les permissions ──
   const canEdit = utilisateur?.role === 'admin' || utilisateur?.role === 'gestionnaire'
   const canDelete = utilisateur?.role === 'admin'
@@ -61,11 +64,14 @@ export default function DriverDetailPage() {
         try {
           const missionsData = await driverService.getDriverMissions(parseInt(id!, 10))
           setMissions(missionsData.slice(0, 5)) // Max 5 missions
-        } catch {
+        } catch (err: unknown) {
+          console.error('Erreur chargement missions chauffeur:', err)
           setMissions([])
+          toast.error('Impossible de charger les missions récentes du chauffeur.')
         }
       } catch (err) {
         console.error('Erreur chargement détail chauffeur:', err)
+        toast.error('Impossible de charger le détail du chauffeur')
       } finally {
         setIsLoading(false)
       }
@@ -271,6 +277,26 @@ export default function DriverDetailPage() {
                 <dd className="text-sm font-medium text-slate-800">
                   {driver && getStatutLabel(driver.statut)}
                 </dd>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 mt-4 pt-4 border-t border-slate-100">
+              <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
+                <span className="text-lg">💵</span>
+              </div>
+              <div className="flex-1 grid grid-cols-2 gap-4">
+                <div>
+                  <dt className="text-xs text-slate-500 uppercase">Salaire Fixe</dt>
+                  <dd className="text-sm font-medium text-slate-800">
+                    {(driver?.salaire_base ?? 0).toLocaleString('fr-FR')} MGA
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-500 uppercase">Prime Mission</dt>
+                  <dd className="text-sm font-medium text-slate-800">
+                    {(driver?.prime_mission ?? 50000).toLocaleString('fr-FR')} MGA
+                  </dd>
+                </div>
               </div>
             </div>
           </dl>

@@ -12,6 +12,7 @@
 
 const express = require('express')
 const cors    = require('cors')
+const helmet  = require('helmet')
 const dotenv  = require('dotenv')
 
 // Chargement des variables d'environnement EN PREMIER
@@ -40,9 +41,26 @@ const incidentRoutes    = require('./routes/incidentRoutes')
 const clientRoutes      = require('./routes/clientRoutes')
 const factureRoutes     = require('./routes/factureRoutes')
 const paiementRoutes    = require('./routes/paiementRoutes')
+const salaireRoutes     = require('./routes/salaireRoutes')
+// Sprint 9 : utilisateurs, activité, corbeille, contrats, rapports avancés
+const utilisateurRoutes = require('./routes/utilisateurRoutes')
+const activiteRoutes    = require('./routes/activiteRoutes')
+const corbeilleRoutes   = require('./routes/corbeilleRoutes')
+const contratRoutes     = require('./routes/contratRoutes')
+const rapportRoutes     = require('./routes/rapportRoutes')
+/* Alias audit : même middleware JWT que verifierToken dans authMiddleware.js */
+const { verifierToken: authMiddleware } = require('./middleware/authMiddleware')
 
 const app  = express()
 const PORT = process.env.PORT || 5000
+
+/* Protection des headers HTTP */
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false,
+}))
+// crossOriginEmbedderPolicy false → nécessaire pour Leaflet
+// contentSecurityPolicy false → à configurer finement en prod
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Middlewares globaux
@@ -67,12 +85,14 @@ app.use(cors({
 // Limite relevée à 5 Mo : trajet_points (géométrie OSRM) peut dépasser le défaut de 100 ko
 app.use(express.json({ limit: '5mb' }))
 
-// Log minimaliste de chaque requête reçue (utile en développement)
-app.use((req, _res, next) => {
-  const horodatage = new Date().toLocaleTimeString('fr-FR')
-  console.log(`[${horodatage}] ${req.method} ${req.path}`)
-  next()
-})
+/* Logger les requêtes HTTP en développement seulement */
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, _res, next) => {
+    const horodatage = new Date().toISOString()
+    console.log(`[${horodatage}] ${req.method} ${req.path}`)
+    next()
+  })
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Routes
@@ -120,6 +140,27 @@ app.use('/api/factures', factureRoutes)
 // Routes paiements progressifs : /api/factures/:id/paiements
 app.use('/api/factures/:id/paiements', paiementRoutes)
 
+// Routes salaires : /api/salaires (JWT obligatoire)
+app.use('/api/salaires', authMiddleware, salaireRoutes)
+
+// Routes utilisateurs : /api/utilisateurs (Sprint 9)
+app.use('/api/utilisateurs', utilisateurRoutes)
+
+// Routes profil : /api/profil (Sprint 9 — accessible à tous les rôles)
+app.use('/api/profil', utilisateurRoutes.profilRouter)
+
+// Routes journal d'activité : /api/activite (Sprint 9)
+app.use('/api/activite', activiteRoutes)
+
+// Routes corbeille : /api/corbeille (Sprint 9)
+app.use('/api/corbeille', corbeilleRoutes)
+
+// Routes contrats clients : /api/contrats (Sprint 9)
+app.use('/api/contrats', contratRoutes)
+
+// Routes rapports avancés : /api/rapports (Sprint 9)
+app.use('/api/rapports', rapportRoutes)
+
 // Route de santé : vérifier que le serveur est opérationnel
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -142,12 +183,22 @@ app.use((_req, res) => {
 // Au démarrage du serveur, appliquer les migrations dans l'ordre
 async function runMigrations() {
   const migrations = [
+    '001_update_vehicles.sql',
+    '002_update_missions.sql',
+    '003_add_tracking.sql',
     '004_add_coords.sql',
     '005_finance.sql',
     '006_maintenance.sql',
     '007_incidents.sql',
     '008_clients.sql',
     '009_paiements.sql',
+    '010_salaires.sql',
+    '011_corbeille.sql',
+    '012_credit_client.sql',
+    '013_indexes.sql',
+    '014_utilisateurs.sql',
+    '015_activite.sql',
+    '016_contrats.sql',
   ]
 
   for (const fichier of migrations) {
@@ -156,7 +207,10 @@ async function runMigrations() {
       try {
         const sql = fs.readFileSync(migrationPath, 'utf8')
         await pool.query(sql)
-        console.log(`✅ Migration ${fichier} appliquée`)
+        /* Traces migrations : développement / staging uniquement */
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`✅ Migration ${fichier} appliquée`)
+        }
       } catch (err) {
         // On log l'erreur mais on continue (idempotent)
         console.error(`⚠️  Migration ${fichier} :`, err.message)
@@ -167,22 +221,25 @@ async function runMigrations() {
 
 app.listen(PORT, async () => {
   await runMigrations()
-  console.log('')
-  console.log('┌─────────────────────────────────────────┐')
-  console.log('│       🚌 Serveur TransiFlow          │')
-  console.log('├─────────────────────────────────────────┤')
-  console.log(`│  Port      : ${PORT}                        │`)
-  console.log(`│  Env       : ${(process.env.NODE_ENV || 'development').padEnd(27)}│`)
-console.log('├─────────────────────────────────────────┤')
-console.log(`│  Health    : http://localhost:${PORT}/api/health  │`)
-console.log(`│  Auth      : http://localhost:${PORT}/api/auth    │`)
-console.log(`│  Vehicles  : http://localhost:${PORT}/api/vehicles│`)
-console.log(`│  Drivers   : http://localhost:${PORT}/api/drivers │`)
-console.log(`│  Missions  : http://localhost:${PORT}/api/missions│`)
-console.log(`│  Tracking  : http://localhost:${PORT}/api/tracking│`)
-console.log(`│  Documents : http://localhost:${PORT}/api/documents│`)
-console.log(`│  Stats     : http://localhost:${PORT}/api/stats   │`)
-console.log(`│  Export    : http://localhost:${PORT}/api/export  │`)
-console.log('└─────────────────────────────────────────┘')
-  console.log('')
+  /* Bandeau de démarrage : bruit évité en production */
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('')
+    console.log('┌─────────────────────────────────────────┐')
+    console.log('│       🚌 Serveur TransiFlow               │')
+    console.log('├─────────────────────────────────────────┤')
+    console.log(`│  Port      : ${String(PORT).padEnd(30)} │`)
+    console.log(`│  Env       : ${(process.env.NODE_ENV || 'development').padEnd(30)} │`)
+    console.log('├─────────────────────────────────────────┤')
+    console.log(`│  Health    : http://localhost:${PORT}/api/health   │`)
+    console.log(`│  Auth      : http://localhost:${PORT}/api/auth     │`)
+    console.log(`│  Vehicles  : http://localhost:${PORT}/api/vehicles│`)
+    console.log(`│  Drivers   : http://localhost:${PORT}/api/drivers  │`)
+    console.log(`│  Missions  : http://localhost:${PORT}/api/missions │`)
+    console.log(`│  Tracking  : http://localhost:${PORT}/api/tracking│`)
+    console.log(`│  Documents : http://localhost:${PORT}/api/documents│`)
+    console.log(`│  Stats     : http://localhost:${PORT}/api/stats    │`)
+    console.log(`│  Export    : http://localhost:${PORT}/api/export   │`)
+    console.log('└─────────────────────────────────────────┘')
+    console.log('')
+  }
 })

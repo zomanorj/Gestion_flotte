@@ -1,4 +1,4 @@
-﻿/**
+/**
  * vehicleModel.js
  * Modèle de données pour la gestion des véhicules — TransiFlow.
  *
@@ -39,7 +39,7 @@ async function findAll({
   const offset = (page - 1) * limit
 
   // Construction dynamique de la requête selon les filtres
-  let whereClauses = []
+  let whereClauses = ['deleted_at IS NULL']
   let values = []
   let paramIndex = 1
 
@@ -128,7 +128,7 @@ async function findById(id) {
       created_at,
       updated_at
     FROM vehicles
-    WHERE id = $1
+    WHERE id = $1 AND deleted_at IS NULL
   `
 
   try {
@@ -148,7 +148,7 @@ async function findById(id) {
 async function findByImmatriculation(immatriculation) {
   const query = `
     SELECT id FROM vehicles
-    WHERE LOWER(immatriculation) = LOWER($1)
+    WHERE LOWER(immatriculation) = LOWER($1) AND deleted_at IS NULL
   `
 
   try {
@@ -295,7 +295,7 @@ async function update(id, data) {
 async function remove(id) {
   const query = `
     UPDATE vehicles
-    SET statut = 'archive', updated_at = NOW()
+    SET statut = 'archive', deleted_at = NOW(), updated_at = NOW()
     WHERE id = $1
     RETURNING
       id,
@@ -355,6 +355,7 @@ async function findAlertes() {
       END as etat_visite
     FROM vehicles
     WHERE statut != 'archive'
+      AND deleted_at IS NULL
       AND (
         (date_assurance IS NOT NULL AND date_assurance <= CURRENT_DATE + INTERVAL '30 days')
         OR
@@ -386,11 +387,11 @@ async function findAlertes() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function count(statut = null) {
-  let query = 'SELECT COUNT(*) as total FROM vehicles'
+  let query = 'SELECT COUNT(*) as total FROM vehicles WHERE deleted_at IS NULL'
   let values = []
 
   if (statut) {
-    query += ' WHERE statut = $1'
+    query += ' AND statut = $1'
     values.push(statut)
   }
 

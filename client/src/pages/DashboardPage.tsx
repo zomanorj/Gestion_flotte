@@ -13,6 +13,7 @@
 
 import { useState, useEffect }   from 'react'
 import { useNavigate, Link }     from 'react-router-dom'
+import { usePageTitle } from '../hooks/usePageTitle'
 import {
   ResponsiveContainer,
   LineChart,
@@ -495,6 +496,7 @@ function SectionDernieresMissions({ missions, isLoading }: SectionDernieresMissi
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  usePageTitle('Tableau de bord')
   const { utilisateur } = useAuth()
   const navigate        = useNavigate()
 

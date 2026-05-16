@@ -7,6 +7,7 @@
  */
 
 import { useNavigate } from 'react-router-dom'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SVG camion avec point d'interrogation
@@ -49,6 +50,7 @@ function SvgCamionInconnu() {
 
 export default function NotFoundPage() {
   const navigate = useNavigate()
+  usePageTitle('Page introuvable')
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6">

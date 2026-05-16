@@ -16,6 +16,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
+import { usePageTitle } from '../hooks/usePageTitle'
 import { useDrivers } from '../hooks/useDrivers'
 import { useAuth } from '../contexts/AuthContext'
 import DriverFormModal from '../components/drivers/DriverFormModal'
@@ -71,6 +72,7 @@ function CardSkeleton() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DriversPage() {
+  usePageTitle('Chauffeurs')
   const navigate = useNavigate()
   const { utilisateur } = useAuth()
   const { confirm, ConfirmModalComponent } = useConfirm()

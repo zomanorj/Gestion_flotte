@@ -13,7 +13,7 @@ const pool = require('../db/connection')
 async function findAll({ search = '', statut = '', type_client = '', page = 1, limit = 10 }) {
   const offset = (page - 1) * limit
   const values = []
-  const conditions = []
+  const conditions = ['c.deleted_at IS NULL']
   let paramIndex = 1
 
   if (search) {
@@ -85,7 +85,7 @@ async function findAll({ search = '', statut = '', type_client = '', page = 1, l
 
 async function findById(id) {
   const query = `
-    SELECT * FROM clients WHERE id = $1
+    SELECT * FROM clients WHERE id = $1 AND deleted_at IS NULL
   `
   try {
     const result = await pool.query(query, [id])
@@ -108,7 +108,7 @@ async function findWithStats(id) {
       (SELECT COALESCE(SUM(f.montant_ttc), 0) FROM factures f WHERE f.client_id = c.id AND f.statut = 'payee') as ca_total,
       (SELECT COUNT(*) FROM factures f WHERE f.client_id = c.id AND f.statut IN ('brouillon', 'envoyee')) as factures_impayees
     FROM clients c
-    WHERE c.id = $1
+    WHERE c.id = $1 AND c.deleted_at IS NULL
   `
   try {
     const result = await pool.query(query, [id])
@@ -205,7 +205,7 @@ async function update(id, data) {
 async function remove(id) {
   const query = `
     UPDATE clients
-    SET statut = 'inactif', updated_at = NOW()
+    SET statut = 'inactif', deleted_at = NOW(), updated_at = NOW()
     WHERE id = $1
     RETURNING *
   `
@@ -226,7 +226,7 @@ async function getMissions(client_id, { statut = '', page = 1, limit = 10 }) {
   const offset = (page - 1) * limit
   const values = [client_id]
   let paramIndex = 2
-  let whereSQL = `WHERE m.client_id = $1`
+  let whereSQL = `WHERE m.client_id = $1 AND m.deleted_at IS NULL`
 
   if (statut && statut !== 'tous') {
     whereSQL += ` AND m.statut = $${paramIndex}`
@@ -234,11 +234,18 @@ async function getMissions(client_id, { statut = '', page = 1, limit = 10 }) {
     paramIndex++
   }
 
+  // Exclure les missions annulées par défaut
+  whereSQL += ` AND m.statut != 'annulee'`
+
   const query = `
     SELECT
       m.id, m.date_mission, m.lieu_depart, m.lieu_arrivee, m.statut, m.distance_km,
+      v.immatriculation, v.type as vehicle_type,
+      d.nom as driver_nom, d.prenom as driver_prenom,
       f.numero as facture_numero, f.statut as facture_statut, f.montant_ttc as montant_ttc
     FROM missions m
+    LEFT JOIN vehicles v ON m.vehicle_id = v.id
+    LEFT JOIN drivers d ON m.driver_id = d.id
     LEFT JOIN factures f ON f.mission_id = m.id
     ${whereSQL}
     ORDER BY m.date_mission DESC
@@ -274,7 +281,7 @@ async function getMissions(client_id, { statut = '', page = 1, limit = 10 }) {
 async function getFactures(client_id) {
   const query = `
     SELECT * FROM factures
-    WHERE client_id = $1
+    WHERE client_id = $1 AND deleted_at IS NULL
     ORDER BY date_emission DESC
   `
   try {
@@ -293,12 +300,12 @@ async function getFactures(client_id) {
 async function getStats(client_id) {
   const query = `
     SELECT
-      (SELECT COUNT(*) FROM missions WHERE client_id = $1) as total_missions,
-      (SELECT COUNT(*) FROM missions WHERE client_id = $1 AND statut = 'terminee') as missions_terminees,
-      (SELECT COALESCE(SUM(montant_ttc), 0) FROM factures WHERE client_id = $1 AND statut = 'payee') as ca_total,
-      (SELECT COALESCE(SUM(montant_ttc), 0) FROM factures WHERE client_id = $1 AND statut = 'payee' AND DATE_TRUNC('month', date_paiement) = DATE_TRUNC('month', CURRENT_DATE)) as ca_ce_mois,
-      (SELECT COUNT(*) FROM factures WHERE client_id = $1 AND statut IN ('brouillon', 'envoyee')) as factures_impayees,
-      (SELECT COALESCE(SUM(montant_ttc), 0) FROM factures WHERE client_id = $1 AND statut IN ('brouillon', 'envoyee')) as montant_impaye
+      (SELECT COUNT(*) FROM missions WHERE client_id = $1 AND deleted_at IS NULL) as total_missions,
+      (SELECT COUNT(*) FROM missions WHERE client_id = $1 AND statut = 'terminee' AND deleted_at IS NULL) as missions_terminees,
+      (SELECT COALESCE(SUM(montant_ttc), 0) FROM factures WHERE client_id = $1 AND statut = 'payee' AND deleted_at IS NULL) as ca_total,
+      (SELECT COALESCE(SUM(montant_ttc), 0) FROM factures WHERE client_id = $1 AND statut = 'payee' AND DATE_TRUNC('month', date_paiement) = DATE_TRUNC('month', CURRENT_DATE) AND deleted_at IS NULL) as ca_ce_mois,
+      (SELECT COUNT(*) FROM factures WHERE client_id = $1 AND statut IN ('brouillon', 'envoyee') AND deleted_at IS NULL) as factures_impayees,
+      (SELECT COALESCE(SUM(montant_ttc), 0) FROM factures WHERE client_id = $1 AND statut IN ('brouillon', 'envoyee') AND deleted_at IS NULL) as montant_impaye
   `
   try {
     const result = await pool.query(query, [client_id])
@@ -317,6 +324,66 @@ async function getStats(client_id) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// processCreditTransaction
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function processCreditTransaction(client_id, type_transaction, montant, description, facture_id = null) {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    
+    // 1. Ajouter la transaction
+    const insertTxQuery = `
+      INSERT INTO client_transactions (client_id, facture_id, type_transaction, montant, description)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `
+    const txResult = await client.query(insertTxQuery, [client_id, facture_id, type_transaction, montant, description])
+    
+    // 2. Mettre à jour le solde du client
+    const updateSoldeQuery = `
+      UPDATE clients
+      SET solde_credit = solde_credit ${type_transaction === 'credit' ? '+' : '-'} $1
+      WHERE id = $2
+      RETURNING solde_credit
+    `
+    const soldeResult = await client.query(updateSoldeQuery, [montant, client_id])
+    
+    await client.query('COMMIT')
+    
+    return {
+      transaction: txResult.rows[0],
+      nouveau_solde: soldeResult.rows[0].solde_credit
+    }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    console.error('❌ clientModel.processCreditTransaction:', error.message)
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getTransactions
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function getTransactions(client_id) {
+  const query = `
+    SELECT * FROM client_transactions
+    WHERE client_id = $1
+    ORDER BY created_at DESC
+  `
+  try {
+    const result = await pool.query(query, [client_id])
+    return result.rows
+  } catch (error) {
+    console.error('❌ clientModel.getTransactions:', error.message)
+    throw error
+  }
+}
+
 module.exports = {
   findAll,
   findById,
@@ -326,5 +393,7 @@ module.exports = {
   remove,
   getMissions,
   getFactures,
-  getStats
+  getStats,
+  processCreditTransaction,
+  getTransactions
 }

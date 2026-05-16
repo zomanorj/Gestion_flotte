@@ -53,7 +53,7 @@ async function findAll({
   const offset = (page - 1) * limit
 
   // Construction dynamique de la requête selon les filtres
-  let whereClauses = []
+  let whereClauses = ['m.deleted_at IS NULL']
   let values = []
   let paramIndex = 1
 
@@ -103,6 +103,7 @@ async function findAll({
       m.id,
       m.vehicle_id,
       m.driver_id,
+      m.client_id,
       m.lieu_depart,
       m.lieu_arrivee,
       m.date_mission,
@@ -128,10 +129,13 @@ async function findAll({
       -- Jointure avec drivers
       d.nom as driver_nom,
       d.prenom as driver_prenom,
-      d.numero_permis as driver_numero_permis
+      d.numero_permis as driver_numero_permis,
+      -- Jointure avec clients
+      c.nom as client_nom
     FROM missions m
     LEFT JOIN vehicles v ON m.vehicle_id = v.id
     LEFT JOIN drivers d ON m.driver_id = d.id
+    LEFT JOIN clients c ON m.client_id = c.id
     ${whereSQL}
     ORDER BY m.date_mission DESC, m.heure_depart DESC, m.created_at DESC
     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -156,6 +160,7 @@ async function findAll({
       id: row.id,
       vehicle_id: row.vehicle_id,
       driver_id: row.driver_id,
+      client_id: row.client_id,
       lieu_depart: row.lieu_depart,
       lieu_arrivee: row.lieu_arrivee,
       date_mission: row.date_mission,
@@ -188,6 +193,8 @@ async function findAll({
         prenom: row.driver_prenom,
         numero_permis: row.driver_numero_permis,
       } : null,
+      // Données du client joint
+      client_nom: row.client_nom || null,
     }))
 
     return {
@@ -458,6 +465,7 @@ async function create(data) {
   const {
     vehicle_id,
     driver_id,
+    client_id,
     lieu_depart,
     lieu_arrivee,
     date_mission,
@@ -480,6 +488,7 @@ async function create(data) {
     INSERT INTO missions (
       vehicle_id,
       driver_id,
+      client_id,
       lieu_depart,
       lieu_arrivee,
       date_mission,
@@ -497,13 +506,14 @@ async function create(data) {
       notes,
       created_by
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
     RETURNING *
   `
 
   const values = [
     vehicle_id,
     driver_id,
+    client_id || null,
     lieu_depart,
     lieu_arrivee,
     date_mission,
@@ -540,7 +550,7 @@ async function create(data) {
 async function update(id, data) {
   // Liste des champs modifiables
   const champsAutorises = [
-    'vehicle_id', 'driver_id', 'lieu_depart', 'lieu_arrivee',
+    'vehicle_id', 'driver_id', 'client_id', 'lieu_depart', 'lieu_arrivee',
     'date_mission', 'heure_depart', 'heure_arrivee_prevue',
     'chargement', 'poids_tonne', 'distance_km', 'notes',
     'depart_lat', 'depart_lng', 'arrivee_lat', 'arrivee_lng', 'trajet_points'
@@ -641,7 +651,7 @@ async function updateStatut(id, nouveauStatut) {
 async function remove(id) {
   const query = `
     UPDATE missions
-    SET statut = 'annulee', updated_at = NOW()
+    SET statut = 'annulee', deleted_at = NOW(), updated_at = NOW()
     WHERE id = $1
     RETURNING *
   `
@@ -700,11 +710,11 @@ async function getStats() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function count(statut = null) {
-  let query = 'SELECT COUNT(*) as total FROM missions'
+  let query = 'SELECT COUNT(*) as total FROM missions WHERE deleted_at IS NULL'
   let values = []
 
   if (statut) {
-    query += ' WHERE statut = $1'
+    query += ' AND statut = $1'
     values.push(statut)
   }
 

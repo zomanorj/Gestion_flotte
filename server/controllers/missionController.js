@@ -172,6 +172,7 @@ async function createMission(req, res) {
     const {
       vehicle_id,
       driver_id,
+      client_id,
       lieu_depart,
       lieu_arrivee,
       date_mission,
@@ -274,6 +275,7 @@ async function createMission(req, res) {
     const nouvelleMission = await missionModel.create({
       vehicle_id: vehicle_id || null,
       driver_id: driver_id || null,
+      client_id: client_id || null,
       lieu_depart: lieu_depart.trim(),
       lieu_arrivee: lieu_arrivee.trim(),
       date_mission,
@@ -319,6 +321,7 @@ async function updateMission(req, res) {
     const {
       vehicle_id,
       driver_id,
+      client_id,
       lieu_depart,
       lieu_arrivee,
       date_mission,
@@ -417,6 +420,7 @@ async function updateMission(req, res) {
     const missionMiseAJour = await missionModel.update(parseInt(id, 10), {
       vehicle_id,
       driver_id,
+      client_id,
       lieu_depart: lieu_depart ? lieu_depart.trim() : undefined,
       lieu_arrivee: lieu_arrivee ? lieu_arrivee.trim() : undefined,
       date_mission,
@@ -493,6 +497,30 @@ async function updateStatutMission(req, res) {
         statutActuel: resultat.statutActuel,
         transitionsAutorisees: resultat.transitionsAutorisees,
       })
+    }
+
+    // ── CRÉATION AUTO SALAIRE CHAUFFEUR ──
+    if (statut === 'terminee' && resultat.driver_id) {
+      try {
+        const driverModel = require('../models/driverModel')
+        const salaireModel = require('../models/salaireModel')
+        const driver = await driverModel.findById(resultat.driver_id)
+        
+        if (driver) {
+          const prime = parseFloat(driver.prime_mission) || 50000 // 50 000 par défaut si non défini
+          await salaireModel.create({
+            driver_id: driver.id,
+            mission_id: resultat.id,
+            type_salaire: 'mission',
+            montant: prime,
+            statut: 'en_attente',
+            notes: `Généré automatiquement pour la mission #${resultat.id}`
+          })
+        }
+      } catch (salaireErr) {
+        console.error('❌ Erreur création salaire auto :', salaireErr.message)
+        // On ne bloque pas la réponse si le salaire échoue
+      }
     }
 
     // ── Réponse ──
