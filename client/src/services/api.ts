@@ -16,6 +16,9 @@ import axios from 'axios'
 // Centralisée ici pour éviter les fautes de frappe dans d'autres fichiers
 export const CLE_TOKEN_STOCKAGE = 'authToken'
 
+// Garde contre les redirections multiples quand plusieurs requêtes reçoivent 401 en parallèle
+let redirectionEnCours = false
+
 // Création de l'instance axios avec la configuration commune
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
@@ -58,17 +61,18 @@ apiClient.interceptors.response.use(
 
   (erreur) => {
     // Erreur 401 : token absent, invalide ou expiré
-    // On nettoie le localStorage et on redirige vers /login
     if (erreur.response?.status === 401) {
       localStorage.removeItem(CLE_TOKEN_STOCKAGE)
 
-      // Éviter une boucle infinie si on est déjà sur /login
-      if (window.location.pathname !== '/login') {
+      // Éviter les redirections multiples si plusieurs requêtes parallèles échouent en même temps
+      if (!redirectionEnCours && window.location.pathname !== '/login') {
+        redirectionEnCours = true
         window.location.href = '/login'
+        // Réinitialiser le verrou après navigation (au cas où la page ne se recharge pas)
+        setTimeout(() => { redirectionEnCours = false }, 3000)
       }
     }
 
-    // On propage l'erreur pour que chaque appelant puisse la gérer localement si nécessaire
     return Promise.reject(erreur)
   }
 )

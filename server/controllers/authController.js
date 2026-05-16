@@ -17,8 +17,8 @@ const pool   = require('../db/connection')
 // 10 est le minimum recommandé par OWASP pour un bon compromis sécurité/performance.
 const COUT_HACHAGE_BCRYPT = 10
 
-// Durée de validité du token JWT (24 heures)
-const DUREE_TOKEN_JWT = '24h'
+// Durée de validité du token JWT — lit JWT_EXPIRES_IN depuis .env, défaut 7 jours
+const DUREE_TOKEN_JWT = process.env.JWT_EXPIRES_IN || '7d'
 
 
 // ─────────────────────────────────────────────────────────────────────────────
