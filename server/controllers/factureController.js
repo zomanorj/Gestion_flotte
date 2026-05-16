@@ -9,11 +9,14 @@ const clientModel = require('../models/clientModel')
 
 /**
  * Formate un montant en MGA pour le PDF.
- * Utilise fr-FR (espace insécable comme séparateur milliers) — jamais de slash.
+ * Pas de slash, séparateur espace.
  * Résultat : "2 000 000 Ar"
  */
-function formatMontant(n) {
-  return new Intl.NumberFormat('fr-FR').format(Math.round(n || 0)) + ' Ar'
+const fmt = (n) => {
+  if (!n && n !== 0) return '0 Ar'
+  return Math.round(parseFloat(n))
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' Ar'
 }
 
 // Utilitaire de formatage de date
@@ -28,9 +31,10 @@ function formaterDateFR(dateStr) {
 
 async function getFactures(req, res) {
   try {
-    const { client_id, statut, date_debut, date_fin, page, limit } = req.query
+    const { client_id, mission_id, statut, date_debut, date_fin, page, limit } = req.query
     const resultats = await factureModel.findAll({
       client_id: client_id ? parseInt(client_id, 10) : null,
+      mission_id: mission_id ? parseInt(mission_id, 10) : null,
       statut,
       date_debut,
       date_fin,
@@ -136,9 +140,29 @@ async function marquerPayee(req, res) {
     if (isNaN(id)) return res.status(400).json({ succes: false, message: 'ID invalide' })
     if (!mode_paiement) return res.status(400).json({ succes: false, message: 'Mode de paiement obligatoire' })
 
-    const factureMaj = await factureModel.marquerPayee(id, { mode_paiement, date_paiement })
-    if (!factureMaj) return res.status(404).json({ succes: false, message: 'Facture introuvable' })
+    const factureExistante = await factureModel.findById(id)
+    if (!factureExistante) return res.status(404).json({ succes: false, message: 'Facture introuvable' })
 
+    if (mode_paiement === 'credit') {
+      const clientModel = require('../models/clientModel')
+      const clientStats = await clientModel.getStats(factureExistante.client_id)
+      const client = await clientModel.findById(factureExistante.client_id)
+      
+      if (!client || (client.solde_credit || 0) < factureExistante.montant_ttc) {
+        return res.status(400).json({ succes: false, message: 'Solde de crédit insuffisant' })
+      }
+
+      await clientModel.processCreditTransaction(
+        factureExistante.client_id,
+        'debit',
+        factureExistante.montant_ttc,
+        `Paiement facture #${factureExistante.numero}`,
+        id
+      )
+    }
+
+    const factureMaj = await factureModel.marquerPayee(id, { mode_paiement, date_paiement })
+    
     res.json({ succes: true, message: 'Facture marquée comme payée', donnees: factureMaj })
   } catch (erreur) {
     console.error('❌ factureController.marquerPayee :', erreur.message)
@@ -180,196 +204,208 @@ async function getStatsFactures(req, res) {
 
 async function generatePDF(req, res) {
   try {
-    const id = parseInt(req.params.id, 10)
-    if (isNaN(id)) return res.status(400).json({ succes: false, message: 'ID invalide' })
+    const facture = await factureModel.findById(req.params.id)
+    if (!facture) {
+      return res.status(404).json({ message: 'Facture introuvable' })
+    }
 
-    const facture = await factureModel.findById(id)
-    if (!facture) return res.status(404).json({ succes: false, message: 'Facture introuvable' })
+    // Headers pour téléchargement
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=Facture-${facture.numero}.pdf`
+    )
 
-    // Marges compactes pour tenir sur une page A4
+    // Créer le document PDF UNE SEULE PAGE
+    // bufferPages:true indispensable pour appeler flushPages() avant end()
     const doc = new PDFDocument({
-      size:    'A4',
-      margins: { top: 40, bottom: 40, left: 50, right: 50 },
+      size: 'A4',
+      margin: 40,
       autoFirstPage: true,
+      bufferPages: true,
     })
 
-    const filename = `Facture-${facture.numero}.pdf`
-    res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
-    res.setHeader('Cache-Control', 'no-cache')
+    // Pipe vers la réponse
     doc.pipe(res)
 
-    // ── Constantes de mise en page ──
-    const L = 50    // marge gauche
-    const R = 545   // marge droite (595 - 50)
-    const W = 495   // largeur utile
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 1. EN-TETE (y: 40-115)
-    // ─────────────────────────────────────────────────────────────────────────
-    let y = 40
-
-    // Rectangle titre bleu marine
-    doc.rect(L, y, W, 50).fill('#1E3A5F')
-
-    // Titre FACTURE à gauche
-    doc.fillColor('white').font('Helvetica-Bold').fontSize(18)
-       .text('FACTURE', L + 12, y + 16)
-
-    // Numéro + société à droite
-    doc.font('Helvetica').fontSize(9)
-       .text(facture.numero, R - 130, y + 10, { width: 120, align: 'right' })
-    doc.fillColor('#BFD7FF').fontSize(8)
-       .text('TransiFlow - Transport & Logistique', R - 180, y + 24, { width: 170, align: 'right' })
-
-    y += 55
-
-    // Ligne de dates (émission + échéance)
-    doc.fillColor('#334155').font('Helvetica').fontSize(9)
-       .text(`Emis le : ${formaterDateFR(facture.date_emission)}`, L, y)
-    if (facture.date_echeance) {
-      doc.text(`Echeance : ${formaterDateFR(facture.date_echeance)}`, L + 160, y)
-    }
-    // Statut payée en vert à droite
-    if (facture.statut === 'payee') {
-      doc.fillColor('#16A34A').font('Helvetica-Bold').fontSize(10)
-         .text('ACQUITTEE', R - 100, y - 2, { width: 100, align: 'right' })
-      if (facture.date_paiement) {
-        doc.fillColor('#16A34A').font('Helvetica').fontSize(8)
-           .text(`le ${formaterDateFR(facture.date_paiement)}`, R - 100, y + 12, { width: 100, align: 'right' })
-      }
+    // ── FONCTION FORMATAGE MONTANT ──
+    const fmt = (n) => {
+      if (!n && n !== 0) return '0 Ar'
+      return Math.round(parseFloat(n))
+        .toString()
+        .replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' Ar'
     }
 
-    y += 18
-    // Séparateur horizontal
-    doc.moveTo(L, y).lineTo(R, y).strokeColor('#CBD5E1').lineWidth(0.5).stroke()
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 2. BLOC CLIENT (y: 118-185)
-    // ─────────────────────────────────────────────────────────────────────────
-    y += 10
-
-    doc.fillColor('#1E3A5F').font('Helvetica-Bold').fontSize(8)
-       .text('FACTURER A :', L, y)
-    y += 12
-
-    // Nom client en gras
-    doc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(10)
-       .text(facture.client_nom || '-', L, y)
-    y += 13
-
-    doc.font('Helvetica').fontSize(9).fillColor('#475569')
-    if (facture.client_adresse) { doc.text(facture.client_adresse, L, y); y += 11 }
-    if (facture.client_ville)   { doc.text(facture.client_ville,   L, y); y += 11 }
-    if (facture.client_nif)     { doc.text(`NIF : ${facture.client_nif}`,   L, y); y += 11 }
-    if (facture.client_stat)    { doc.text(`STAT : ${facture.client_stat}`, L, y); y += 11 }
-
-    y += 6
-    doc.moveTo(L, y).lineTo(R, y).strokeColor('#CBD5E1').lineWidth(0.5).stroke()
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 3. TABLEAU DESIGNATION (y: 195-265)
-    // ─────────────────────────────────────────────────────────────────────────
-    y += 10
-
-    // En-tête de tableau (fond bleu)
-    const COL_PRIX = R - 110  // colonne prix à partir de x
-    doc.rect(L, y, W, 18).fill('#1E40AF')
-    doc.fillColor('white').font('Helvetica-Bold').fontSize(8.5)
-       .text('DESIGNATION', L + 8, y + 5)
-       .text('MONTANT HT', COL_PRIX, y + 5, { width: 100, align: 'right' })
-    y += 18
-
-    // Ligne de contenu
-    // Remplacer → par " - " pour compatibilité pdfkit
-    let desc = (facture.description || '').replace(/→/g, ' - ').replace(/→/g, ' - ')
-    if (!desc && facture.lieu_depart && facture.lieu_arrivee) {
-      desc = `Transport ${facture.lieu_depart} - ${facture.lieu_arrivee}`
-      if (facture.date_mission) desc += ` le ${formaterDateFR(facture.date_mission)}`
+    // ── FONCTION DATE ──
+    const fmtDate = (d) => {
+      if (!d) return ''
+      return new Date(d).toLocaleDateString('fr-FR')
     }
 
-    // Hauteur de la ligne prestation (variable selon la longueur de la description)
-    const ligneH = 30
-    doc.rect(L, y, W, ligneH).stroke('#E2E8F0')
-    doc.fillColor('#1E293B').font('Helvetica').fontSize(9)
-       .text(desc, L + 8, y + 7, { width: COL_PRIX - L - 20 })
+    // ── EN-TÊTE ──
+    doc.fontSize(20).font('Helvetica-Bold')
+       .text('TRANSIFLOW', 40, 40)
+    doc.fontSize(9).font('Helvetica')
+       .fillColor('#64748B')
+       .text('Systeme de Gestion de Transport', 40, 65)
+    doc.fillColor('black')
 
+    // Numéro et dates à droite
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#1E40AF')
+       .text('FACTURE', 350, 40, { width: 200, align: 'right' })
+    doc.fontSize(9).font('Helvetica')
+       .fillColor('black')
+       .text(`N${String.fromCharCode(176)} ${facture.numero}`,
+             350, 65, { width: 200, align: 'right' })
+       .text(`Date : ${fmtDate(facture.date_emission)}`,
+             350, 78, { width: 200, align: 'right' })
+       .text(`Echeance : ${fmtDate(facture.date_echeance)}`,
+             350, 91, { width: 200, align: 'right' })
+
+    // Ligne séparatrice
+    doc.moveTo(40, 115).lineTo(555, 115)
+       .strokeColor('#E2E8F0').lineWidth(1).stroke()
+
+    // ── CLIENT ──
+    doc.fontSize(8).fillColor('#64748B')
+       .text('FACTURER A :', 40, 125)
+    doc.fontSize(11).font('Helvetica-Bold')
+       .fillColor('black')
+       .text(facture.client_nom || '', 40, 138)
+    doc.fontSize(9).font('Helvetica')
+
+    let yClient = 153
+    if (facture.client_adresse) {
+      doc.text(facture.client_adresse, 40, yClient)
+      yClient += 13
+    }
+    if (facture.client_ville) {
+      doc.text(facture.client_ville, 40, yClient)
+      yClient += 13
+    }
+    if (facture.client_nif) {
+      doc.text(`NIF : ${facture.client_nif}`, 40, yClient)
+      yClient += 13
+    }
+    if (facture.client_stat) {
+      doc.text(`STAT : ${facture.client_stat}`, 40, yClient)
+      yClient += 13
+    }
+    if (facture.client_telephone) {
+      doc.text(`Tel : ${facture.client_telephone}`, 40, yClient)
+    }
+
+    // Ligne séparatrice
+    doc.moveTo(40, 235).lineTo(555, 235)
+       .strokeColor('#E2E8F0').lineWidth(1).stroke()
+
+    // ── TABLEAU PRESTATIONS ──
+    // En-tête tableau bleu
+    doc.rect(40, 245, 515, 22)
+       .fill('#1E40AF')
+    doc.fontSize(9).font('Helvetica-Bold')
+       .fillColor('white')
+       .text('DESIGNATION', 50, 252)
+       .text('MONTANT HT', 450, 252,
+             { width: 95, align: 'right' })
+    doc.fillColor('black').font('Helvetica')
+
+    // Ligne prestation
+    doc.rect(40, 267, 515, 30)
+       .strokeColor('#E2E8F0').lineWidth(0.5).stroke()
+
+    // Description — remplacer caractères spéciaux
+    const description = (facture.description || 'Prestation de transport')
+      .replace(/→/g, '-')
+      .replace(/'/g, "'")
+      .replace(/"/g, '"')
+      .replace(/«/g, '"')
+      .replace(/»/g, '"')
+
+    doc.fontSize(9)
+       .text(description, 50, 274, { width: 370 })
+       .text(fmt(facture.montant_ht), 450, 274,
+             { width: 95, align: 'right' })
+
+    // Référence mission si disponible
     if (facture.mission_id) {
-      doc.fillColor('#94A3B8').fontSize(7.5)
-         .text(`Ref. mission #${String(facture.mission_id).padStart(4, '0')}`, L + 8, y + 20)
+      doc.fontSize(8).fillColor('#64748B')
+         .text(
+           `Ref mission : #${String(facture.mission_id).padStart(4,'0')}`,
+           50, 286
+         )
+      doc.fillColor('black')
     }
-    doc.fillColor('#1E293B').font('Helvetica').fontSize(9)
-       .text(formatMontant(facture.montant_ht), COL_PRIX, y + 7, { width: 100, align: 'right' })
 
-    y += ligneH + 10
+    // ── TOTAUX ──
+    const yTotaux = 315
+    doc.moveTo(350, yTotaux).lineTo(555, yTotaux)
+       .strokeColor('#E2E8F0').stroke()
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 4. RECAPITULATIF TOTAUX (y: 275-330)
-    // ─────────────────────────────────────────────────────────────────────────
+    doc.fontSize(9)
+       .text('Sous-total HT :', 350, yTotaux + 8)
+       .text(fmt(facture.montant_ht), 450, yTotaux + 8,
+             { width: 95, align: 'right' })
 
-    // Bloc totaux à droite
-    const BX = R - 180  // x du bloc totaux
-    const BW = 180       // largeur du bloc
+       .text(`TVA (${facture.taux_tva}%) :`,
+             350, yTotaux + 22)
+       .text(fmt(facture.montant_tva), 450, yTotaux + 22,
+             { width: 95, align: 'right' })
 
-    doc.rect(BX, y, BW, 52).fill('#F8FAFC').stroke('#E2E8F0')
+    // Rectangle TOTAL
+    doc.rect(350, yTotaux + 36, 205, 24)
+       .fill('#F1F5F9')
+    doc.fontSize(11).font('Helvetica-Bold')
+       .fillColor('#1E40AF')
+       .text('TOTAL TTC :', 360, yTotaux + 42)
+       .text(fmt(facture.montant_ttc), 450, yTotaux + 42,
+             { width: 95, align: 'right' })
+    doc.fillColor('black').font('Helvetica')
 
-    doc.fillColor('#475569').font('Helvetica').fontSize(9)
-    doc.text('Sous-total HT :',         BX + 8, y + 8)
-    doc.text(formatMontant(facture.montant_ht),  BX + 90, y + 8,  { width: BW - 98, align: 'right' })
+    // ── PAIEMENT ──
+    const yPaiement = yTotaux + 80
+    doc.moveTo(40, yPaiement).lineTo(555, yPaiement)
+       .strokeColor('#E2E8F0').stroke()
 
-    doc.text(`TVA (${parseFloat(facture.taux_tva || 20)} %) :`, BX + 8, y + 22)
-    doc.text(formatMontant(facture.montant_tva), BX + 90, y + 22, { width: BW - 98, align: 'right' })
+    doc.fontSize(8).fillColor('#64748B')
+       .text('INFORMATIONS DE PAIEMENT', 40, yPaiement + 8)
+    doc.fontSize(9).fillColor('black')
 
-    // Ligne TOTAL TTC en gras
-    doc.rect(BX, y + 33, BW, 19).fill('#1E3A5F')
-    doc.fillColor('white').font('Helvetica-Bold').fontSize(9.5)
-    doc.text('TOTAL TTC :',             BX + 8, y + 37)
-    doc.text(formatMontant(facture.montant_ttc), BX + 90, y + 37, { width: BW - 98, align: 'right' })
-
-    y += 60
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 5. CONDITIONS + SIGNATURE (y: 340-430)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    doc.fillColor('#1E3A5F').font('Helvetica-Bold').fontSize(8)
-       .text('CONDITIONS DE PAIEMENT', L, y)
-    y += 12
-
-    doc.fillColor('#475569').font('Helvetica').fontSize(9)
-    if (facture.conditions_paiement) {
-      doc.text(facture.conditions_paiement, L, y); y += 12
-    }
     if (facture.mode_paiement) {
-      doc.text(`Mode : ${facture.mode_paiement.toUpperCase()}`, L, y); y += 12
+      doc.text(
+        `Mode : ${facture.mode_paiement}`,
+        40, yPaiement + 22
+      )
     }
+    doc.text(
+      `Conditions : ${facture.conditions_paiement || 'Paiement a 30 jours'}`,
+      40, yPaiement + 35
+    )
 
-    y += 10
+    // ── SIGNATURE ──
+    const ySign = yPaiement + 65
+    doc.fontSize(9)
+       .text('Signature & cachet :', 40, ySign)
+       .text('_________________________________', 40, ySign + 15)
 
-    // Bloc signature à droite
-    doc.fillColor('#334155').font('Helvetica').fontSize(9)
-       .text('Signature et cachet :', R - 160, y)
-    doc.moveTo(R - 160, y + 35).lineTo(R, y + 35).strokeColor('#94A3B8').lineWidth(0.5).stroke()
-    doc.fillColor('#94A3B8').fontSize(8)
-       .text('Nom & Signature', R - 160, y + 38)
+    // ── PIED DE PAGE ──
+    doc.fontSize(8).fillColor('#94A3B8')
+       .text(
+         'TransiFlow - Systeme de Gestion de Transport',
+         40, 790,
+         { width: 515, align: 'center' }
+       )
 
-    y += 50
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 6. PIED DE PAGE (positionné à y=800 pour A4)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    doc.moveTo(L, 800).lineTo(R, 800).strokeColor('#E2E8F0').lineWidth(0.5).stroke()
-    doc.fillColor('#94A3B8').font('Helvetica').fontSize(7.5)
-       .text('TransiFlow - Systeme de Gestion de Transport', L, 806, {
-          width: W, align: 'center',
-        })
-
+    // Vider le buffer et terminer le document UNE SEULE FOIS
+    doc.flushPages()
     doc.end()
 
-  } catch (erreur) {
-    console.error('❌ factureController.generatePDF :', erreur.message)
-    res.status(500).json({ succes: false, message: 'Erreur serveur lors de la génération du PDF' })
+  } catch (error) {
+    console.error('Erreur generation PDF:', error)
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Erreur generation PDF' })
+    }
   }
 }
 

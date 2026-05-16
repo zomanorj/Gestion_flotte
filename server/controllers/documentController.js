@@ -80,6 +80,7 @@ async function generateBonLivraison(req, res) {
     }
 
     // ── Configuration du PDF ──
+    // bufferPages:true requis pour flushPages() — évite les pages vides automatiques
     const doc = new PDFDocument({
       size: 'A4',
       margins: {
@@ -88,6 +89,7 @@ async function generateBonLivraison(req, res) {
         left: 50,
         right: 50,
       },
+      bufferPages: true,
     })
 
     // Headers pour le téléchargement
@@ -244,8 +246,11 @@ async function generateBonLivraison(req, res) {
     doc.rect(340, signatureY + 35, 200, 60).stroke('#cbd5e1')
 
     // ── Pied de page ──
+    // Règle : y doit être < (pageHeight - margins.bottom) = 842 - 50 = 792
+    // pageHeight-40=802 et pageHeight-25=817 étaient HORS zone → PDFKit ajoutait une page vide
+    // Correction : utiliser pageHeight-70=772 et pageHeight-55=787, tous deux < 792
     const pageHeight = doc.page.height
-    doc.fontSize(8).font('Helvetica').text(
+    doc.fontSize(8).font('Helvetica').fillColor('#94a3b8').text(
       `Document généré le ${new Date().toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'long',
@@ -254,18 +259,20 @@ async function generateBonLivraison(req, res) {
         minute: '2-digit',
       })}`,
       70,
-      pageHeight - 40,
-      { align: 'center', color: '#94a3b8' }
+      pageHeight - 70,
+      { align: 'center', width: 475 }
     )
 
     doc.text(
       'TransiFlow - Système de Gestion de Transport',
       70,
-      pageHeight - 25,
-      { align: 'center', color: '#94a3b8' }
+      pageHeight - 55,
+      { align: 'center', width: 475 }
     )
+    doc.fillColor('black')
 
-    // ── Finalisation ──
+    // ── Finalisation : vider le buffer puis fermer ──
+    doc.flushPages()
     doc.end()
 
   } catch (erreur) {
@@ -321,6 +328,7 @@ async function generateRapportMissions(req, res) {
     }
 
     // ── Configuration du PDF ──
+    // bufferPages:true requis pour flushPages()
     const doc = new PDFDocument({
       size: 'A4',
       margins: {
@@ -329,6 +337,7 @@ async function generateRapportMissions(req, res) {
         left: 40,
         right: 40,
       },
+      bufferPages: true,
     })
 
     // Headers pour le téléchargement
@@ -429,8 +438,10 @@ async function generateRapportMissions(req, res) {
     )
 
     // ── Pied de page ──
+    // pageHeight-30=812 était hors zone utile (boundary=792) → page vide créée
+    // Correction : pageHeight-60=782 < 792 ✓
     const pageHeight = doc.page.height
-    doc.fontSize(8).font('Helvetica').text(
+    doc.fontSize(8).font('Helvetica').fillColor('#94a3b8').text(
       `Rapport généré le ${new Date().toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'long',
@@ -439,10 +450,13 @@ async function generateRapportMissions(req, res) {
         minute: '2-digit',
       })}`,
       60,
-      pageHeight - 30,
-      { align: 'center', color: '#94a3b8' }
+      pageHeight - 60,
+      { align: 'center', width: 480 }
     )
+    doc.fillColor('black')
 
+    // Vider le buffer et fermer proprement
+    doc.flushPages()
     doc.end()
 
   } catch (erreur) {
