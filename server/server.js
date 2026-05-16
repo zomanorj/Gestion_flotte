@@ -68,19 +68,28 @@ app.use(helmet({
 
 // CORS : autorise les requêtes depuis l'application React
 // En développement : ports Vite locaux
-// En production    : CLIENT_URL depuis les variables d'environnement (Vercel)
+// En production    : CLIENT_URL + toutes les preview URLs Vercel (*.vercel.app)
 const originesAutorisees = [
-  process.env.CLIENT_URL,           // URL Vercel en production
+  process.env.CLIENT_URL,           // URL Vercel de production (variable d'env Render)
   'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
   'http://localhost:3000',
-].filter(Boolean)                    // Supprimer les valeurs null/undefined
+  /https:\/\/.*\.vercel\.app$/,     // Toutes les previews Vercel (branches, PRs, etc.)
+].filter(Boolean)
 
 app.use(cors({
-  origin:      originesAutorisees,
+  origin: (origin, callback) => {
+    // Autoriser les requêtes sans origin (curl, Postman, mobile)
+    if (!origin) return callback(null, true)
+    const autorise = originesAutorisees.some(o =>
+      typeof o === 'string'
+        ? o === origin
+        : o.test(origin)
+    )
+    if (autorise) callback(null, true)
+    else callback(new Error('CORS non autorisé : ' + origin))
+  },
   credentials: true,
-  methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }))
 
 // Parsing automatique du corps des requêtes JSON

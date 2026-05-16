@@ -6,13 +6,21 @@
 --         la BDD de production. Toutes les instructions sont idempotentes.
 --
 -- Généré depuis : schema.sql + migrations 001-016
+--
+-- ORDRE STRICT :
+--   1. CREATE TABLE  (dans l'ordre des dépendances FK)
+--   2. ALTER TABLE   (colonnes ajoutées par migrations)
+--   3. CREATE INDEX
+--   4. CREATE OR REPLACE VIEW
+--   5. INSERT        (données de test)
 -- =============================================================================
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- TABLES DE BASE
+-- 1. CREATE TABLE — ordre respectant les dépendances FK
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- users (aucune FK)
 CREATE TABLE IF NOT EXISTS users (
   id           SERIAL       PRIMARY KEY,
   nom          VARCHAR(100) NOT NULL,
@@ -23,6 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+-- vehicles (aucune FK)
 CREATE TABLE IF NOT EXISTS vehicles (
   id                    SERIAL       PRIMARY KEY,
   immatriculation       VARCHAR(20)  NOT NULL UNIQUE,
@@ -38,6 +47,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   updated_at            TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+-- drivers (FK → users)
 CREATE TABLE IF NOT EXISTS drivers (
   id                     SERIAL       PRIMARY KEY,
   user_id                INT          REFERENCES users(id) ON DELETE SET NULL,
@@ -55,10 +65,32 @@ CREATE TABLE IF NOT EXISTS drivers (
   updated_at             TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+-- clients (aucune FK)
+CREATE TABLE IF NOT EXISTS clients (
+  id            SERIAL        PRIMARY KEY,
+  type_client   VARCHAR(20)   DEFAULT 'entreprise',
+  nom           VARCHAR(255)  NOT NULL,
+  nom_contact   VARCHAR(255),
+  telephone     VARCHAR(50),
+  telephone2    VARCHAR(50),
+  email         VARCHAR(255),
+  adresse       TEXT,
+  ville         VARCHAR(100),
+  nif           VARCHAR(100),
+  stat          VARCHAR(100),
+  notes         TEXT,
+  statut        VARCHAR(20)   DEFAULT 'actif',
+  solde_credit  DECIMAL(15,2) DEFAULT 0.00,
+  created_at    TIMESTAMP     DEFAULT NOW(),
+  updated_at    TIMESTAMP     DEFAULT NOW()
+);
+
+-- missions (FK → vehicles, drivers, users, clients)
 CREATE TABLE IF NOT EXISTS missions (
   id                   SERIAL        PRIMARY KEY,
   vehicle_id           INT           NOT NULL REFERENCES vehicles(id) ON DELETE RESTRICT,
   driver_id            INT           NOT NULL REFERENCES drivers(id)  ON DELETE RESTRICT,
+  client_id            INTEGER       REFERENCES clients(id),
   lieu_depart          VARCHAR(255)  NOT NULL,
   lieu_arrivee         VARCHAR(255)  NOT NULL,
   date_mission         DATE          NOT NULL,
@@ -75,59 +107,34 @@ CREATE TABLE IF NOT EXISTS missions (
   updated_at           TIMESTAMP     NOT NULL DEFAULT NOW()
 );
 
+-- tracking (FK → missions)
 CREATE TABLE IF NOT EXISTS tracking (
-  id          SERIAL          PRIMARY KEY,
-  mission_id  INT             NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
-  latitude    DECIMAL(10, 8)  NOT NULL,
-  longitude   DECIMAL(11, 8)  NOT NULL,
-  vitesse     INT             DEFAULT 0 CHECK (vitesse >= 0),
-  horodatage  TIMESTAMP       DEFAULT NOW(),
-  created_at  TIMESTAMP       DEFAULT NOW()
+  id          SERIAL         PRIMARY KEY,
+  mission_id  INT            NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
+  latitude    DECIMAL(10, 8) NOT NULL,
+  longitude   DECIMAL(11, 8) NOT NULL,
+  vitesse     INT            DEFAULT 0 CHECK (vitesse >= 0),
+  horodatage  TIMESTAMP      DEFAULT NOW(),
+  created_at  TIMESTAMP      DEFAULT NOW()
 );
 
-
--- ─────────────────────────────────────────────────────────────────────────────
--- COLONNES AJOUTÉES PAR LES MIGRATIONS (001-004)
--- ─────────────────────────────────────────────────────────────────────────────
-
--- Migration 001 : colonnes véhicules (déjà dans CREATE TABLE ci-dessus)
--- Migration 002 : colonnes missions
-ALTER TABLE missions ADD COLUMN IF NOT EXISTS depart_lat   DECIMAL(10,8);
-ALTER TABLE missions ADD COLUMN IF NOT EXISTS depart_lng   DECIMAL(11,8);
-ALTER TABLE missions ADD COLUMN IF NOT EXISTS arrivee_lat  DECIMAL(10,8);
-ALTER TABLE missions ADD COLUMN IF NOT EXISTS arrivee_lng  DECIMAL(11,8);
-ALTER TABLE missions ADD COLUMN IF NOT EXISTS trajet_points TEXT;
-ALTER TABLE missions ADD COLUMN IF NOT EXISTS client_id    INTEGER REFERENCES clients(id);
-
--- Contrainte statut missions (idempotent)
-DO $$ BEGIN
-  ALTER TABLE missions DROP CONSTRAINT IF EXISTS missions_statut_check;
-EXCEPTION WHEN undefined_object THEN NULL; END $$;
-
-ALTER TABLE missions ADD CONSTRAINT missions_statut_check
-  CHECK (statut IN ('brouillon','planifiee','en_cours','terminee','annulee'));
-
-
--- ─────────────────────────────────────────────────────────────────────────────
--- TABLES SPRINT 7+ (005-016)
--- ─────────────────────────────────────────────────────────────────────────────
-
--- Finance : dépenses et budgets
+-- depenses (FK → missions, vehicles, users)
 CREATE TABLE IF NOT EXISTS depenses (
-  id               SERIAL          PRIMARY KEY,
-  mission_id       INTEGER         REFERENCES missions(id) ON DELETE SET NULL,
-  vehicle_id       INTEGER         REFERENCES vehicles(id) ON DELETE SET NULL,
-  categorie        VARCHAR(50)     NOT NULL
+  id               SERIAL        PRIMARY KEY,
+  mission_id       INTEGER       REFERENCES missions(id) ON DELETE SET NULL,
+  vehicle_id       INTEGER       REFERENCES vehicles(id) ON DELETE SET NULL,
+  categorie        VARCHAR(50)   NOT NULL
                    CHECK (categorie IN ('carburant','peage','salaire','maintenance','autre')),
-  montant          DECIMAL(12,2)   NOT NULL CHECK (montant > 0),
-  devise           VARCHAR(10)     DEFAULT 'MGA',
+  montant          DECIMAL(12,2) NOT NULL CHECK (montant > 0),
+  devise           VARCHAR(10)   DEFAULT 'MGA',
   description      TEXT,
-  date_depense     DATE            NOT NULL DEFAULT CURRENT_DATE,
+  date_depense     DATE          NOT NULL DEFAULT CURRENT_DATE,
   justificatif_url TEXT,
-  created_by       INTEGER         REFERENCES users(id) ON DELETE SET NULL,
-  created_at       TIMESTAMP       DEFAULT NOW()
+  created_by       INTEGER       REFERENCES users(id) ON DELETE SET NULL,
+  created_at       TIMESTAMP     DEFAULT NOW()
 );
 
+-- budgets (FK → vehicles)
 CREATE TABLE IF NOT EXISTS budgets (
   id                  SERIAL        PRIMARY KEY,
   vehicle_id          INTEGER       REFERENCES vehicles(id) ON DELETE CASCADE,
@@ -140,42 +147,43 @@ CREATE TABLE IF NOT EXISTS budgets (
   UNIQUE (vehicle_id, mois, annee)
 );
 
--- Maintenance préventive
+-- maintenances (FK → vehicles, users)
 CREATE TABLE IF NOT EXISTS maintenances (
-  id                       SERIAL        PRIMARY KEY,
-  vehicle_id               INTEGER       NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
-  type_maintenance         VARCHAR(50)   NOT NULL
-                           CHECK (type_maintenance IN
-                             ('revision','vidange','pneus','freins','courroie','filtres','autre')),
-  statut                   VARCHAR(20)   DEFAULT 'planifiee'
-                           CHECK (statut IN ('planifiee','en_cours','terminee','annulee')),
-  date_planifiee           DATE,
-  date_realisee            DATE,
-  kilometrage_planifie     INTEGER,
-  kilometrage_realise      INTEGER,
-  cout                     DECIMAL(12,2),
-  garage                   TEXT,
-  description              TEXT,
-  pieces_changees          TEXT,
-  prochaine_maintenance_km INTEGER,
+  id                         SERIAL        PRIMARY KEY,
+  vehicle_id                 INTEGER       NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+  type_maintenance           VARCHAR(50)   NOT NULL
+                             CHECK (type_maintenance IN
+                               ('revision','vidange','pneus','freins','courroie','filtres','autre')),
+  statut                     VARCHAR(20)   DEFAULT 'planifiee'
+                             CHECK (statut IN ('planifiee','en_cours','terminee','annulee')),
+  date_planifiee             DATE,
+  date_realisee              DATE,
+  kilometrage_planifie       INTEGER,
+  kilometrage_realise        INTEGER,
+  cout                       DECIMAL(12,2),
+  garage                     TEXT,
+  description                TEXT,
+  pieces_changees            TEXT,
+  prochaine_maintenance_km   INTEGER,
   prochaine_maintenance_date DATE,
-  created_by               INTEGER       REFERENCES users(id) ON DELETE SET NULL,
-  created_at               TIMESTAMP     DEFAULT NOW(),
-  updated_at               TIMESTAMP     DEFAULT NOW()
+  created_by                 INTEGER       REFERENCES users(id) ON DELETE SET NULL,
+  created_at                 TIMESTAMP     DEFAULT NOW(),
+  updated_at                 TIMESTAMP     DEFAULT NOW()
 );
 
+-- alertes_maintenance (FK → vehicles)
 CREATE TABLE IF NOT EXISTS alertes_maintenance (
-  id             SERIAL       PRIMARY KEY,
-  vehicle_id     INTEGER      NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
-  type_alerte    VARCHAR(50)  NOT NULL,
-  message        TEXT         NOT NULL,
+  id             SERIAL      PRIMARY KEY,
+  vehicle_id     INTEGER     NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+  type_alerte    VARCHAR(50) NOT NULL,
+  message        TEXT        NOT NULL,
   km_restants    INTEGER,
   jours_restants INTEGER,
-  is_read        BOOLEAN      DEFAULT FALSE,
-  created_at     TIMESTAMP    DEFAULT NOW()
+  is_read        BOOLEAN     DEFAULT FALSE,
+  created_at     TIMESTAMP   DEFAULT NOW()
 );
 
--- Incidents
+-- incidents (FK → missions, vehicles, drivers, users)
 CREATE TABLE IF NOT EXISTS incidents (
   id              SERIAL         PRIMARY KEY,
   mission_id      INTEGER        REFERENCES missions(id) ON DELETE SET NULL,
@@ -204,33 +212,14 @@ CREATE TABLE IF NOT EXISTS incidents (
   updated_at      TIMESTAMP      DEFAULT NOW()
 );
 
--- Clients et facturation
-CREATE TABLE IF NOT EXISTS clients (
-  id            SERIAL       PRIMARY KEY,
-  type_client   VARCHAR(20)  DEFAULT 'entreprise',
-  nom           VARCHAR(255) NOT NULL,
-  nom_contact   VARCHAR(255),
-  telephone     VARCHAR(50),
-  telephone2    VARCHAR(50),
-  email         VARCHAR(255),
-  adresse       TEXT,
-  ville         VARCHAR(100),
-  nif           VARCHAR(100),
-  stat          VARCHAR(100),
-  notes         TEXT,
-  statut        VARCHAR(20)  DEFAULT 'actif',
-  solde_credit  DECIMAL(15,2) DEFAULT 0.00,
-  created_at    TIMESTAMP    DEFAULT NOW(),
-  updated_at    TIMESTAMP    DEFAULT NOW()
-);
-
+-- factures (FK → clients, missions, users)
 CREATE TABLE IF NOT EXISTS factures (
-  id                  SERIAL       PRIMARY KEY,
-  numero              VARCHAR(50)  UNIQUE NOT NULL,
-  client_id           INTEGER      REFERENCES clients(id) NOT NULL,
-  mission_id          INTEGER      REFERENCES missions(id),
-  statut              VARCHAR(20)  DEFAULT 'brouillon',
-  date_emission       DATE         DEFAULT CURRENT_DATE,
+  id                  SERIAL        PRIMARY KEY,
+  numero              VARCHAR(50)   UNIQUE NOT NULL,
+  client_id           INTEGER       NOT NULL REFERENCES clients(id),
+  mission_id          INTEGER       REFERENCES missions(id),
+  statut              VARCHAR(20)   DEFAULT 'brouillon',
+  date_emission       DATE          DEFAULT CURRENT_DATE,
   date_echeance       DATE,
   montant_ht          DECIMAL(12,2) NOT NULL,
   taux_tva            DECIMAL(5,2)  DEFAULT 20.00,
@@ -241,94 +230,51 @@ CREATE TABLE IF NOT EXISTS factures (
   date_paiement       DATE,
   mode_paiement       VARCHAR(50),
   notes               TEXT,
-  created_by          INTEGER      REFERENCES users(id),
-  created_at          TIMESTAMP    DEFAULT NOW(),
-  updated_at          TIMESTAMP    DEFAULT NOW()
+  created_by          INTEGER       REFERENCES users(id),
+  created_at          TIMESTAMP     DEFAULT NOW(),
+  updated_at          TIMESTAMP     DEFAULT NOW()
 );
 
--- Paiements progressifs
+-- paiements (FK → factures, users)
 CREATE TABLE IF NOT EXISTS paiements (
-  id             SERIAL       PRIMARY KEY,
-  facture_id     INTEGER      REFERENCES factures(id) NOT NULL,
+  id             SERIAL        PRIMARY KEY,
+  facture_id     INTEGER       NOT NULL REFERENCES factures(id),
   montant        DECIMAL(12,2) NOT NULL,
-  date_paiement  DATE         NOT NULL DEFAULT CURRENT_DATE,
-  mode_paiement  VARCHAR(50)  NOT NULL,
+  date_paiement  DATE          NOT NULL DEFAULT CURRENT_DATE,
+  mode_paiement  VARCHAR(50)   NOT NULL,
   reference      VARCHAR(100),
   notes          TEXT,
-  created_by     INTEGER      REFERENCES users(id),
-  created_at     TIMESTAMP    DEFAULT NOW()
+  created_by     INTEGER       REFERENCES users(id),
+  created_at     TIMESTAMP     DEFAULT NOW()
 );
 
--- Vue solde factures
-CREATE OR REPLACE VIEW factures_solde AS
-SELECT
-  f.id,
-  f.numero,
-  f.montant_ttc,
-  COALESCE(SUM(p.montant), 0)                                 AS montant_paye,
-  f.montant_ttc - COALESCE(SUM(p.montant), 0)                 AS solde_restant,
-  CASE
-    WHEN COALESCE(SUM(p.montant), 0) = 0              THEN 'non_paye'
-    WHEN COALESCE(SUM(p.montant), 0) >= f.montant_ttc THEN 'paye'
-    ELSE                                                   'partiel'
-  END AS etat_paiement
-FROM factures f
-LEFT JOIN paiements p ON p.facture_id = f.id
-GROUP BY f.id, f.numero, f.montant_ttc;
-
--- Salaires chauffeurs
-ALTER TABLE drivers ADD COLUMN IF NOT EXISTS salaire_base NUMERIC(15,2) DEFAULT 0;
-ALTER TABLE drivers ADD COLUMN IF NOT EXISTS prime_mission NUMERIC(15,2) DEFAULT 0;
-
-CREATE TABLE IF NOT EXISTS salaires (
-  id           SERIAL       PRIMARY KEY,
-  driver_id    INTEGER      NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
-  mission_id   INTEGER      REFERENCES missions(id) ON DELETE SET NULL,
-  type_salaire VARCHAR(20)  DEFAULT 'mission',
-  montant      NUMERIC(15,2) NOT NULL,
-  date_paiement DATE,
-  statut       VARCHAR(20)  DEFAULT 'en_attente',
-  mois_concerne VARCHAR(10),
-  notes        TEXT,
-  created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-  updated_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
-);
-
--- Historique des transactions crédit client
+-- client_transactions (FK → clients, factures)
 CREATE TABLE IF NOT EXISTS client_transactions (
-  id               SERIAL       PRIMARY KEY,
-  client_id        INT          NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-  facture_id       INT          REFERENCES factures(id) ON DELETE SET NULL,
-  type_transaction VARCHAR(20)  NOT NULL,
+  id               SERIAL        PRIMARY KEY,
+  client_id        INT           NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  facture_id       INT           REFERENCES factures(id) ON DELETE SET NULL,
+  type_transaction VARCHAR(20)   NOT NULL,
   montant          DECIMAL(15,2) NOT NULL,
   description      TEXT,
-  created_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+  created_at       TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
 );
 
--- Colonnes soft-delete sur toutes les tables
-ALTER TABLE vehicles  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
-ALTER TABLE drivers   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
-ALTER TABLE missions  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
-ALTER TABLE clients   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
-ALTER TABLE factures  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
-ALTER TABLE salaires  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
-ALTER TABLE users     ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
+-- salaires (FK → drivers, missions)
+CREATE TABLE IF NOT EXISTS salaires (
+  id            SERIAL        PRIMARY KEY,
+  driver_id     INTEGER       NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
+  mission_id    INTEGER       REFERENCES missions(id) ON DELETE SET NULL,
+  type_salaire  VARCHAR(20)   DEFAULT 'mission',
+  montant       NUMERIC(15,2) NOT NULL,
+  date_paiement DATE,
+  statut        VARCHAR(20)   DEFAULT 'en_attente',
+  mois_concerne VARCHAR(10),
+  notes         TEXT,
+  created_at    TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+);
 
--- Colonnes deleted_by pour la corbeille
-ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id);
-ALTER TABLE drivers  ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id);
-ALTER TABLE missions ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id);
-ALTER TABLE clients  ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id);
-
--- Colonnes supplémentaires users (Sprint 9)
-ALTER TABLE users ADD COLUMN IF NOT EXISTS statut           VARCHAR(20)  DEFAULT 'actif';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS driver_id        INTEGER      REFERENCES drivers(id);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_url        TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS telephone        VARCHAR(50);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS derniere_connexion TIMESTAMP;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at       TIMESTAMP    DEFAULT NOW();
-
--- Journal d'activité
+-- journal_activite (FK → users)
 CREATE TABLE IF NOT EXISTS journal_activite (
   id            SERIAL       PRIMARY KEY,
   user_id       INTEGER      REFERENCES users(id) ON DELETE SET NULL,
@@ -342,31 +288,79 @@ CREATE TABLE IF NOT EXISTS journal_activite (
   created_at    TIMESTAMP    DEFAULT NOW()
 );
 
--- Contrats clients
+-- contrats (FK → clients, users)
 CREATE TABLE IF NOT EXISTS contrats (
-  id                        SERIAL       PRIMARY KEY,
-  client_id                 INTEGER      REFERENCES clients(id) NOT NULL,
-  numero                    VARCHAR(50)  UNIQUE NOT NULL,
-  titre                     VARCHAR(255) NOT NULL,
-  statut                    VARCHAR(20)  DEFAULT 'actif',
-  date_debut                DATE         NOT NULL,
+  id                        SERIAL        PRIMARY KEY,
+  client_id                 INTEGER       NOT NULL REFERENCES clients(id),
+  numero                    VARCHAR(50)   UNIQUE NOT NULL,
+  titre                     VARCHAR(255)  NOT NULL,
+  statut                    VARCHAR(20)   DEFAULT 'actif',
+  date_debut                DATE          NOT NULL,
   date_fin                  DATE,
   tarif_km                  DECIMAL(10,2),
   tarif_mission             DECIMAL(12,2),
   conditions_paiement       TEXT,
-  delai_paiement_jours      INTEGER      DEFAULT 30,
-  remise_pourcentage        DECIMAL(5,2) DEFAULT 0,
+  delai_paiement_jours      INTEGER       DEFAULT 30,
+  remise_pourcentage        DECIMAL(5,2)  DEFAULT 0,
   notes                     TEXT,
-  renouvellement_auto       BOOLEAN      DEFAULT FALSE,
-  duree_renouvellement_mois INTEGER      DEFAULT 12,
-  created_by                INTEGER      REFERENCES users(id),
-  created_at                TIMESTAMP    DEFAULT NOW(),
-  updated_at                TIMESTAMP    DEFAULT NOW()
+  renouvellement_auto       BOOLEAN       DEFAULT FALSE,
+  duree_renouvellement_mois INTEGER       DEFAULT 12,
+  created_by                INTEGER       REFERENCES users(id),
+  created_at                TIMESTAMP     DEFAULT NOW(),
+  updated_at                TIMESTAMP     DEFAULT NOW()
 );
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- INDEX
+-- 2. ALTER TABLE — colonnes ajoutées par les migrations
+--    Toutes les tables existent à ce stade → aucune FK ne manque
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Coordonnées GPS sur missions (migration 004)
+ALTER TABLE missions ADD COLUMN IF NOT EXISTS depart_lat    DECIMAL(10,8);
+ALTER TABLE missions ADD COLUMN IF NOT EXISTS depart_lng    DECIMAL(11,8);
+ALTER TABLE missions ADD COLUMN IF NOT EXISTS arrivee_lat   DECIMAL(10,8);
+ALTER TABLE missions ADD COLUMN IF NOT EXISTS arrivee_lng   DECIMAL(11,8);
+ALTER TABLE missions ADD COLUMN IF NOT EXISTS trajet_points TEXT;
+
+-- Contrainte statut missions (idempotent)
+DO $$ BEGIN
+  ALTER TABLE missions DROP CONSTRAINT IF EXISTS missions_statut_check;
+EXCEPTION WHEN undefined_object THEN NULL; END $$;
+
+ALTER TABLE missions ADD CONSTRAINT missions_statut_check
+  CHECK (statut IN ('brouillon','planifiee','en_cours','terminee','annulee'));
+
+-- Salaire de base et prime sur drivers (migration 010)
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS salaire_base  NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS prime_mission NUMERIC(15,2) DEFAULT 0;
+
+-- Soft-delete : colonne deleted_at sur toutes les tables concernées (migration 011)
+ALTER TABLE users     ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE vehicles  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE drivers   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE missions  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE clients   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE factures  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE salaires  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
+
+-- Traçabilité corbeille : colonne deleted_by (migration 014)
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id);
+ALTER TABLE drivers  ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id);
+ALTER TABLE missions ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id);
+ALTER TABLE clients  ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id);
+
+-- Profil utilisateur étendu (migration 014)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS statut            VARCHAR(20)  DEFAULT 'actif';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS driver_id         INTEGER      REFERENCES drivers(id);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_url         TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telephone         VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS derniere_connexion TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at        TIMESTAMP    DEFAULT NOW();
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 3. CREATE INDEX
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE INDEX IF NOT EXISTS idx_missions_vehicle_id    ON missions(vehicle_id);
@@ -405,22 +399,48 @@ CREATE INDEX IF NOT EXISTS idx_contrats_statut        ON contrats(statut);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- DONNÉES INITIALES — COMPTES DE TEST
--- Mots de passe hashés bcrypt (coût 10) :
---   admin@transiflow.app     → Admin123!
---   gestionnaire@transiflow.app → Gest123!
---   chauffeur@transiflow.app → Chauf123!
+-- 4. CREATE OR REPLACE VIEW
+--    (toutes les tables et colonnes requises existent à ce stade)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Vue solde restant par facture (basée sur les paiements progressifs)
+CREATE OR REPLACE VIEW factures_solde AS
+SELECT
+  f.id,
+  f.numero,
+  f.montant_ttc,
+  COALESCE(SUM(p.montant), 0)                             AS montant_paye,
+  f.montant_ttc - COALESCE(SUM(p.montant), 0)             AS solde_restant,
+  CASE
+    WHEN COALESCE(SUM(p.montant), 0) = 0              THEN 'non_paye'
+    WHEN COALESCE(SUM(p.montant), 0) >= f.montant_ttc THEN 'paye'
+    ELSE                                                   'partiel'
+  END AS etat_paiement
+FROM factures f
+LEFT JOIN paiements p ON p.facture_id = f.id
+GROUP BY f.id, f.numero, f.montant_ttc;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 5. INSERT — données initiales (comptes de test)
+--    Mots de passe hashés bcrypt coût 10 :
+--      admin@transiflow.app        → Admin123!
+--      gestionnaire@transiflow.app → Gest123!
+--      chauffeur@transiflow.app    → Chauf123!
 -- ─────────────────────────────────────────────────────────────────────────────
 
 INSERT INTO users (nom, email, mot_de_passe, role, statut)
 VALUES
-  ('Administrateur',  'admin@transiflow.app',
+  ('Administrateur',
+   'admin@transiflow.app',
    '$2b$10$CXpLuxqdCmOHCl0OYnHCvO1YXtmkK.ATJ0Ht.OCVymjfrM4uk0gge',
    'admin',        'actif'),
-  ('Gestionnaire',    'gestionnaire@transiflow.app',
+  ('Gestionnaire',
+   'gestionnaire@transiflow.app',
    '$2b$10$WD41ULnjf2QDPjs/hNqJzuA9kbTLc7TFnkWsCkSBC1A9961zx9H46',
    'gestionnaire', 'actif'),
-  ('Chauffeur Test',  'chauffeur@transiflow.app',
+  ('Chauffeur Test',
+   'chauffeur@transiflow.app',
    '$2b$10$65pbJE.3NqXu4VNPLuQVy.P7GVUCWhKLdRkpHPDpPK2iQVhxk670O',
    'chauffeur',    'actif')
 ON CONFLICT (email) DO NOTHING;
