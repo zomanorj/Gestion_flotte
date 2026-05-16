@@ -154,7 +154,7 @@ const login = async (req, res) => {
     )
 
     // Mettre à jour la dernière connexion (fire & forget, silencieux)
-    utilisateurModel.mettreAJourDerniereConnexion(utilisateur.id)
+    utilisateurModel.mettreAJourDerniereConnexion(utilisateur.id).catch(() => {})
 
     // Enregistrer la connexion dans le journal d'activité (fire & forget)
     logActivite({

@@ -273,8 +273,8 @@ async function mettreAJourDerniereConnexion(id) {
   try {
     await pool.query(query, [id])
   } catch (erreur) {
+    // Silencieux : ne pas bloquer le login si la colonne n'existe pas encore
     console.error('❌ utilisateurModel.mettreAJourDerniereConnexion :', erreur.message)
-    throw erreur
   }
 }
 

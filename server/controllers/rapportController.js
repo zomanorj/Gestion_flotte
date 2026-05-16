@@ -198,8 +198,6 @@ async function getUtilisationFlotte(req, res) {
       SELECT
         v.id             AS vehicle_id,
         v.immatriculation,
-        v.marque,
-        v.modele,
         v.type,
         v.statut         AS vehicle_statut,
         COUNT(DISTINCT m.date_mission::date) AS jours_actifs,
@@ -211,7 +209,7 @@ async function getUtilisationFlotte(req, res) {
         AND m.statut IN ('terminee', 'en_cours')
         AND m.deleted_at IS NULL
       WHERE v.deleted_at IS NULL
-      GROUP BY v.id, v.immatriculation, v.marque, v.modele, v.type, v.statut
+      GROUP BY v.id, v.immatriculation, v.type, v.statut
       ORDER BY jours_actifs DESC
     `
 
@@ -226,8 +224,6 @@ async function getUtilisationFlotte(req, res) {
       return {
         vehicle_id:        row.vehicle_id,
         immatriculation:   row.immatriculation,
-        marque:            row.marque,
-        modele:            row.modele,
         type:              row.type,
         vehicle_statut:    row.vehicle_statut,
         jours_actifs:      joursActifs,

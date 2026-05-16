@@ -29,11 +29,13 @@ async function findAll(type) {
   // Construction de la sélection selon la table
   let selectExtra = ''
   if (type === 'vehicles') {
-    selectExtra = `t.immatriculation AS libelle, t.marque, t.modele`
+    // Colonnes réelles de la table vehicles (pas de marque/modele)
+    selectExtra = `t.immatriculation AS libelle, t.type AS vehicle_type, t.statut AS vehicle_statut`
   } else if (type === 'drivers') {
     selectExtra = `CONCAT(t.prenom, ' ', t.nom) AS libelle, t.prenom, t.nom`
   } else if (type === 'missions') {
-    selectExtra = `CONCAT(t.lieu_depart, ' → ', t.lieu_arrivee) AS libelle, t.date_mission, t.statut AS mission_statut`
+    // Eviter le caractère → pour la compatibilité encodage
+    selectExtra = `CONCAT(t.lieu_depart, ' - ', t.lieu_arrivee) AS libelle, t.date_mission, t.statut AS mission_statut`
   } else if (type === 'clients') {
     selectExtra = `t.nom AS libelle, t.telephone, t.email`
   }
