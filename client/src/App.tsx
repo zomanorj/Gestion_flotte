@@ -48,6 +48,8 @@ import IncidentDetailPage     from './pages/IncidentDetailPage'
 import ClientsPage            from './pages/ClientsPage'
 import ClientDetailPage       from './pages/ClientDetailPage'
 import FacturesPage           from './pages/FacturesPage'
+import SalairesPage           from './pages/SalairesPage'
+import CorbeillePage          from './pages/CorbeillePage'
 
 function App() {
   return (
@@ -114,6 +116,10 @@ function App() {
             <Route path="clients"          element={<ClientsPage />} />
             <Route path="clients/:id"      element={<ClientDetailPage />} />
             <Route path="factures"         element={<FacturesPage />} />
+            <Route path="salaires"         element={<SalairesPage />} />
+
+            {/* Corbeille — admin uniquement */}
+            <Route path="corbeille"        element={<CorbeillePage />} />
           </Route>
 
 
