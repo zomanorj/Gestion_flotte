@@ -1,9 +1,7 @@
-// Barre de navigation supérieure
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-/** Correspondance chemin → titre de page */
 const TITRES = {
   '/':           'Tableau de bord — Flotte de Camions',
   '/vehicules':  'Gestion des Camions',
@@ -18,14 +16,14 @@ export default function Navbar() {
   const { user }     = useAuth();
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-      <h2 className="text-xl font-semibold text-gray-800">
+    <header className="bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between flex-shrink-0">
+      <h2 className="fs-5 fw-semibold text-gray-800 mb-0">
         {TITRES[pathname] || 'CamionApp'}
       </h2>
-      <div className="flex items-center gap-3 text-sm text-gray-600">
+      <div className="d-flex align-items-center gap-3 small text-gray-600">
         <span>Connecté en tant que</span>
-        <span className="font-medium text-gray-900">{user?.nom}</span>
-        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium capitalize">
+        <span className="fw-medium text-dark">{user?.nom}</span>
+        <span className="badge rounded-pill bg-blue-100 text-blue-700 text-capitalize">
           {user?.role}
         </span>
       </div>

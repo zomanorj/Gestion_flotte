@@ -1,4 +1,3 @@
-// Page gestion des missions — distance auto, toast, suppression universelle
 import React, { useState, useEffect, useCallback } from 'react';
 import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, Loader2, FileDown } from 'lucide-react';
 import api from '../services/api';
@@ -21,37 +20,25 @@ const LABELS = {
   annulee:   'Annulée'
 };
 
-const formatDate    = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-const formatAriary  = (n) => n ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' Ar' : '—';
+const formatDate   = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+const formatAriary = (n) => n ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' Ar' : '—';
 
-// ────────────────────────────────────────────────
-// Formulaire de création de mission
-// ────────────────────────────────────────────────
 const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
   const [form, setForm] = useState({
-    titre:             '',
-    vehicule_id:       '',
-    chauffeur_id:      '',
-    client_id:         '',
-    lieu_depart:       'Antananarivo',
-    lieu_destination:  '',
-    distance_km:       '',
-    date_depart:       '',
-    date_retour_prevue:'',
-    poids_charge:      '',
-    notes:             ''
+    titre: '', vehicule_id: '', chauffeur_id: '', client_id: '',
+    lieu_depart: 'Antananarivo', lieu_destination: '',
+    distance_km: '', date_depart: '', date_retour_prevue: '',
+    poids_charge: '', notes: ''
   });
+  const [vehicules,     setVehicules]     = useState([]);
+  const [chauffeurs,    setChauffeurs]    = useState([]);
+  const [villes,        setVilles]        = useState([]);
+  const [clients,       setClients]       = useState([]);
+  const [erreur,        setErreur]        = useState('');
+  const [loading,       setLoading]       = useState(false);
+  const [calculEnCours, setCalculEnCours] = useState(false);
+  const [dureeEstimee,  setDureeEstimee]  = useState(null);
 
-  const [vehicules,      setVehicules]      = useState([]);
-  const [chauffeurs,     setChauffeurs]     = useState([]);
-  const [villes,         setVilles]         = useState([]);
-  const [clients,        setClients]        = useState([]);
-  const [erreur,         setErreur]         = useState('');
-  const [loading,        setLoading]        = useState(false);
-  const [calculEnCours,  setCalculEnCours]  = useState(false);
-  const [dureeEstimee,   setDureeEstimee]   = useState(null);
-
-  // Chargement initial : camions dispo, chauffeurs dispo, liste des villes
   useEffect(() => {
     api.get('/vehicules',  { params: { statut: 'disponible' } }).then(({ data }) => setVehicules(data));
     api.get('/chauffeurs', { params: { statut: 'disponible' } }).then(({ data }) => setChauffeurs(data));
@@ -59,7 +46,6 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
     api.get('/clients').then(({ data }) => setClients(data));
   }, []);
 
-  // Calcul automatique dès que départ ET destination sont sélectionnés
   useEffect(() => {
     if (form.lieu_depart && form.lieu_destination && form.lieu_depart !== form.lieu_destination) {
       calculerDistance();
@@ -69,32 +55,27 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
     }
   }, [form.lieu_depart, form.lieu_destination]);
 
-  /** Appelle l'API ORS pour obtenir la vraie distance et durée */
   const calculerDistance = async () => {
     setCalculEnCours(true);
     try {
       const { data } = await api.post('/simulation/route', {
-        villeDepart:  form.lieu_depart,
-        villeArrivee: form.lieu_destination
+        villeDepart: form.lieu_depart, villeArrivee: form.lieu_destination
       });
       setForm(p => ({ ...p, distance_km: data.distanceKm }));
       setDureeEstimee(data.dureeMin);
     } catch (e) {
-      console.error('Erreur calcul route ORS :', e);
+      console.error('Erreur calcul route:', e);
     } finally {
       setCalculEnCours(false);
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm(p => ({ ...p, [name]: value }));
-  };
+  const handleChange = (e) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.distance_km) {
-      setErreur('La distance n\'a pas pu être calculée. Vérifie les villes sélectionnées.');
+      setErreur("La distance n'a pas pu être calculée.");
       return;
     }
     setLoading(true);
@@ -109,161 +90,134 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
     }
   };
 
-  const coutEstime = form.distance_km
-    ? Math.round(form.distance_km * 0.30 * 5200)
-    : null;
+  const coutEstime = form.distance_km ? Math.round(form.distance_km * 0.30 * 5200) : null;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 text-sm">
-
-      {/* Titre */}
+    <form onSubmit={handleSubmit} className="d-flex flex-column gap-3 small">
       <div>
-        <label className="block font-medium text-gray-700 mb-1">Titre de la mission *</label>
+        <label className="form-label">Titre de la mission *</label>
         <input name="titre" value={form.titre} onChange={handleChange} required
-          placeholder="Transport ciment — Toamasina"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+               placeholder="Transport ciment — Toamasina"
+               className="form-control form-control-sm" />
       </div>
 
-      {/* Camion + chauffeur */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block font-medium text-gray-700 mb-1">Camion disponible *</label>
+      <div className="row g-3">
+        <div className="col-6">
+          <label className="form-label">Camion disponible *</label>
           <select name="vehicule_id" value={form.vehicule_id} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="form-select form-select-sm">
             <option value="">— Choisir —</option>
-            {vehicules.map(v => (
-              <option key={v.id} value={v.id}>{v.immatriculation} ({v.marque} {v.modele})</option>
-            ))}
+            {vehicules.map(v => <option key={v.id} value={v.id}>{v.immatriculation} ({v.marque} {v.modele})</option>)}
           </select>
         </div>
-        <div>
-          <label className="block font-medium text-gray-700 mb-1">Chauffeur disponible *</label>
+        <div className="col-6">
+          <label className="form-label">Chauffeur disponible *</label>
           <select name="chauffeur_id" value={form.chauffeur_id} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="form-select form-select-sm">
             <option value="">— Choisir —</option>
-            {chauffeurs.map(c => (
-              <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
-            ))}
+            {chauffeurs.map(c => <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Départ + destination (selects depuis VILLES_MADAGASCAR) */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block font-medium text-gray-700 mb-1">Départ *</label>
+      <div className="row g-3">
+        <div className="col-6">
+          <label className="form-label">Départ *</label>
           <select name="lieu_depart" value={form.lieu_depart} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="form-select form-select-sm">
             <option value="">— Choisir —</option>
             {villes.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
-        <div>
-          <label className="block font-medium text-gray-700 mb-1">Destination *</label>
+        <div className="col-6">
+          <label className="form-label">Destination *</label>
           <select name="lieu_destination" value={form.lieu_destination} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="form-select form-select-sm">
             <option value="">— Choisir —</option>
             {villes.filter(v => v !== form.lieu_depart).map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Carte distance / durée / coût — calculée automatiquement */}
+      {/* Distance calculée */}
       <div>
-        <label className="block font-medium text-gray-700 mb-1">Distance et durée</label>
-        <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+        <label className="form-label">Distance et durée</label>
+        <div className="bg-light rounded-2 p-3 border">
           {calculEnCours ? (
-            <div className="flex items-center gap-2 text-slate-500 text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="d-flex align-items-center gap-2 text-muted small">
+              <span className="spinner-border spinner-border-sm" role="status" />
               Calcul de la route en cours…
             </div>
           ) : form.distance_km ? (
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <p className="text-xs text-slate-400 mb-0.5">Distance réelle</p>
-                <p className="font-bold text-lg text-gray-900">{Math.round(form.distance_km)} km</p>
+            <div className="row g-3">
+              <div className="col-4">
+                <p className="text-xs text-muted mb-1">Distance réelle</p>
+                <p className="fw-bold fs-5 text-dark mb-0">{Math.round(form.distance_km)} km</p>
               </div>
               {dureeEstimee !== null && (
-                <div>
-                  <p className="text-xs text-slate-400 mb-0.5">Durée estimée</p>
-                  <p className="font-bold text-lg text-gray-900">
+                <div className="col-4">
+                  <p className="text-xs text-muted mb-1">Durée estimée</p>
+                  <p className="fw-bold fs-5 text-dark mb-0">
                     {Math.floor(dureeEstimee / 60)}h{Math.round(dureeEstimee % 60)}min
                   </p>
                 </div>
               )}
               {coutEstime !== null && (
-                <div>
-                  <p className="text-xs text-slate-400 mb-0.5">Coût carburant</p>
-                  <p className="font-bold text-lg text-orange-500">
-                    {coutEstime.toLocaleString()} Ar
-                  </p>
+                <div className="col-4">
+                  <p className="text-xs text-muted mb-1">Coût carburant</p>
+                  <p className="fw-bold fs-5 text-orange-500 mb-0">{coutEstime.toLocaleString()} Ar</p>
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-slate-400 text-sm">
-              Sélectionne le départ et la destination pour calculer automatiquement
-            </p>
+            <p className="text-muted small mb-0">Sélectionne le départ et la destination pour calculer automatiquement</p>
           )}
         </div>
       </div>
 
-      {/* Client (optionnel) */}
       <div>
-        <label className="block font-medium text-gray-700 mb-1">Client (optionnel)</label>
-        <select name="client_id" value={form.client_id} onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <label className="form-label">Client (optionnel)</label>
+        <select name="client_id" value={form.client_id} onChange={handleChange} className="form-select form-select-sm">
           <option value="">— Aucun client —</option>
-          {clients.map(c => (
-            <option key={c.id} value={c.id}>{c.nom} ({c.type})</option>
-          ))}
+          {clients.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.type})</option>)}
         </select>
       </div>
 
-      {/* Poids chargé */}
       <div>
-        <label className="block font-medium text-gray-700 mb-1">Poids chargé (tonnes)</label>
+        <label className="form-label">Poids chargé (tonnes)</label>
         <input type="number" name="poids_charge" value={form.poids_charge} onChange={handleChange}
-          min="0" max="100" step="0.5" placeholder="ex: 32.5"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+               min="0" max="100" step="0.5" placeholder="ex: 32.5" className="form-control form-control-sm" />
       </div>
 
-      {/* Dates */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block font-medium text-gray-700 mb-1">Date de départ *</label>
+      <div className="row g-3">
+        <div className="col-6">
+          <label className="form-label">Date de départ *</label>
           <input type="datetime-local" name="date_depart" value={form.date_depart} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                 className="form-control form-control-sm" />
         </div>
-        <div>
-          <label className="block font-medium text-gray-700 mb-1">Retour prévu *</label>
+        <div className="col-6">
+          <label className="form-label">Retour prévu *</label>
           <input type="datetime-local" name="date_retour_prevue" value={form.date_retour_prevue} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                 className="form-control form-control-sm" />
         </div>
       </div>
 
-      {/* Marchandises */}
       <div>
-        <label className="block font-medium text-gray-700 mb-1">Marchandises transportées</label>
+        <label className="form-label">Marchandises transportées</label>
         <textarea name="notes" value={form.notes} onChange={handleChange} rows={2}
-          placeholder="Ex : Ciment Portland — 35 tonnes pour chantier CHU Toamasina"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  placeholder="Ex : Ciment Portland — 35 tonnes"
+                  className="form-control form-control-sm" style={{ resize: 'none' }} />
       </div>
 
       {erreur && (
-        <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-2 rounded-lg">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {erreur}
+        <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small">
+          <AlertTriangle size={16} className="flex-shrink-0" /> {erreur}
         </div>
       )}
 
-      <div className="flex gap-3 pt-1">
-        <button type="button" onClick={onAnnuler}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-          Annuler
-        </button>
-        <button type="submit" disabled={loading || calculEnCours}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+      <div className="d-flex gap-3 pt-1">
+        <button type="button" onClick={onAnnuler} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
+        <button type="submit" disabled={loading || calculEnCours} className="btn btn-primary btn-sm flex-grow-1">
           {loading ? '…' : 'Créer la mission'}
         </button>
       </div>
@@ -271,37 +225,31 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
   );
 };
 
-// ────────────────────────────────────────────────
-// Détail d'une mission terminée
-// ────────────────────────────────────────────────
 const DetailMission = ({ mission }) => (
-  <div className="space-y-3 text-sm text-gray-700">
-    <div className="grid grid-cols-2 gap-2">
-      <span><strong>Camion :</strong> {mission.immatriculation}</span>
-      <span><strong>Chauffeur :</strong> {mission.chauffeur_prenom} {mission.chauffeur_nom}</span>
-      <span><strong>Départ :</strong> {mission.lieu_depart}</span>
-      <span><strong>Destination :</strong> {mission.lieu_destination}</span>
-      <span><strong>Distance :</strong> {mission.distance_km} km</span>
-      <span><strong>Poids chargé :</strong> {mission.poids_charge ? `${mission.poids_charge} T` : '—'}</span>
-      <span><strong>Coût carburant :</strong> {formatAriary(mission.cout_carburant)}</span>
-      <span><strong>Date départ :</strong> {formatDate(mission.date_depart)}</span>
-      <span><strong>Retour réel :</strong> {formatDate(mission.date_retour_reelle)}</span>
+  <div className="d-flex flex-column gap-3 small text-gray-700">
+    <div className="row g-2">
+      <div className="col-6"><strong>Camion :</strong> {mission.immatriculation}</div>
+      <div className="col-6"><strong>Chauffeur :</strong> {mission.chauffeur_prenom} {mission.chauffeur_nom}</div>
+      <div className="col-6"><strong>Départ :</strong> {mission.lieu_depart}</div>
+      <div className="col-6"><strong>Destination :</strong> {mission.lieu_destination}</div>
+      <div className="col-6"><strong>Distance :</strong> {mission.distance_km} km</div>
+      <div className="col-6"><strong>Poids :</strong> {mission.poids_charge ? `${mission.poids_charge} T` : '—'}</div>
+      <div className="col-6"><strong>Coût carburant :</strong> {formatAriary(mission.cout_carburant)}</div>
+      <div className="col-6"><strong>Date départ :</strong> {formatDate(mission.date_depart)}</div>
+      <div className="col-6"><strong>Retour réel :</strong> {formatDate(mission.date_retour_reelle)}</div>
     </div>
     {mission.notes && (
-      <div className="bg-gray-50 rounded-lg p-3">
+      <div className="bg-light rounded-2 p-2">
         <strong>Marchandises :</strong> {mission.notes}
       </div>
     )}
   </div>
 );
 
-// ────────────────────────────────────────────────
-// Page principale
-// ────────────────────────────────────────────────
 export default function Missions() {
   const { user }       = useAuth();
   const isGestionnaire = ['admin', 'gestionnaire'].includes(user?.role);
-  const { ajouterToast, ToastContainer } = useToast();
+  const { ajouterToast, ToastContainer }     = useToast();
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
   const [missions,     setMissions]     = useState([]);
@@ -329,25 +277,16 @@ export default function Missions() {
 
   useEffect(() => { chargerMissions(); }, [chargerMissions]);
 
-  /** Démarre la simulation via l'API et affiche une notification */
   const demarrerMission = async (mission) => {
     try {
       await api.post(`/simulation/demarrer/${mission.id}`);
-      ajouterToast(
-        'Mission démarrée !',
-        `${mission.lieu_depart} → ${mission.lieu_destination} · Visible sur la Carte globale`
-      );
+      ajouterToast('Mission démarrée !', `${mission.lieu_depart} → ${mission.lieu_destination} · Visible sur la Carte globale`);
       chargerMissions();
     } catch (e) {
-      ajouterToast(
-        'Erreur de démarrage',
-        e.response?.data?.message || e.message,
-        true
-      );
+      ajouterToast('Erreur de démarrage', e.response?.data?.message || e.message, true);
     }
   };
 
-  /** Supprime une mission (tous statuts) avec confirmation */
   const supprimerMission = async (mission) => {
     const consequences = ['Cette action est irréversible'];
     if (mission.statut === 'en_cours') {
@@ -356,7 +295,6 @@ export default function Missions() {
     }
     const ok = await confirmer({ type: 'supprimer', element: mission.titre, consequences });
     if (!ok) return;
-
     try {
       await api.delete(`/missions/${mission.id}`);
       ajouterToast('Mission supprimée', mission.titre);
@@ -379,122 +317,94 @@ export default function Missions() {
   const apresCreation = () => { fermerModal(); chargerMissions(); };
 
   return (
-    <div className="space-y-4">
+    <div className="d-flex flex-column gap-3">
 
       {/* Filtres */}
-      <div className="flex flex-wrap gap-3">
-        <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <div className="d-flex flex-wrap gap-2 align-items-center">
+        <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)} className="form-select" style={{ width: 'auto' }}>
           <option value="">Tous les statuts</option>
           {Object.entries(LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          title="Date de début" />
+               className="form-control" style={{ width: 'auto' }} title="Date de début" />
         <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          title="Date de fin" />
-        <div className="flex-1" />
+               className="form-control" style={{ width: 'auto' }} title="Date de fin" />
+        <div className="flex-grow-1" />
         {isGestionnaire && (
           <button onClick={() => setModal({ ouvert: true, mission: null, mode: 'new' })}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700">
-            <Plus className="w-4 h-4" /> Nouvelle mission
+                  className="btn btn-primary d-flex align-items-center gap-2">
+            <Plus size={16} /> Nouvelle mission
           </button>
         )}
       </div>
 
       {/* Tableau */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="card border rounded-3 overflow-hidden">
         {chargement ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="d-flex align-items-center justify-content-center" style={{ height: '8rem' }}>
+            <div className="spinner-border text-primary" role="status" />
           </div>
         ) : missions.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">Aucune mission trouvée</p>
+          <p className="text-center text-muted py-5">Aucune mission trouvée</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+            <table className="table table-sm table-hover mb-0">
+              <thead className="table-light">
                 <tr>
                   {['Titre', 'Camion', 'Chauffeur', 'Trajet', 'Départ', 'Statut', 'Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {h}
-                    </th>
+                    <th key={h} className="text-uppercase small fw-semibold text-muted px-3 py-2 text-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {missions.map(m => (
-                  <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[160px] truncate">{m.titre}</td>
-                    <td className="px-4 py-3 text-gray-600 font-mono text-xs">{m.immatriculation}</td>
-                    <td className="px-4 py-3 text-gray-600">{m.chauffeur_prenom} {m.chauffeur_nom}</td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">
+                  <tr key={m.id}>
+                    <td className="px-3 py-2 fw-medium text-dark text-truncate" style={{ maxWidth: '160px' }}>{m.titre}</td>
+                    <td className="px-3 py-2 text-gray-600 font-monospace small">{m.immatriculation}</td>
+                    <td className="px-3 py-2 text-gray-600">{m.chauffeur_prenom} {m.chauffeur_nom}</td>
+                    <td className="px-3 py-2 text-gray-600 small">
                       {m.lieu_depart} → {m.lieu_destination}
-                      <br /><span className="text-gray-400">{m.distance_km} km</span>
+                      <br /><span className="text-muted">{m.distance_km} km</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{formatDate(m.date_depart)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${BADGES[m.statut]}`}>
-                        {LABELS[m.statut]}
-                      </span>
+                    <td className="px-3 py-2 text-gray-600 small text-nowrap">{formatDate(m.date_depart)}</td>
+                    <td className="px-3 py-2">
+                      <span className={`badge rounded-pill fw-medium ${BADGES[m.statut]}`}>{LABELS[m.statut]}</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 flex-wrap items-center">
-
-                        {/* Démarrer (planifiée seulement) */}
+                    <td className="px-3 py-2">
+                      <div className="d-flex gap-1 flex-wrap align-items-center">
                         {isGestionnaire && m.statut === 'planifiee' && (
                           <button onClick={() => demarrerMission(m)}
-                            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-medium"
-                            title="Démarrer la simulation">
-                            <Play className="w-3 h-3" /> Démarrer
+                                  className="btn btn-warning btn-sm d-flex align-items-center gap-1 text-white">
+                            <Play size={12} /> Démarrer
                           </button>
                         )}
-
-                        {/* Annuler (planifiée) */}
                         {isGestionnaire && m.statut === 'planifiee' && (
                           <button onClick={() => changerStatut(m.id, 'annulee')}
-                            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors"
-                            title="Annuler">
-                            <X className="w-3 h-3" /> Annuler
+                                  className="btn btn-outline-warning btn-sm d-flex align-items-center gap-1">
+                            <X size={12} /> Annuler
                           </button>
                         )}
-
-                        {/* Terminer (en_cours) */}
                         {isGestionnaire && m.statut === 'en_cours' && (
                           <button onClick={() => changerStatut(m.id, 'terminee')}
-                            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors"
-                            title="Terminer">
-                            <Check className="w-3 h-3" /> Terminer
+                                  className="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                            <Check size={12} /> Terminer
                           </button>
                         )}
-
-                        {/* Détail (terminée) */}
                         {m.statut === 'terminee' && (
                           <button onClick={() => setModal({ ouvert: true, mission: m, mode: 'detail' })}
-                            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                            title="Voir le détail">
-                            <Eye className="w-3 h-3" /> Détail
+                                  className="btn btn-light btn-sm d-flex align-items-center gap-1">
+                            <Eye size={12} /> Détail
                           </button>
                         )}
-
-                        {/* Bon de livraison PDF — toutes les missions */}
-                        <a
-                          href={`http://localhost:5000/api/missions/${m.id}/bon-livraison`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Télécharger le bon de livraison PDF"
-                        >
-                          <FileDown className="w-3.5 h-3.5" />
+                        <a href={`http://localhost:5000/api/missions/${m.id}/bon-livraison`}
+                           target="_blank" rel="noopener noreferrer"
+                           className="btn btn-sm btn-outline-primary" title="Bon de livraison PDF">
+                          <FileDown size={14} />
                         </a>
-
-                        {/* Supprimer — tous les statuts, admin uniquement */}
                         {user?.role === 'admin' && (
                           <button onClick={() => supprimerMission(m)}
-                            className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Supprimer la mission">
-                            <Trash2 className="w-3.5 h-3.5" />
+                                  className="btn btn-sm btn-outline-danger" title="Supprimer">
+                            <Trash2 size={14} />
                           </button>
                         )}
                       </div>
@@ -507,13 +417,9 @@ export default function Missions() {
         )}
       </div>
 
-      {/* Modal */}
-      <Modal
-        isOpen={modal.ouvert}
-        onClose={fermerModal}
-        titre={modal.mode === 'detail' ? `Détail — ${modal.mission?.titre}` : 'Nouvelle mission de transport'}
-        taille="max-w-2xl"
-      >
+      <Modal isOpen={modal.ouvert} onClose={fermerModal}
+             titre={modal.mode === 'detail' ? `Détail — ${modal.mission?.titre}` : 'Nouvelle mission de transport'}
+             taille="max-w-2xl">
         {modal.mode === 'detail'
           ? <DetailMission mission={modal.mission} />
           : <FormulaireMission onSauvegarder={apresCreation} onAnnuler={fermerModal} />

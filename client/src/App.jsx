@@ -1,9 +1,7 @@
-// Composant racine — définition des routes de l'application
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './context/AuthContext';
 
-// Pages
 import Login        from './pages/Login';
 import Dashboard    from './pages/Dashboard';
 import Vehicules    from './pages/Vehicules';
@@ -18,30 +16,27 @@ import Maintenances from './pages/Maintenances';
 import Planning     from './pages/Planning';
 import Clients      from './pages/Clients';
 
-// Layout avec sidebar
 import Sidebar from './components/Sidebar';
 import Navbar  from './components/Navbar';
 
-/** Layout principal pour les pages protégées */
 const AppLayout = ({ children }) => (
-  <div className="flex h-screen bg-gray-100 overflow-hidden">
+  <div className="d-flex vh-100 overflow-hidden bg-gray-100">
     <Sidebar />
-    <div className="flex flex-col flex-1 overflow-hidden">
+    <div className="d-flex flex-column flex-grow-1 overflow-hidden">
       <Navbar />
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="flex-grow-1 overflow-y-auto p-4">
         {children}
       </main>
     </div>
   </div>
 );
 
-/** Layout sans padding pour les pages plein écran (carte globale) */
 const AppLayoutPleinEcran = ({ children }) => (
-  <div className="flex h-screen overflow-hidden">
+  <div className="d-flex vh-100 overflow-hidden">
     <Sidebar />
-    <div className="flex flex-col flex-1 overflow-hidden">
+    <div className="d-flex flex-column flex-grow-1 overflow-hidden">
       <Navbar />
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-grow-1 overflow-hidden">
         {children}
       </main>
     </div>
@@ -51,74 +46,45 @@ const AppLayoutPleinEcran = ({ children }) => (
 export default function App() {
   return (
     <Routes>
-      {/* Route publique */}
       <Route path="/login" element={<Login />} />
 
-      {/* Routes protégées avec layout */}
       <Route path="/" element={
-        <ProtectedRoute>
-          <AppLayout><Dashboard /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
       } />
       <Route path="/vehicules" element={
-        <ProtectedRoute>
-          <AppLayout><Vehicules /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Vehicules /></AppLayout></ProtectedRoute>
       } />
       <Route path="/chauffeurs" element={
-        <ProtectedRoute>
-          <AppLayout><Chauffeurs /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Chauffeurs /></AppLayout></ProtectedRoute>
       } />
       <Route path="/missions" element={
-        <ProtectedRoute>
-          <AppLayout><Missions /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Missions /></AppLayout></ProtectedRoute>
       } />
       <Route path="/rapports" element={
-        <ProtectedRoute>
-          <AppLayout><Rapports /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Rapports /></AppLayout></ProtectedRoute>
       } />
       <Route path="/documents" element={
-        <ProtectedRoute>
-          <AppLayout><Documents /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Documents /></AppLayout></ProtectedRoute>
       } />
       <Route path="/carburant" element={
-        <ProtectedRoute>
-          <AppLayout><Carburant /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Carburant /></AppLayout></ProtectedRoute>
       } />
       <Route path="/depenses" element={
-        <ProtectedRoute>
-          <AppLayout><Depenses /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Depenses /></AppLayout></ProtectedRoute>
       } />
-
       <Route path="/maintenances" element={
-        <ProtectedRoute>
-          <AppLayout><Maintenances /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Maintenances /></AppLayout></ProtectedRoute>
       } />
       <Route path="/planning" element={
-        <ProtectedRoute>
-          <AppLayout><Planning /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Planning /></AppLayout></ProtectedRoute>
       } />
       <Route path="/clients" element={
-        <ProtectedRoute>
-          <AppLayout><Clients /></AppLayout>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayout><Clients /></AppLayout></ProtectedRoute>
       } />
-
       <Route path="/carte" element={
-        <ProtectedRoute>
-          <AppLayoutPleinEcran><CarteGlobale /></AppLayoutPleinEcran>
-        </ProtectedRoute>
+        <ProtectedRoute><AppLayoutPleinEcran><CarteGlobale /></AppLayoutPleinEcran></ProtectedRoute>
       } />
 
-      {/* Redirection par défaut */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

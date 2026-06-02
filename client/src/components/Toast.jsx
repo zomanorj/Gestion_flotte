@@ -1,15 +1,6 @@
-// Composant Toast — notifications temporaires en bas à droite
 import { useEffect, useState } from 'react';
 import { Truck, X, AlertTriangle } from 'lucide-react';
 
-/**
- * Toast individuel qui se ferme automatiquement.
- * @param {string}   message  - Titre principal du toast
- * @param {string}   sousTitre - Texte secondaire (optionnel)
- * @param {Function} onClose  - Appelée à la fermeture
- * @param {number}   duree    - Durée d'affichage en ms (défaut : 4000)
- * @param {boolean}  erreur   - Style rouge si true
- */
 export function Toast({ message, sousTitre, onClose, duree = 4000, erreur = false }) {
   useEffect(() => {
     const t = setTimeout(onClose, duree);
@@ -17,33 +8,28 @@ export function Toast({ message, sousTitre, onClose, duree = 4000, erreur = fals
   }, [onClose, duree]);
 
   return (
-    <div className="bg-slate-900 text-white rounded-xl shadow-2xl p-4
-                    flex items-start gap-3 min-w-72 max-w-sm
-                    animate-slide-in border border-slate-700">
-      <div className={`rounded-full p-2 mt-0.5 flex-shrink-0 ${erreur ? 'bg-red-500' : 'bg-orange-500'}`}>
+    <div className="bg-slate-900 text-white rounded-3 shadow-lg p-3
+                    d-flex align-items-start gap-3 animate-slide-in border border-slate-700"
+         style={{ minWidth: '18rem', maxWidth: '24rem' }}>
+      <div className={`rounded-circle p-2 flex-shrink-0 ${erreur ? 'bg-danger' : 'bg-orange-500'}`}>
         {erreur
-          ? <AlertTriangle className="w-[18px] h-[18px]" />
-          : <Truck className="w-[18px] h-[18px]" />
+          ? <AlertTriangle size={16} />
+          : <Truck size={16} />
         }
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-sm">{message}</p>
+      <div className="flex-grow-1 min-w-0">
+        <p className="fw-bold small mb-0">{message}</p>
         {sousTitre && (
-          <p className="text-slate-400 text-xs mt-0.5 leading-relaxed">{sousTitre}</p>
+          <p className="text-slate-400 text-xs mt-1 mb-0">{sousTitre}</p>
         )}
       </div>
       <button onClick={onClose}
-        className="text-slate-500 hover:text-white flex-shrink-0 mt-0.5 transition-colors">
-        <X className="w-[18px] h-[18px]" />
-      </button>
+              className="btn-close btn-close-white btn-sm flex-shrink-0"
+              style={{ filter: 'invert(0.4)' }} />
     </div>
   );
 }
 
-/**
- * Hook pour gérer plusieurs toasts simultanément.
- * Retourne : { ajouterToast, ToastContainer }
- */
 export function useToast() {
   const [toasts, setToasts] = useState([]);
 
@@ -57,7 +43,8 @@ export function useToast() {
   };
 
   const ToastContainer = () => (
-    <div className="fixed bottom-6 right-6 z-50 space-y-3 pointer-events-none">
+    <div className="position-fixed bottom-0 end-0 p-4 d-flex flex-column gap-2 pointer-events-none"
+         style={{ zIndex: 1100 }}>
       {toasts.map(t => (
         <div key={t.id} className="pointer-events-auto">
           <Toast

@@ -1,22 +1,20 @@
-// Modal de confirmation stylisé — remplace tous les window.confirm() du projet
 import { useState, useRef } from 'react';
 import { AlertTriangle, Trash2, Edit, CheckCircle, X } from 'lucide-react';
 
-// Configuration visuelle par type d'action
 const TYPES = {
   supprimer: {
     Icone:         Trash2,
-    couleurIcone:  'text-red-500',
+    couleurIcone:  'text-danger',
     couleurBg:     'bg-red-50',
-    couleurBouton: 'bg-red-500 hover:bg-red-600',
+    couleurBouton: 'btn-danger',
     titre:         'Confirmer la suppression',
     texteBtn:      'Supprimer définitivement'
   },
   modifier: {
     Icone:         Edit,
-    couleurIcone:  'text-blue-500',
+    couleurIcone:  'text-primary',
     couleurBg:     'bg-blue-50',
-    couleurBouton: 'bg-blue-500 hover:bg-blue-600',
+    couleurBouton: 'btn-primary',
     titre:         'Confirmer la modification',
     texteBtn:      'Enregistrer'
   },
@@ -24,31 +22,20 @@ const TYPES = {
     Icone:         AlertTriangle,
     couleurIcone:  'text-orange-500',
     couleurBg:     'bg-orange-50',
-    couleurBouton: 'bg-orange-500 hover:bg-orange-600',
+    couleurBouton: 'btn-warning',
     titre:         'Attention',
     texteBtn:      'Confirmer'
   },
   regler: {
     Icone:         CheckCircle,
-    couleurIcone:  'text-green-500',
+    couleurIcone:  'text-success',
     couleurBg:     'bg-green-50',
-    couleurBouton: 'bg-green-500 hover:bg-green-600',
+    couleurBouton: 'btn-success',
     titre:         'Marquer comme réglé',
     texteBtn:      'Marquer réglé'
   }
 };
 
-/**
- * Modal de confirmation avec header coloré, liste des conséquences et bouton d'action.
- * @param {boolean}  isOpen       - Affiche/masque le modal
- * @param {Function} onClose      - Appelée au clic Annuler ou fond
- * @param {Function} onConfirm    - Appelée au clic bouton principal
- * @param {string}   type         - 'supprimer'|'modifier'|'attention'|'regler'
- * @param {string}   titre        - Remplace le titre par défaut du type
- * @param {string}   element      - Nom de l'entité concernée (affiché en gras)
- * @param {string[]} consequences - Liste des conséquences à afficher
- * @param {boolean}  loading      - Désactive les boutons et affiche un spinner
- */
 export default function ConfirmModal({
   isOpen, onClose, onConfirm,
   type = 'supprimer', titre, element, consequences, loading = false
@@ -58,40 +45,37 @@ export default function ConfirmModal({
   const { Icone } = cfg;
 
   return (
-    <div
-      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
+    <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
+         style={{ zIndex: 1060, backgroundColor: 'rgba(0,0,0,0.6)' }}
+         onClick={onClose}>
+      <div className="bg-white rounded-3 shadow-lg overflow-hidden"
+           style={{ maxWidth: '28rem', width: '100%' }}
+           onClick={e => e.stopPropagation()}>
+
         {/* Header coloré */}
-        <div className={`${cfg.couleurBg} p-6 flex items-start gap-4`}>
-          <div className={`${cfg.couleurIcone} mt-0.5 shrink-0`}>
+        <div className={`${cfg.couleurBg} p-4 d-flex align-items-start gap-3`}>
+          <div className={`${cfg.couleurIcone} flex-shrink-0 mt-1`}>
             <Icone size={28} />
           </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-gray-900 text-lg">{titre || cfg.titre}</h3>
+          <div className="flex-grow-1">
+            <h3 className="fw-bold text-dark fs-6 mb-0">{titre || cfg.titre}</h3>
             {element && (
-              <p className="text-gray-600 mt-1">
-                <span className="font-semibold text-gray-900">"{element}"</span>
+              <p className="text-gray-600 mt-1 mb-0">
+                <span className="fw-semibold text-dark">"{element}"</span>
               </p>
             )}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={20} />
-          </button>
+          <button onClick={onClose} className="btn-close" />
         </div>
 
-        {/* Liste des conséquences */}
+        {/* Conséquences */}
         {consequences?.length > 0 && (
-          <div className="px-6 py-4 bg-gray-50 border-t border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Conséquences</p>
-            <ul className="space-y-1.5">
+          <div className="px-4 py-3 bg-light border-top border-bottom">
+            <p className="text-xs fw-semibold text-gray-400 text-uppercase mb-2">Conséquences</p>
+            <ul className="list-unstyled mb-0 d-flex flex-column gap-1">
               {consequences.map((c, i) => (
-                <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                  <span className="text-gray-400 mt-0.5 flex-shrink-0">•</span>
+                <li key={i} className="small text-gray-600 d-flex align-items-start gap-2">
+                  <span className="text-gray-400 flex-shrink-0">•</span>
                   {c}
                 </li>
               ))}
@@ -100,28 +84,15 @@ export default function ConfirmModal({
         )}
 
         {/* Boutons */}
-        <div className="p-6 flex gap-3 justify-end">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-5 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600
-                       font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
+        <div className="p-4 d-flex gap-3 justify-content-end">
+          <button onClick={onClose} disabled={loading}
+                  className="btn btn-outline-secondary px-4">
             Annuler
           </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className={`px-5 py-2.5 rounded-xl text-white font-medium
-                        flex items-center gap-2 transition-all
-                        ${cfg.couleurBouton}
-                        ${loading
-                          ? 'opacity-50 cursor-not-allowed'
-                          : 'shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95'
-                        }`}
-          >
+          <button onClick={onConfirm} disabled={loading}
+                  className={`btn ${cfg.couleurBouton} px-4 d-flex align-items-center gap-2`}>
             {loading && (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span className="spinner-border spinner-border-sm" role="status" />
             )}
             {cfg.texteBtn}
           </button>
@@ -131,16 +102,6 @@ export default function ConfirmModal({
   );
 }
 
-/**
- * Hook useConfirm — gère un ConfirmModal via une Promise.
- *
- * Usage :
- *   const { confirmer, ConfirmModalComponent } = useConfirm()
- *   const ok = await confirmer({ type:'supprimer', element:'Camion MAD-001', consequences:[...] })
- *   if (!ok) return
- *   // ... action confirmée
- *   return <div>...<ConfirmModalComponent /></div>
- */
 export function useConfirm() {
   const [config,   setConfig]   = useState(null);
   const resolveRef = useRef(null);

@@ -1,55 +1,24 @@
-// Carte globale en temps réel — tous les camions en mission simultanément
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import { io } from 'socket.io-client';
 import L from 'leaflet';
-import {
-  Truck, RefreshCw, ChevronLeft, ChevronRight,
-  MapPin, AlertTriangle, Clock, Gauge
-} from 'lucide-react';
+import { Truck, RefreshCw, ChevronLeft, ChevronRight, MapPin, AlertTriangle, Clock, Gauge } from 'lucide-react';
 import api from '../services/api';
 
-// Palette de couleurs uniques par camion
-const PALETTE = [
-  '#f97316', // orange
-  '#3b82f6', // bleu
-  '#22c55e', // vert
-  '#a855f7', // violet
-  '#ef4444', // rouge
-  '#eab308', // jaune
-  '#06b6d4', // cyan
-  '#ec4899', // rose
-];
-
-/**
- * Retourne la couleur assignée à un camion selon son index dans la liste.
- */
+const PALETTE = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#eab308', '#06b6d4', '#ec4899'];
 const couleurParIndex = (index) => PALETTE[index % PALETTE.length];
 
-/**
- * Crée un marqueur DivIcon coloré avec l'initiale de l'immatriculation.
- */
 function creerIcone(couleur, initiale) {
   return L.divIcon({
     html: `
-      <div style="
-        background:${couleur};
-        border:3px solid white;
-        border-radius:50%;
-        width:44px;height:44px;
-        display:flex;align-items:center;justify-content:center;
-        box-shadow:0 3px 12px rgba(0,0,0,0.4);
-        font-weight:bold;font-size:14px;color:white;
-        font-family:monospace;
-      ">${initiale}</div>`,
-    iconSize:   [44, 44],
-    iconAnchor: [22, 22],
-    popupAnchor:[0, -26],
-    className:  ''
+      <div style="background:${couleur};border:3px solid white;border-radius:50%;
+        width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+        box-shadow:0 3px 12px rgba(0,0,0,0.4);font-weight:bold;font-size:14px;color:white;font-family:monospace;"
+      >${initiale}</div>`,
+    iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -26], className: ''
   });
 }
 
-/** Centre la carte sur une position donnée */
 function CentrerSur({ cible }) {
   const map = useMap();
   useEffect(() => {
@@ -58,7 +27,6 @@ function CentrerSur({ cible }) {
   return null;
 }
 
-/** Formate une durée en secondes */
 function formatTemps(sec) {
   if (sec < 60)   return `${sec}s`;
   if (sec < 3600) return `${Math.floor(sec / 60)}min`;
@@ -67,20 +35,15 @@ function formatTemps(sec) {
 
 export default function CarteGlobale() {
   const socketRef = useRef(null);
+  const [camions,               setCamions]               = useState({});
+  const [indicesCouleur,        setIndicesCouleur]        = useState({});
+  const [cible,                 setCible]                 = useState(null);
+  const [panneauOuvert,         setPanneauOuvert]         = useState(true);
+  const [derniereMaj,           setDerniereMaj]           = useState(null);
+  const [chargement,            setChargement]            = useState(true);
+  const [multiplicateurs,       setMultiplicateurs]       = useState({});
+  const [multiplicateurGlobal,  setMultiplicateurGlobal]  = useState(30);
 
-  // camions : { [missionId]: { position, progression, vitesse, enPause, evenementActuel,
-  //              immatriculation, chauffeur_nom, titre, lieu_depart, lieu_destination,
-  //              distanceKm, trace: [[lat,lng],...], couleur, initiale } }
-  const [camions,            setCamions]            = useState({});
-  const [indicesCouleur,     setIndicesCouleur]     = useState({});
-  const [cible,              setCible]              = useState(null);
-  const [panneauOuvert,      setPanneauOuvert]      = useState(true);
-  const [derniereMaj,        setDerniereMaj]        = useState(null);
-  const [chargement,         setChargement]         = useState(true);
-  const [multiplicateurs,    setMultiplicateurs]    = useState({}); // { missionId: 1|5|10|30|60 }
-  const [multiplicateurGlobal, setMultiplicateurGlobal] = useState(30);
-
-  // Assigne une couleur stable à chaque missionId
   const getCouleur = useCallback((missionId) => {
     setIndicesCouleur(prev => {
       if (prev[missionId] !== undefined) return prev;
@@ -89,83 +52,51 @@ export default function CarteGlobale() {
     return indicesCouleur[missionId] ?? 0;
   }, [indicesCouleur]);
 
-  /** Initialise les camions depuis l'état actuel des simulations */
   const chargerActifs = useCallback(async () => {
     setChargement(true);
     try {
       const { data } = await api.get('/simulation/actives');
       const nouvellesDonnees = {};
       const nouveauxIndices  = {};
-
       data.forEach((c, i) => {
         nouveauxIndices[c.missionId] = i;
         const initiale = (c.immatriculation || '?').replace(/[^A-Z0-9]/gi, '').charAt(0).toUpperCase();
-        nouvellesDonnees[c.missionId] = {
-          ...c,
-          trace:   c.position ? [[c.position.lat, c.position.lng]] : [],
-          couleur: couleurParIndex(i),
-          initiale
-        };
+        nouvellesDonnees[c.missionId] = { ...c, trace: c.position ? [[c.position.lat, c.position.lng]] : [], couleur: couleurParIndex(i), initiale };
       });
-
-      setCamions(nouvellesDonnees);
-      setIndicesCouleur(nouveauxIndices);
-    } catch {
-      // Aucune simulation active ou serveur inaccessible
-    } finally {
+      setCamions(nouvellesDonnees); setIndicesCouleur(nouveauxIndices);
+    } catch { /* aucune simulation active */ } finally {
       setChargement(false);
     }
   }, []);
 
   useEffect(() => {
     chargerActifs();
-
-    // Connexion Socket.io
     socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
     const socket = socketRef.current;
 
     socket.on('flotte:positions', (positions) => {
       setDerniereMaj(new Date());
-
-      // Synchronise les multiplicateurs depuis le serveur
       setMultiplicateurs(prev => {
         const updated = { ...prev };
-        positions.forEach(c => {
-          if (c.multiplicateur !== undefined) updated[c.missionId] = c.multiplicateur;
-        });
+        positions.forEach(c => { if (c.multiplicateur !== undefined) updated[c.missionId] = c.multiplicateur; });
         return updated;
       });
-
       setCamions(prev => {
         const suivant = { ...prev };
-
         positions.forEach((c) => {
-          const id      = c.missionId;
+          const id = c.missionId;
           const existant = suivant[id];
-          const indexCouleur = existant
-            ? Object.keys(suivant).indexOf(id)
-            : Object.keys(suivant).length;
-
+          const indexCouleur = existant ? Object.keys(suivant).indexOf(id) : Object.keys(suivant).length;
           const initiale = (c.immatriculation || '?').replace(/[^A-Z0-9]/gi, '').charAt(0).toUpperCase();
-
           suivant[id] = {
-            ...existant,
-            ...c,
+            ...existant, ...c,
             couleur:  existant?.couleur || couleurParIndex(indexCouleur),
             initiale: existant?.initiale || initiale,
-            // Accumule le tracé (max 500 points pour les performances)
-            trace: existant?.trace
-              ? [...existant.trace.slice(-499), [c.position.lat, c.position.lng]]
-              : [[c.position.lat, c.position.lng]]
+            trace: existant?.trace ? [...existant.trace.slice(-499), [c.position.lat, c.position.lng]] : [[c.position.lat, c.position.lng]]
           };
         });
-
-        // Supprime les simulations terminées (non présentes dans le broadcast)
         const idsActifs = positions.map(p => p.missionId);
-        Object.keys(suivant).forEach(id => {
-          if (!idsActifs.includes(id)) delete suivant[id];
-        });
-
+        Object.keys(suivant).forEach(id => { if (!idsActifs.includes(id)) delete suivant[id]; });
         return suivant;
       });
     });
@@ -176,149 +107,117 @@ export default function CarteGlobale() {
   const camionsList = Object.values(camions);
   const nbEnMission = camionsList.length;
 
-  /** Applique un multiplicateur à TOUS les camions en mission */
   const changerVitesseGlobale = async (v) => {
     setMultiplicateurGlobal(v);
     for (const c of camionsList) {
       setMultiplicateurs(prev => ({ ...prev, [c.missionId]: v }));
-      try {
-        await api.post(`/simulation/vitesse/${c.missionId}`, { multiplicateur: v });
-      } catch { /* simulation peut être terminée */ }
+      try { await api.post(`/simulation/vitesse/${c.missionId}`, { multiplicateur: v }); } catch { /* ok */ }
     }
   };
 
-  /** Applique un multiplicateur à UN seul camion */
   const changerVitesseCamion = async (missionId, v) => {
     setMultiplicateurs(prev => ({ ...prev, [missionId]: v }));
-    try {
-      await api.post(`/simulation/vitesse/${missionId}`, { multiplicateur: v });
-    } catch { /* simulation peut être terminée */ }
+    try { await api.post(`/simulation/vitesse/${missionId}`, { multiplicateur: v }); } catch { /* ok */ }
   };
 
   return (
-    <div className="flex h-full overflow-hidden relative">
+    <div className="d-flex h-100 overflow-hidden position-relative">
 
-      {/* ── PANNEAU LATÉRAL ── */}
-      <div className={`flex flex-col bg-slate-900 text-white transition-all duration-300 flex-shrink-0
-                       ${panneauOuvert ? 'w-72' : 'w-0 overflow-hidden'}`}>
+      {/* PANNEAU LATÉRAL */}
+      <div className={`d-flex flex-column bg-slate-900 text-white flex-shrink-0 overflow-hidden`}
+           style={{ width: panneauOuvert ? '288px' : '0px', transition: 'width 0.3s' }}>
 
-        {/* Header panneau */}
-        <div className="p-4 border-b border-slate-700 flex-shrink-0">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="font-bold text-sm flex items-center gap-2">
-              <Truck className="w-4 h-4 text-orange-500" />
-              Camions en mission
+        <div className="p-3 border-bottom border-slate-700 flex-shrink-0">
+          <div className="d-flex align-items-center justify-content-between mb-1">
+            <h2 className="fw-bold small d-flex align-items-center gap-2 mb-0">
+              <Truck size={16} className="text-orange-500" /> Camions en mission
             </h2>
-            <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              {nbEnMission}
-            </span>
+            <span className="badge bg-warning text-dark rounded-pill">{nbEnMission}</span>
           </div>
           {derniereMaj && (
-            <p className="text-slate-500 text-[11px] flex items-center gap-1">
-              <Clock className="w-3 h-3" />
+            <p className="text-slate-500 mb-1" style={{ fontSize: '11px' }}>
+              <Clock size={12} className="me-1" />
               Mis à jour {derniereMaj.toLocaleTimeString('fr-FR')}
             </p>
           )}
           <button onClick={chargerActifs}
-            className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs
-                       bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg transition-colors">
-            <RefreshCw className="w-3 h-3" /> Actualiser
+                  className="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1 bg-slate-800 text-slate-300 border-0"
+                  style={{ fontSize: '12px' }}>
+            <RefreshCw size={12} /> Actualiser
           </button>
         </div>
 
-        {/* Liste des camions */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <div className="flex-grow-1 overflow-y-auto p-2 d-flex flex-column gap-2">
           {chargement ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto" />
+            <div className="text-center py-4">
+              <div className="spinner-border spinner-border-sm text-warning" role="status" />
             </div>
           ) : camionsList.length === 0 ? (
-            <div className="text-center py-10 text-slate-500 text-sm">
-              <Truck className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p>Aucune simulation active</p>
-              <p className="text-xs mt-1">Démarrez une mission depuis la page Missions</p>
+            <div className="text-center py-4 text-slate-500 small">
+              <Truck size={40} className="mb-2 opacity-25 d-block mx-auto" />
+              <p className="mb-0">Aucune simulation active</p>
+              <p className="text-xs mt-1 mb-0">Démarrez une mission depuis la page Missions</p>
             </div>
           ) : (
             camionsList.map((c) => (
-              <div key={c.missionId}
-                   className="bg-slate-800 rounded-xl p-3 border-l-4"
+              <div key={c.missionId} className="bg-slate-800 rounded-3 p-3 border-start border-3"
                    style={{ borderColor: c.couleur }}>
-
-                {/* Identité */}
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center
-                                  text-white font-bold text-sm"
-                       style={{ background: c.couleur }}>
+                <div className="d-flex align-items-center gap-2 mb-2">
+                  <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold small flex-shrink-0"
+                       style={{ width: '32px', height: '32px', background: c.couleur }}>
                     {c.initiale}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-sm font-mono truncate">{c.immatriculation}</p>
-                    <p className="text-slate-400 text-xs truncate">{c.chauffeur_nom}</p>
+                    <p className="fw-bold small font-monospace mb-0 text-truncate">{c.immatriculation}</p>
+                    <p className="text-slate-400 text-xs mb-0 text-truncate">{c.chauffeur_nom}</p>
                   </div>
                   {c.enPause && (
-                    <span className="ml-auto bg-orange-500/20 text-orange-400 text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0">
-                      Arrêt
-                    </span>
+                    <span className="ms-auto badge rounded-pill bg-warning bg-opacity-25 text-orange-400 flex-shrink-0" style={{ fontSize: '10px' }}>Arrêt</span>
                   )}
                 </div>
 
-                {/* Mission */}
-                <p className="text-slate-300 text-xs mb-2 truncate">{c.titre}</p>
+                <p className="text-slate-300 text-xs mb-2 text-truncate">{c.titre}</p>
 
-                {/* Progression */}
                 <div className="mb-2">
-                  <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                    <span className="truncate">{c.lieu_depart}</span>
-                    <span className="font-bold text-white mx-1">{c.progression}%</span>
-                    <span className="truncate text-right">{c.lieu_destination}</span>
+                  <div className="d-flex justify-content-between mb-1" style={{ fontSize: '10px', color: '#94a3b8' }}>
+                    <span className="text-truncate">{c.lieu_depart}</span>
+                    <span className="fw-bold text-white mx-1">{c.progression}%</span>
+                    <span className="text-truncate text-end">{c.lieu_destination}</span>
                   </div>
-                  <div className="bg-slate-700 rounded-full h-1.5">
-                    <div className="h-1.5 rounded-full transition-all"
-                         style={{ width: `${c.progression}%`, background: c.couleur }} />
+                  <div className="bg-slate-700 rounded-pill" style={{ height: '6px' }}>
+                    <div className="rounded-pill h-100" style={{ width: `${c.progression}%`, background: c.couleur, transition: 'width 0.5s' }} />
                   </div>
                 </div>
 
-                {/* Stats */}
-                <div className="flex items-center gap-3 text-[11px] text-slate-400 mb-2">
-                  <span className="flex items-center gap-1">
-                    <Gauge className="w-3 h-3" />
-                    {c.enPause ? '0' : c.vitesse} km/h
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {Math.round((c.distanceKm || 0) * c.progression / 100)} / {Math.round(c.distanceKm || 0)} km
+                <div className="d-flex align-items-center gap-3 mb-2" style={{ fontSize: '11px', color: '#94a3b8' }}>
+                  <span className="d-flex align-items-center gap-1"><Gauge size={12} /> {c.enPause ? '0' : c.vitesse} km/h</span>
+                  <span className="d-flex align-items-center gap-1">
+                    <MapPin size={12} /> {Math.round((c.distanceKm || 0) * c.progression / 100)} / {Math.round(c.distanceKm || 0)} km
                   </span>
                 </div>
 
-                {/* Événement actuel */}
                 {c.evenementActuel && (
-                  <div className="flex items-center gap-1.5 text-[11px] bg-slate-700 rounded-lg px-2 py-1.5 mb-2">
-                    <AlertTriangle className="w-3 h-3 text-orange-400 flex-shrink-0" />
-                    <span className="text-orange-300 truncate">{c.evenementActuel.label}</span>
+                  <div className="d-flex align-items-center gap-2 bg-slate-700 rounded-2 px-2 py-1 mb-2" style={{ fontSize: '11px' }}>
+                    <AlertTriangle size={12} className="text-orange-400 flex-shrink-0" />
+                    <span className="text-orange-300 text-truncate">{c.evenementActuel.label}</span>
                   </div>
                 )}
 
-                {/* Boutons vitesse individuelle */}
-                <div className="flex items-center gap-1 mb-2">
-                  <span className="text-slate-500 text-[10px] mr-1">Vitesse :</span>
+                <div className="d-flex align-items-center gap-1 mb-2">
+                  <span className="text-slate-500 me-1" style={{ fontSize: '10px' }}>Vitesse :</span>
                   {[1, 5, 10, 30, 60].map(v => (
-                    <button key={v}
-                      onClick={() => changerVitesseCamion(c.missionId, v)}
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all
-                        ${(multiplicateurs[c.missionId] || 30) === v
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600'}`}>
+                    <button key={v} onClick={() => changerVitesseCamion(c.missionId, v)}
+                            className={`btn border-0 px-1 py-0 fw-bold ${(multiplicateurs[c.missionId] || 30) === v ? 'bg-orange-500 text-white' : 'bg-slate-700 text-slate-400'}`}
+                            style={{ fontSize: '10px', borderRadius: '4px' }}>
                       x{v}
                     </button>
                   ))}
                 </div>
 
-                {/* Bouton centrer */}
-                <button
-                  onClick={() => setCible({ ...c.position, _ts: Date.now() })}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs
-                             bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 rounded-lg transition-colors">
-                  <MapPin className="w-3 h-3" /> Centrer la carte
+                <button onClick={() => setCible({ ...c.position, _ts: Date.now() })}
+                        className="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1 bg-slate-700 text-slate-300 border-0"
+                        style={{ fontSize: '12px' }}>
+                  <MapPin size={12} /> Centrer la carte
                 </button>
               </div>
             ))
@@ -327,66 +226,38 @@ export default function CarteGlobale() {
       </div>
 
       {/* Bouton toggle panneau */}
-      <button
-        onClick={() => setPanneauOuvert(!panneauOuvert)}
-        className="absolute left-0 top-1/2 -translate-y-1/2 z-50
-                   bg-slate-800 hover:bg-slate-700 text-white
-                   w-6 h-12 flex items-center justify-center
-                   rounded-r-lg shadow-lg transition-all"
-        style={{ left: panneauOuvert ? '288px' : '0px' }}
-      >
-        {panneauOuvert
-          ? <ChevronLeft className="w-4 h-4" />
-          : <ChevronRight className="w-4 h-4" />
-        }
+      <button onClick={() => setPanneauOuvert(!panneauOuvert)}
+              className="position-absolute top-50 translate-middle-y btn bg-slate-800 text-white border-0 d-flex align-items-center justify-content-center"
+              style={{ left: panneauOuvert ? '288px' : '0px', width: '24px', height: '48px', borderRadius: '0 6px 6px 0', zIndex: 50, transition: 'left 0.3s' }}>
+        {panneauOuvert ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </button>
 
-      {/* ── CARTE LEAFLET ── */}
-      <div className="flex-1 relative">
-        <MapContainer
-          center={[-18.9136, 47.5362]} zoom={7}
-          style={{ height: '100%', width: '100%' }}
-          scrollWheelZoom={true}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+      {/* CARTE */}
+      <div className="flex-grow-1 position-relative">
+        <MapContainer center={[-18.9136, 47.5362]} zoom={7} style={{ height: '100%', width: '100%' }} scrollWheelZoom={true}>
+          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
           {camionsList.map((c) => (
             <div key={c.missionId}>
-              {/* Tracé parcouru (couleur du camion) */}
-              {c.trace && c.trace.length > 1 && (
-                <Polyline positions={c.trace} color={c.couleur} weight={4} opacity={0.85} />
-              )}
-
-              {/* Marqueur du camion */}
+              {c.trace && c.trace.length > 1 && <Polyline positions={c.trace} color={c.couleur} weight={4} opacity={0.85} />}
               {c.position && (
-                <Marker
-                  position={[c.position.lat, c.position.lng]}
-                  icon={creerIcone(c.couleur, c.initiale)}
-                >
-                  {/* Tooltip permanent : immatriculation + progression */}
+                <Marker position={[c.position.lat, c.position.lng]} icon={creerIcone(c.couleur, c.initiale)}>
                   <Tooltip permanent direction="top" offset={[0, -26]}
-                           className="bg-slate-900 text-white border-0 shadow-lg text-xs font-bold"
-                           opacity={1}>
+                           className="bg-slate-900 text-white border-0 shadow-lg text-xs fw-bold" opacity={1}>
                     {c.immatriculation} · {c.progression}%
                   </Tooltip>
-
-                  {/* Popup au clic */}
                   <Popup maxWidth={220}>
-                    <div className="text-sm space-y-1">
-                      <p className="font-bold text-base font-mono">{c.immatriculation}</p>
-                      <p className="text-gray-600">Chauffeur : {c.chauffeur_nom}</p>
-                      <p className="text-gray-800 font-medium">{c.titre}</p>
-                      <p className="text-gray-500">{c.lieu_depart} → {c.lieu_destination}</p>
-                      <div className="flex justify-between pt-1 border-t border-gray-200">
+                    <div className="small d-flex flex-column gap-1">
+                      <p className="fw-bold fs-6 font-monospace mb-0">{c.immatriculation}</p>
+                      <p className="text-muted mb-0">Chauffeur : {c.chauffeur_nom}</p>
+                      <p className="fw-medium mb-0">{c.titre}</p>
+                      <p className="text-muted mb-0">{c.lieu_depart} → {c.lieu_destination}</p>
+                      <div className="d-flex justify-content-between pt-1 border-top">
                         <span>Progression : <strong>{c.progression}%</strong></span>
                         <span>Vitesse : <strong>{c.enPause ? 0 : c.vitesse} km/h</strong></span>
                       </div>
-                      {c.evenementActuel && (
-                        <p className="text-orange-600 font-medium">{c.evenementActuel.label}</p>
-                      )}
+                      {c.evenementActuel && <p className="text-warning fw-medium mb-0">{c.evenementActuel.label}</p>}
                     </div>
                   </Popup>
                 </Marker>
@@ -394,50 +265,39 @@ export default function CarteGlobale() {
             </div>
           ))}
 
-          {/* Centrage sur un camion sélectionné */}
           {cible && <CentrerSur cible={cible} />}
         </MapContainer>
 
-        {/* Overlay top-right : badge + vitesse globale */}
-        <div className="absolute top-4 right-4 z-40 flex items-center gap-2 flex-wrap justify-end">
-
-          {/* Sélecteur vitesse globale */}
+        {/* Overlay top-right */}
+        <div className="position-absolute top-0 end-0 m-3 d-flex align-items-center gap-2 flex-wrap justify-content-end" style={{ zIndex: 40 }}>
           {nbEnMission > 0 && (
-            <div className="flex items-center gap-1 bg-slate-900/90 rounded-xl p-1.5 shadow-lg border border-slate-700">
-              <span className="text-slate-400 text-xs px-1.5 flex items-center gap-1">
-                <Gauge className="w-3 h-3" /> Tous
+            <div className="d-flex align-items-center gap-1 bg-slate-900 bg-opacity-90 rounded-3 p-2 shadow border border-slate-700">
+              <span className="text-slate-400 text-xs px-1 d-flex align-items-center gap-1">
+                <Gauge size={12} /> Tous
               </span>
               {[1, 5, 10, 30, 60].map(v => (
-                <button key={v}
-                  onClick={() => changerVitesseGlobale(v)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all
-                    ${multiplicateurGlobal === v
-                      ? 'bg-orange-500 text-white shadow-md'
-                      : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                <button key={v} onClick={() => changerVitesseGlobale(v)}
+                        className={`btn border-0 px-2 py-1 rounded-2 text-xs fw-bold ${multiplicateurGlobal === v ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-400 bg-transparent'}`}>
                   x{v}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Badge nombre de camions */}
-          <div className="bg-slate-900/90 text-white px-3 py-2 rounded-xl shadow-lg
-                          flex items-center gap-2 text-sm border border-slate-700">
-            <Truck className="w-4 h-4 text-orange-500" />
-            <span className="font-bold">{nbEnMission}</span>
+          <div className="bg-slate-900 bg-opacity-90 text-white px-3 py-2 rounded-3 shadow d-flex align-items-center gap-2 small border border-slate-700">
+            <Truck size={16} className="text-orange-500" />
+            <span className="fw-bold">{nbEnMission}</span>
             <span className="text-slate-400">camion{nbEnMission > 1 ? 's' : ''}</span>
           </div>
         </div>
 
         {/* Message si vide */}
         {!chargement && nbEnMission === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-white/90 rounded-2xl px-8 py-6 text-center shadow-xl">
-              <Truck className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-600 font-medium">Aucun camion en mission</p>
-              <p className="text-gray-400 text-sm mt-1">
-                Démarrez une simulation depuis la page Missions
-              </p>
+          <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center pointer-events-none">
+            <div className="bg-white bg-opacity-90 rounded-3 px-4 py-4 text-center shadow-lg">
+              <Truck size={48} className="text-muted mb-3 d-block mx-auto" />
+              <p className="text-dark fw-medium mb-1">Aucun camion en mission</p>
+              <p className="text-muted small mb-0">Démarrez une simulation depuis la page Missions</p>
             </div>
           </div>
         )}

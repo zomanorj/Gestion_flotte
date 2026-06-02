@@ -1,14 +1,12 @@
-// Page planning calendrier — vues mois/semaine/jour avec FullCalendar
 import React, { useState, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin   from '@fullcalendar/daygrid';
-import timeGridPlugin  from '@fullcalendar/timegrid';
+import dayGridPlugin    from '@fullcalendar/daygrid';
+import timeGridPlugin   from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Calendar, X, MapPin, Truck, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
-// Couleurs et libellés des statuts
 const STATUT_CFG = {
   planifiee: { label: 'Planifiée',  cls: 'bg-yellow-100 text-yellow-700' },
   en_cours:  { label: 'En cours',   cls: 'bg-blue-100   text-blue-700'   },
@@ -24,58 +22,43 @@ const LEGENDE = [
 ];
 
 export default function Planning() {
-  const navigate   = useNavigate();
+  const navigate    = useNavigate();
   const calendarRef = useRef(null);
-
-  // Popup affiché au clic sur un événement
   const [popup,    setPopup]    = useState(null);
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
 
-  /** Charge les événements depuis l'API */
   const chargerEvenements = async () => {
     const { data } = await api.get('/missions/planning');
     return data;
   };
 
-  /** Clic sur un événement — affiche le popup de détail */
   const onEventClick = (info) => {
     const rect = info.el.getBoundingClientRect();
     setPopupPos({
       x: Math.min(rect.left, window.innerWidth - 320),
       y: rect.bottom + window.scrollY + 8
     });
-    setPopup({
-      id:    info.event.id,
-      titre: info.event.title,
-      ...info.event.extendedProps
-    });
-  };
-
-  /** Clic sur une date — redirige vers /missions (création pré-remplie non implémentée) */
-  const onDateClick = () => {
-    navigate('/missions');
+    setPopup({ id: info.event.id, titre: info.event.title, ...info.event.extendedProps });
   };
 
   return (
-    <div className="space-y-4">
+    <div className="d-flex flex-column gap-3">
 
       {/* En-tête */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-100 rounded-xl p-2">
-            <Calendar className="w-6 h-6 text-blue-600" />
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div className="d-flex align-items-center gap-3">
+          <div className="bg-blue-100 rounded-3 p-2">
+            <Calendar size={24} className="text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Planning des missions</h1>
-            <p className="text-sm text-gray-500">Vue calendrier de toutes les missions</p>
+            <h1 className="fs-4 fw-bold text-dark mb-0">Planning des missions</h1>
+            <p className="text-muted small mb-0">Vue calendrier de toutes les missions</p>
           </div>
         </div>
-
-        {/* Légende des couleurs */}
-        <div className="flex items-center gap-4">
+        <div className="d-flex align-items-center gap-3">
           {LEGENDE.map(({ couleur, label }) => (
-            <div key={label} className="flex items-center gap-1.5 text-sm text-gray-600">
-              <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: couleur }} />
+            <div key={label} className="d-flex align-items-center gap-2 small text-gray-600">
+              <span className="rounded-circle flex-shrink-0" style={{ width: '12px', height: '12px', backgroundColor: couleur }} />
               {label}
             </div>
           ))}
@@ -83,94 +66,69 @@ export default function Planning() {
       </div>
 
       {/* Calendrier */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 overflow-hidden">
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          locale="fr"
-          headerToolbar={{
-            left:   'prev,next today',
-            center: 'title',
-            right:  'dayGridMonth,timeGridWeek,timeGridDay'
-          }}
-          buttonText={{
-            today: "Aujourd'hui",
-            month: 'Mois',
-            week:  'Semaine',
-            day:   'Jour'
-          }}
-          events={chargerEvenements}
-          eventClick={onEventClick}
-          dateClick={onDateClick}
-          eventDisplay="block"
-          dayMaxEvents={3}
-          height="auto"
-          eventClassNames="cursor-pointer"
-        />
+      <div className="card border rounded-3">
+        <div className="card-body p-3">
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            locale="fr"
+            headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+            buttonText={{ today: "Aujourd'hui", month: 'Mois', week: 'Semaine', day: 'Jour' }}
+            events={chargerEvenements}
+            eventClick={onEventClick}
+            dateClick={() => navigate('/missions')}
+            eventDisplay="block"
+            dayMaxEvents={3}
+            height="auto"
+            eventClassNames="cursor-pointer"
+          />
+        </div>
       </div>
 
-      {/* Popup détail d'une mission */}
+      {/* Popup détail */}
       {popup && (
         <>
-          {/* Overlay transparent pour fermer */}
-          <div className="fixed inset-0 z-40" onClick={() => setPopup(null)} />
+          <div className="position-fixed top-0 start-0 w-100 h-100" style={{ zIndex: 1040 }}
+               onClick={() => setPopup(null)} />
+          <div className="position-fixed bg-white rounded-3 shadow-lg border"
+               style={{ left: popupPos.x, top: popupPos.y, zIndex: 1050, width: '320px' }}>
+            <div className="p-4">
+              <div className="d-flex align-items-start justify-content-between mb-3">
+                <h3 className="fw-bold text-dark small mb-0 pe-2">{popup.titre}</h3>
+                <button onClick={() => setPopup(null)} className="btn-close" />
+              </div>
 
-          <div
-            className="fixed z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 w-80 p-5"
-            style={{ left: popupPos.x, top: popupPos.y }}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="font-bold text-gray-900 text-sm leading-tight pr-2">{popup.titre}</h3>
-              <button onClick={() => setPopup(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
-                <X className="w-4 h-4" />
+              <div className="d-flex flex-column gap-2 small">
+                <div>
+                  <span className={`badge rounded-pill fw-medium ${STATUT_CFG[popup.statut]?.cls || 'bg-gray-100 text-gray-600'}`}>
+                    {STATUT_CFG[popup.statut]?.label || popup.statut}
+                  </span>
+                </div>
+                <div className="d-flex align-items-center gap-2 text-gray-700">
+                  <MapPin size={16} className="text-muted flex-shrink-0" />
+                  <span>{popup.lieu_depart}</span>
+                  <ArrowRight size={12} className="text-muted" />
+                  <span>{popup.lieu_destination}</span>
+                </div>
+                {popup.distance_km && (
+                  <p className="text-muted mb-0 ps-4">{popup.distance_km} km</p>
+                )}
+                <div className="d-flex align-items-center gap-2 text-gray-700">
+                  <Truck size={16} className="text-muted flex-shrink-0" />
+                  <span>{popup.vehicule}</span>
+                </div>
+                <div className="d-flex align-items-center gap-2 text-gray-700">
+                  <User size={16} className="text-muted flex-shrink-0" />
+                  <span>{popup.chauffeur}</span>
+                </div>
+              </div>
+
+              <button onClick={() => { setPopup(null); navigate('/missions'); }}
+                      className="btn btn-outline-primary btn-sm w-100 mt-3">
+                Voir toutes les missions
               </button>
             </div>
-
-            <div className="space-y-2 text-sm">
-              {/* Statut */}
-              <div>
-                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium
-                  ${STATUT_CFG[popup.statut]?.cls || 'bg-gray-100 text-gray-600'}`}>
-                  {STATUT_CFG[popup.statut]?.label || popup.statut}
-                </span>
-              </div>
-
-              {/* Trajet */}
-              <div className="flex items-center gap-2 text-gray-700">
-                <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <span>{popup.lieu_depart}</span>
-                <ArrowRight className="w-3 h-3 text-gray-400" />
-                <span>{popup.lieu_destination}</span>
-              </div>
-
-              {/* Distance */}
-              {popup.distance_km && (
-                <p className="text-gray-500 text-xs pl-6">{popup.distance_km} km</p>
-              )}
-
-              {/* Camion */}
-              <div className="flex items-center gap-2 text-gray-700">
-                <Truck className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <span>{popup.vehicule}</span>
-              </div>
-
-              {/* Chauffeur */}
-              <div className="flex items-center gap-2 text-gray-700">
-                <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <span>{popup.chauffeur}</span>
-              </div>
-            </div>
-
-            {/* Bouton voir la mission */}
-            <button
-              onClick={() => { setPopup(null); navigate('/missions'); }}
-              className="mt-4 w-full text-center text-sm text-blue-600 hover:text-blue-700
-                         font-medium border border-blue-200 hover:border-blue-300
-                         rounded-lg py-2 transition-colors"
-            >
-              Voir toutes les missions
-            </button>
           </div>
         </>
       )}

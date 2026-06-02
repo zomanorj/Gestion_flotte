@@ -1,14 +1,5 @@
-// Carte statistique réutilisable pour le dashboard
 import React from 'react';
 
-/**
- * Affiche une métrique clé avec icône lucide-react et couleur.
- * @param {string} titre     - Libellé de la statistique
- * @param {string|number} valeur - Valeur à mettre en avant
- * @param {ReactNode} icone  - Composant lucide-react déjà instancié avec sa className
- * @param {string} couleur   - Thème de couleur : 'green' | 'blue' | 'orange' | 'red' | 'yellow'
- * @param {string} sousTitre - Texte explicatif optionnel sous la valeur
- */
 export default function StatCard({ titre, valeur, icone, couleur = 'blue', sousTitre }) {
   const palettes = {
     green:  { bg: 'bg-green-50',  border: 'border-green-200',  icon: 'bg-green-100 text-green-600',   val: 'text-green-700'  },
@@ -21,14 +12,15 @@ export default function StatCard({ titre, valeur, icone, couleur = 'blue', sousT
   const p = palettes[couleur] || palettes.blue;
 
   return (
-    <div className={`rounded-xl border ${p.bg} ${p.border} p-5 flex items-center gap-4`}>
-      <div className={`w-14 h-14 rounded-xl ${p.icon} flex items-center justify-center flex-shrink-0`}>
+    <div className={`rounded-3 border ${p.bg} ${p.border} p-3 d-flex align-items-center gap-3`}>
+      <div className={`rounded-3 ${p.icon} d-flex align-items-center justify-content-center flex-shrink-0`}
+           style={{ width: '56px', height: '56px' }}>
         {icone}
       </div>
       <div>
-        <p className="text-sm text-gray-500 font-medium">{titre}</p>
-        <p className={`text-3xl font-bold ${p.val}`}>{valeur}</p>
-        {sousTitre && <p className="text-xs text-gray-400 mt-0.5">{sousTitre}</p>}
+        <p className="small text-gray-500 fw-medium mb-0">{titre}</p>
+        <p className={`fs-3 fw-bold mb-0 ${p.val}`}>{valeur}</p>
+        {sousTitre && <p className="text-xs text-gray-400 mb-0 mt-1">{sousTitre}</p>}
       </div>
     </div>
   );

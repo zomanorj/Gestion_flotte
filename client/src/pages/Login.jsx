@@ -1,4 +1,3 @@
-// Page de connexion — accès public
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Car, AlertTriangle, Mail, KeyRound, Loader2 } from 'lucide-react';
@@ -12,13 +11,11 @@ export default function Login() {
   const [erreur,     setErreur]     = useState('');
   const [chargement, setChargement] = useState(false);
 
-  /** Met à jour le champ du formulaire modifié */
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setErreur('');
   };
 
-  /** Soumet le formulaire et redirige si succès */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.email || !form.password) {
@@ -36,111 +33,98 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-blue-600 p-4">
-      <div className="w-full max-w-md">
-        {/* Logo et titre */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center">
-              <Car className="w-10 h-10 text-white" />
-            </div>
+    <div className="min-vh-100 d-flex align-items-center justify-content-center p-3"
+         style={{ background: 'linear-gradient(135deg, #1e3a8a, #1d4ed8, #2563eb)' }}>
+      <div className="w-100" style={{ maxWidth: '26rem' }}>
+
+        {/* Logo */}
+        <div className="text-center mb-4">
+          <div className="d-inline-flex align-items-center justify-content-center rounded-3 mb-3"
+               style={{ width: '80px', height: '80px', backgroundColor: 'rgba(255,255,255,0.2)' }}>
+            <Car size={40} color="white" />
           </div>
-          <h1 className="text-3xl font-bold text-white">FlotteApp</h1>
-          <p className="text-blue-200 mt-2">Gestion de Flotte — Madagascar</p>
+          <h1 className="fw-bold text-white fs-3">FlotteApp</h1>
+          <p style={{ color: '#bfdbfe' }}>Gestion de Flotte — Madagascar</p>
         </div>
 
         {/* Formulaire */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Connexion</h2>
+        <div className="card border-0 shadow-lg rounded-3">
+          <div className="card-body p-4">
+            <h2 className="fs-5 fw-semibold text-dark mb-4">Connexion</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Adresse email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="admin@flotte.mg"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition-shadow"
-                autoComplete="email"
-              />
-            </div>
-
-            {/* Mot de passe */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mot de passe
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition-shadow"
-                autoComplete="current-password"
-              />
-            </div>
-
-            {/* Message d'erreur */}
-            {erreur && (
-              <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200
-                              text-sm px-4 py-3 rounded-xl">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                <span>{erreur}</span>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <label className="form-label fw-medium">Adresse email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="admin@flotte.mg"
+                  className="form-control"
+                  autoComplete="email"
+                />
               </div>
-            )}
 
-            {/* Bouton de connexion */}
-            <button
-              type="submit"
-              disabled={chargement}
-              className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl
-                         hover:bg-blue-700 active:scale-95 transition-all
-                         disabled:opacity-60 disabled:cursor-not-allowed
-                         flex items-center justify-center gap-2"
-            >
-              {chargement ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Connexion en cours…
-                </>
-              ) : (
-                'Se connecter'
+              <div className="mb-3">
+                <label className="form-label fw-medium">Mot de passe</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className="form-control"
+                  autoComplete="current-password"
+                />
+              </div>
+
+              {erreur && (
+                <div className="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3">
+                  <AlertTriangle size={16} className="flex-shrink-0" />
+                  <span className="small">{erreur}</span>
+                </div>
               )}
-            </button>
-          </form>
 
-          {/* Comptes de démonstration */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl text-xs text-gray-500">
-            <p className="font-medium text-gray-700 mb-2">Comptes de démonstration :</p>
-            <div className="space-y-1">
-              <p className="flex items-center gap-1.5">
-                <Mail className="w-3 h-3" /> admin@flotte.mg
-              </p>
-              <p className="flex items-center gap-1.5">
-                <Mail className="w-3 h-3" /> gestionnaire@flotte.mg
-              </p>
-              <p className="flex items-center gap-1.5">
-                <Mail className="w-3 h-3" /> chauffeur@flotte.mg
-              </p>
-              <p className="flex items-center gap-1.5 mt-1">
-                <KeyRound className="w-3 h-3" />
-                Mot de passe : <span className="font-mono">password123</span>
-              </p>
+              <button
+                type="submit"
+                disabled={chargement}
+                className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
+              >
+                {chargement ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" />
+                    Connexion en cours…
+                  </>
+                ) : (
+                  'Se connecter'
+                )}
+              </button>
+            </form>
+
+            {/* Comptes démo */}
+            <div className="mt-4 p-3 bg-light rounded-3">
+              <p className="fw-medium text-dark small mb-2">Comptes de démonstration :</p>
+              <div className="d-flex flex-column gap-1 text-muted" style={{ fontSize: '0.8rem' }}>
+                <p className="d-flex align-items-center gap-2 mb-0">
+                  <Mail size={12} /> admin@flotte.mg
+                </p>
+                <p className="d-flex align-items-center gap-2 mb-0">
+                  <Mail size={12} /> gestionnaire@flotte.mg
+                </p>
+                <p className="d-flex align-items-center gap-2 mb-0">
+                  <Mail size={12} /> chauffeur@flotte.mg
+                </p>
+                <p className="d-flex align-items-center gap-2 mb-0 mt-1">
+                  <KeyRound size={12} />
+                  Mot de passe : <span className="font-monospace fw-medium">password123</span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <p className="text-center text-blue-200 text-sm mt-6">
+        <p className="text-center mt-4 small" style={{ color: '#bfdbfe' }}>
           Projet portfolio — L3 Informatique — Antananarivo
         </p>
       </div>

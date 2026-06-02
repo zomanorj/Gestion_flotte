@@ -1,4 +1,3 @@
-// Page gestion des chauffeurs + historique de missions
 import React, { useState, useEffect, useCallback } from 'react';
 import { ClipboardList, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import api from '../services/api';
@@ -17,11 +16,8 @@ const LABELS_STATUT = {
   conge:      'En congé'
 };
 
-/** Retourne les initiales d'un prénom + nom */
-const initiales = (prenom = '', nom = '') =>
-  (prenom[0] || '') + (nom[0] || '');
+const initiales = (prenom = '', nom = '') => (prenom[0] || '') + (nom[0] || '');
 
-/** Formulaire ajout / modification chauffeur */
 const FormulaireChauffeur = ({ chauffeur, onSauvegarder, onAnnuler }) => {
   const [form, setForm] = useState({
     nom:              chauffeur?.nom              || '',
@@ -55,62 +51,57 @@ const FormulaireChauffeur = ({ chauffeur, onSauvegarder, onAnnuler }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+    <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
+      <div className="row g-3">
+        <div className="col-6">
+          <label className="form-label">Prénom *</label>
           <input name="prenom" value={form.prenom} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Hery" />
+                 className="form-control form-control-sm" placeholder="Hery" />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+        <div className="col-6">
+          <label className="form-label">Nom *</label>
           <input name="nom" value={form.nom} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Rakotondrabe" />
+                 className="form-control form-control-sm" placeholder="Rakotondrabe" />
         </div>
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
+        <label className="form-label">Téléphone *</label>
         <input name="telephone" value={form.telephone} onChange={handleChange} required
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="+261 34 12 345 67" />
+               className="form-control form-control-sm" placeholder="+261 34 12 345 67" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">N° Permis *</label>
+
+      <div className="row g-3">
+        <div className="col-6">
+          <label className="form-label">N° Permis *</label>
           <input name="numero_permis" value={form.numero_permis} onChange={handleChange} required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="MG-P-2020-00789" />
+                 className="form-control form-control-sm" placeholder="MG-P-2020-00789" />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+        <div className="col-6">
+          <label className="form-label">Catégorie</label>
           <select name="categorie_permis" value={form.categorie_permis} onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="form-select form-select-sm">
             {['B', 'BC', 'BCE', 'C', 'D'].map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-        <select name="statut" value={form.statut} onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <label className="form-label">Statut</label>
+        <select name="statut" value={form.statut} onChange={handleChange} className="form-select form-select-sm">
           {Object.entries(LABELS_STATUT).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </div>
+
       {erreur && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {erreur}
+        <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small">
+          <AlertTriangle size={16} className="flex-shrink-0" /> {erreur}
         </div>
       )}
-      <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onAnnuler}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
-          Annuler
-        </button>
-        <button type="submit" disabled={loading}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-60">
+
+      <div className="d-flex gap-3 pt-1">
+        <button type="button" onClick={onAnnuler} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
+        <button type="submit" disabled={loading} className="btn btn-primary btn-sm flex-grow-1">
           {loading ? '…' : chauffeur?.id ? 'Mettre à jour' : 'Ajouter'}
         </button>
       </div>
@@ -118,7 +109,6 @@ const FormulaireChauffeur = ({ chauffeur, onSauvegarder, onAnnuler }) => {
   );
 };
 
-/** Historique des missions d'un chauffeur */
 const HistoriqueMissions = ({ chauffeurId }) => {
   const [missions,   setMissions]   = useState([]);
   const [chargement, setChargement] = useState(true);
@@ -129,10 +119,8 @@ const HistoriqueMissions = ({ chauffeurId }) => {
       .catch(() => setChargement(false));
   }, [chauffeurId]);
 
-  if (chargement) return <div className="text-center py-6 text-gray-400">Chargement…</div>;
-
-  if (missions.length === 0)
-    return <p className="text-center text-gray-400 py-6">Aucune mission enregistrée</p>;
+  if (chargement) return <div className="text-center py-4 text-muted">Chargement…</div>;
+  if (missions.length === 0) return <p className="text-center text-muted py-4">Aucune mission enregistrée</p>;
 
   const BADGES_M = {
     planifiee: 'bg-gray-100 text-gray-700',
@@ -142,19 +130,17 @@ const HistoriqueMissions = ({ chauffeurId }) => {
   };
 
   return (
-    <div className="space-y-3 text-sm">
+    <div className="d-flex flex-column gap-3 small">
       {missions.map((m) => (
-        <div key={m.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-gray-800">{m.titre}</p>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${BADGES_M[m.statut]}`}>
-              {m.statut}
-            </span>
+        <div key={m.id} className="bg-light rounded-3 p-3 border">
+          <div className="d-flex align-items-center justify-content-between gap-2">
+            <p className="fw-medium text-dark mb-0">{m.titre}</p>
+            <span className={`badge rounded-pill fw-medium ${BADGES_M[m.statut]}`}>{m.statut}</span>
           </div>
-          <p className="text-gray-500 mt-1">
+          <p className="text-muted mt-1 mb-0">
             {m.immatriculation} • {m.lieu_depart} → {m.lieu_destination}
           </p>
-          <p className="text-gray-400 text-xs mt-0.5">
+          <p className="text-muted text-xs mt-1 mb-0">
             {new Date(m.date_depart).toLocaleDateString('fr-FR')}
             {' · '}{m.distance_km} km
             {m.cout_carburant ? ` · ${new Intl.NumberFormat('fr-FR').format(m.cout_carburant)} Ar` : ''}
@@ -200,98 +186,77 @@ export default function Chauffeurs() {
     }
   };
 
-  const fermerModal = () => setModal({ ouvert: false, chauffeur: null, mode: 'form' });
+  const fermerModal      = ()  => setModal({ ouvert: false, chauffeur: null, mode: 'form' });
   const apresModification = () => { fermerModal(); chargerChauffeurs(); };
 
   return (
-    <div className="space-y-4">
+    <div className="d-flex flex-column gap-3">
       {/* Barre d'outils */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <input
-          type="text"
-          placeholder="Rechercher par nom ou numéro de permis…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="d-flex flex-column flex-sm-row gap-2">
+        <input type="text" placeholder="Rechercher par nom ou numéro de permis…"
+               value={search} onChange={(e) => setSearch(e.target.value)}
+               className="form-control flex-grow-1" />
         {isAdmin && (
-          <button
-            onClick={() => setModal({ ouvert: true, chauffeur: null, mode: 'form' })}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" /> Ajouter un chauffeur
+          <button onClick={() => setModal({ ouvert: true, chauffeur: null, mode: 'form' })}
+                  className="btn btn-primary d-flex align-items-center gap-2 text-nowrap">
+            <Plus size={16} /> Ajouter un chauffeur
           </button>
         )}
       </div>
 
       {/* Tableau */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="card border rounded-3 overflow-hidden">
         {chargement ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="d-flex align-items-center justify-content-center" style={{ height: '8rem' }}>
+            <div className="spinner-border text-primary" role="status" />
           </div>
         ) : chauffeurs.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">Aucun chauffeur trouvé</p>
+          <p className="text-center text-muted py-5">Aucun chauffeur trouvé</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+            <table className="table table-sm table-hover mb-0">
+              <thead className="table-light">
                 <tr>
                   {['', 'Nom', 'Téléphone', 'Permis', 'Statut', 'Actions'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {h}
-                    </th>
+                    <th key={h} className="text-uppercase small fw-semibold text-muted px-3 py-2">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {chauffeurs.map((c) => (
-                  <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Avatar avec initiales */}
-                    <td className="px-4 py-3">
-                      <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center
-                                      text-white font-bold text-sm">
+                  <tr key={c.id}>
+                    <td className="px-3 py-2">
+                      <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center
+                                      text-white fw-bold small"
+                           style={{ width: '36px', height: '36px' }}>
                         {initiales(c.prenom, c.nom).toUpperCase()}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {c.prenom} {c.nom}
+                    <td className="px-3 py-2 fw-medium text-dark">{c.prenom} {c.nom}</td>
+                    <td className="px-3 py-2 text-gray-600">{c.telephone}</td>
+                    <td className="px-3 py-2 text-gray-600 font-monospace small">
+                      {c.numero_permis} <span className="text-muted">({c.categorie_permis})</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{c.telephone}</td>
-                    <td className="px-4 py-3 text-gray-600 font-mono text-xs">
-                      {c.numero_permis} <span className="text-gray-400">({c.categorie_permis})</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${BADGES_STATUT[c.statut]}`}>
+                    <td className="px-3 py-2">
+                      <span className={`badge rounded-pill fw-medium ${BADGES_STATUT[c.statut]}`}>
                         {LABELS_STATUT[c.statut]}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => setModal({ ouvert: true, chauffeur: c, mode: 'historique' })}
-                          className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                          title="Historique des missions"
-                        >
-                          <ClipboardList className="w-3.5 h-3.5" />
-                          Missions
+                    <td className="px-3 py-2">
+                      <div className="d-flex gap-1">
+                        <button onClick={() => setModal({ ouvert: true, chauffeur: c, mode: 'historique' })}
+                                className="btn btn-sm btn-light d-flex align-items-center gap-1 small">
+                          <ClipboardList size={14} /> Missions
                         </button>
                         {isAdmin && (
                           <>
-                            <button
-                              onClick={() => setModal({ ouvert: true, chauffeur: c, mode: 'form' })}
-                              className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
-                              title="Modifier"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
+                            <button onClick={() => setModal({ ouvert: true, chauffeur: c, mode: 'form' })}
+                                    className="btn btn-sm btn-outline-primary">
+                              <Pencil size={14} />
                             </button>
                             {user?.role === 'admin' && (
-                              <button
-                                onClick={() => setConfirmSupp(c)}
-                                className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors"
-                                title="Supprimer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
+                              <button onClick={() => setConfirmSupp(c)} className="btn btn-sm btn-outline-danger">
+                                <Trash2 size={14} />
                               </button>
                             )}
                           </>
@@ -306,45 +271,25 @@ export default function Chauffeurs() {
         )}
       </div>
 
-      {/* Modal form / historique */}
-      <Modal
-        isOpen={modal.ouvert}
-        onClose={fermerModal}
-        titre={
-          modal.mode === 'historique'
-            ? `Missions — ${modal.chauffeur?.prenom} ${modal.chauffeur?.nom}`
-            : modal.chauffeur?.id ? 'Modifier le chauffeur' : 'Ajouter un chauffeur'
+      <Modal isOpen={modal.ouvert} onClose={fermerModal}
+             titre={modal.mode === 'historique'
+               ? `Missions — ${modal.chauffeur?.prenom} ${modal.chauffeur?.nom}`
+               : modal.chauffeur?.id ? 'Modifier le chauffeur' : 'Ajouter un chauffeur'}>
+        {modal.mode === 'historique'
+          ? <HistoriqueMissions chauffeurId={modal.chauffeur?.id} />
+          : <FormulaireChauffeur chauffeur={modal.chauffeur} onSauvegarder={apresModification} onAnnuler={fermerModal} />
         }
-        taille="max-w-lg"
-      >
-        {modal.mode === 'historique' ? (
-          <HistoriqueMissions chauffeurId={modal.chauffeur?.id} />
-        ) : (
-          <FormulaireChauffeur
-            chauffeur={modal.chauffeur}
-            onSauvegarder={apresModification}
-            onAnnuler={fermerModal}
-          />
-        )}
       </Modal>
 
-      {/* Modal confirmation suppression */}
-      <Modal
-        isOpen={!!confirmSupp}
-        onClose={() => setConfirmSupp(null)}
-        titre="Confirmer la suppression"
-      >
+      <Modal isOpen={!!confirmSupp} onClose={() => setConfirmSupp(null)} titre="Confirmer la suppression">
         <p className="text-gray-700 mb-4">
           Supprimer le chauffeur <strong>{confirmSupp?.prenom} {confirmSupp?.nom}</strong> ?
         </p>
-        <div className="flex gap-3">
-          <button onClick={() => setConfirmSupp(null)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
-            Annuler
-          </button>
+        <div className="d-flex gap-3">
+          <button onClick={() => setConfirmSupp(null)} className="btn btn-outline-secondary flex-grow-1">Annuler</button>
           <button onClick={() => supprimer(confirmSupp.id)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">
-            <Trash2 className="w-4 h-4" /> Supprimer
+                  className="btn btn-danger flex-grow-1 d-flex align-items-center justify-content-center gap-2">
+            <Trash2 size={16} /> Supprimer
           </button>
         </div>
       </Modal>
