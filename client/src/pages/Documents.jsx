@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { FileCheck, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, X } from 'lucide-react';
+import { FileCheck, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, X, Download } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
+import Pagination from '../components/Pagination';
 
 const TYPES = {
   carte_grise: 'Carte grise', assurance: 'Assurance', vignette: 'Vignette',
@@ -46,10 +47,16 @@ export default function Documents() {
   const [sauvegarde, setSauvegarde] = useState(false);
   const [errModal,  setErrModal]  = useState('');
 
+  const [page,         setPage]         = useState(1);
+  const [paginInfo,    setPaginInfo]    = useState({ total: 0, pages: 1 });
+  const [fichierUpload, setFichierUpload] = useState(null);
+  const [uploadDocId,   setUploadDocId]   = useState(null);
+  const LIMIT = 20;
+
   const charger = useCallback(async () => {
     setChargement(true);
     try {
-      const params = {};
+      const params = { paginate: 'true', page, limit: LIMIT };
       if (filtreVehicule) params.vehicule_id = filtreVehicule;
       if (filtreType)     params.type        = filtreType;
       const [resDocs, resAlertes, resVehicules] = await Promise.all([
@@ -57,16 +64,33 @@ export default function Documents() {
         api.get('/documents/alertes'),
         api.get('/vehicules')
       ]);
-      setDocs(resDocs.data); setAlertes(resAlertes.data); setVehicules(resVehicules.data);
+      setDocs(resDocs.data.data); setPaginInfo({ total: resDocs.data.total, pages: resDocs.data.pages });
+      setAlertes(resAlertes.data); setVehicules(resVehicules.data);
       setErreur('');
     } catch {
       setErreur('Impossible de charger les documents');
     } finally {
       setChargement(false);
     }
-  }, [filtreVehicule, filtreType]);
+  }, [filtreVehicule, filtreType, page]);
 
+  useEffect(() => { setPage(1); }, [filtreVehicule, filtreType]);
   useEffect(() => { charger(); }, [charger]);
+
+  const uploadFichier = async (docId) => {
+    if (!fichierUpload) return;
+    const formData = new FormData();
+    formData.append('fichier', fichierUpload);
+    try {
+      await api.post(`/documents/${docId}/fichier`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setFichierUpload(null); setUploadDocId(null);
+      charger();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Erreur lors de l\'upload');
+    }
+  };
 
   const ouvrirAjout = () => { setForm(FORM_VIDE); setDocEdite(null); setErrModal(''); setModal('ajout'); };
   const ouvrirEdition = (doc) => {
@@ -197,8 +221,20 @@ export default function Documents() {
                     <td className="px-3 py-2"><StatutBadge statut={doc.statut} /></td>
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-2">
+                        {doc.fichier_url && (
+                          <a href={`http://localhost:5000${doc.fichier_url}`} target="_blank" rel="noopener noreferrer"
+                             className="btn btn-sm btn-outline-secondary" title="Télécharger le fichier">
+                            <Download size={14} />
+                          </a>
+                        )}
                         {peutModifier && (
-                          <button onClick={() => ouvrirEdition(doc)} className="btn btn-sm btn-outline-primary"><Pencil size={14} /></button>
+                          <>
+                            <button onClick={() => { setUploadDocId(doc.id); setFichierUpload(null); }}
+                                    className="btn btn-sm btn-outline-info" title="Upload fichier">
+                              <FileCheck size={14} />
+                            </button>
+                            <button onClick={() => ouvrirEdition(doc)} className="btn btn-sm btn-outline-primary"><Pencil size={14} /></button>
+                          </>
                         )}
                         {isAdmin && (
                           <button onClick={() => supprimer(doc)} className="btn btn-sm btn-outline-danger"><Trash2 size={14} /></button>
@@ -211,7 +247,30 @@ export default function Documents() {
             </table>
           </div>
         )}
+        <div className="border-top">
+          <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
+                      limit={LIMIT} onChange={setPage} />
+        </div>
       </div>
+
+      {/* Modal upload fichier */}
+      {uploadDocId && (
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
+             style={{ zIndex: 1060, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-3 shadow-lg p-4" style={{ maxWidth: '26rem', width: '100%' }}>
+            <h3 className="fs-6 fw-bold mb-3">Attacher un fichier</h3>
+            <input type="file" onChange={e => setFichierUpload(e.target.files[0])}
+                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                   className="form-control form-control-sm mb-3" />
+            <div className="d-flex gap-2">
+              <button onClick={() => { setUploadDocId(null); setFichierUpload(null); }}
+                      className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
+              <button onClick={() => uploadFichier(uploadDocId)} disabled={!fichierUpload}
+                      className="btn btn-primary btn-sm flex-grow-1">Uploader</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {modal && (

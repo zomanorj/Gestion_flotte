@@ -1,5 +1,6 @@
 // Contrôleur dépenses — suivi des dépenses opérationnelles par catégorie
-const db = require('../config/db');
+const db      = require('../config/db');
+const paginer = require('../utils/paginer');
 
 /**
  * GET /api/depenses
@@ -23,6 +24,22 @@ const getAll = async (req, res) => {
     if (fin)         { query += ' AND d.date_depense <= ?'; params.push(fin); }
 
     query += ' ORDER BY d.date_depense DESC';
+
+    const pg = paginer(req);
+    if (pg.actif) {
+      let countQ = 'SELECT COUNT(*) AS total FROM depenses d WHERE 1=1';
+      const countP = [];
+      if (vehicule_id) { countQ += ' AND d.vehicule_id = ?'; countP.push(vehicule_id); }
+      if (categorie)   { countQ += ' AND d.categorie = ?';   countP.push(categorie); }
+      if (debut)       { countQ += ' AND d.date_depense >= ?'; countP.push(debut); }
+      if (fin)         { countQ += ' AND d.date_depense <= ?'; countP.push(fin); }
+      const [count] = await db.query(countQ, countP);
+      query += ' LIMIT ? OFFSET ?';
+      params.push(pg.limit, pg.offset);
+      const [rows] = await db.query(query, params);
+      return res.json(pg.reponse(rows, count[0].total));
+    }
+
     const [rows] = await db.query(query, params);
     return res.json(rows);
   } catch (err) {

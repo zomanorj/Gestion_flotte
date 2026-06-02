@@ -1,5 +1,6 @@
 // Contrôleur camions — CRUD et alertes de maintenance
-const db = require('../config/db');
+const db      = require('../config/db');
+const paginer = require('../utils/paginer');
 
 /**
  * GET /api/vehicules
@@ -24,6 +25,21 @@ const getAll = async (req, res) => {
     }
 
     query += ' ORDER BY created_at DESC';
+
+    const pg = paginer(req);
+    if (pg.actif) {
+      const [count] = await db.query(
+        'SELECT COUNT(*) AS total FROM vehicules WHERE 1=1' +
+        (statut ? ' AND statut = ?' : '') +
+        (search ? ' AND (immatriculation LIKE ? OR marque LIKE ? OR modele LIKE ?)' : ''),
+        [...(statut ? [statut] : []), ...(search ? [`%${search}%`,`%${search}%`,`%${search}%`] : [])]
+      );
+      query += ' LIMIT ? OFFSET ?';
+      params.push(pg.limit, pg.offset);
+      const [rows] = await db.query(query, params);
+      return res.json(pg.reponse(rows, count[0].total));
+    }
+
     const [rows] = await db.query(query, params);
     return res.json(rows);
 

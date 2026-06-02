@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmModal';
+import Pagination from '../components/Pagination';
 
 const BADGES = {
   planifiee: 'bg-gray-100 text-gray-700',
@@ -258,23 +259,28 @@ export default function Missions() {
   const [dateDebut,    setDateDebut]    = useState('');
   const [dateFin,      setDateFin]      = useState('');
   const [modal,        setModal]        = useState({ ouvert: false, mission: null, mode: 'new' });
+  const [page,         setPage]         = useState(1);
+  const [paginInfo,    setPaginInfo]    = useState({ total: 0, pages: 1 });
+  const LIMIT = 20;
 
   const chargerMissions = useCallback(async () => {
     setChargement(true);
     try {
-      const params = {};
+      const params = { paginate: 'true', page, limit: LIMIT };
       if (filtreStatut) params.statut = filtreStatut;
       if (dateDebut)    params.debut  = dateDebut;
       if (dateFin)      params.fin    = dateFin;
       const { data } = await api.get('/missions', { params });
-      setMissions(data);
+      setMissions(data.data);
+      setPaginInfo({ total: data.total, pages: data.pages });
     } catch {
       setMissions([]);
     } finally {
       setChargement(false);
     }
-  }, [filtreStatut, dateDebut, dateFin]);
+  }, [filtreStatut, dateDebut, dateFin, page]);
 
+  useEffect(() => { setPage(1); }, [filtreStatut, dateDebut, dateFin]);
   useEffect(() => { chargerMissions(); }, [chargerMissions]);
 
   const demarrerMission = async (mission) => {
@@ -415,6 +421,11 @@ export default function Missions() {
             </table>
           </div>
         )}
+      </div>
+
+      <div className="border-top">
+        <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
+                    limit={LIMIT} onChange={setPage} />
       </div>
 
       <Modal isOpen={modal.ouvert} onClose={fermerModal}

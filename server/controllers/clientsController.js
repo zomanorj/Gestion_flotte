@@ -1,5 +1,6 @@
 // Contrôleur clients — CRUD et historique des missions par client
-const db = require('../config/db');
+const db      = require('../config/db');
+const paginer = require('../utils/paginer');
 
 /**
  * GET /api/clients
@@ -16,6 +17,14 @@ const getAll = async (req, res) => {
       GROUP BY c.id
       ORDER BY c.nom ASC
     `);
+
+    const pg = paginer(req);
+    if (pg.actif) {
+      const [count] = await db.query('SELECT COUNT(*) AS total FROM clients');
+      const limited  = rows.slice(pg.offset, pg.offset + pg.limit);
+      return res.json(pg.reponse(limited, count[0].total));
+    }
+
     return res.json(rows);
   } catch (err) {
     console.error('Erreur getAll clients :', err);

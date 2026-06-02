@@ -3,6 +3,7 @@ import { Eye, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 
 const BADGES_STATUT = {
   disponible:  'bg-green-100 text-green-800',
@@ -138,22 +139,27 @@ export default function Vehicules() {
   const [filtreStatut, setFiltreStatut] = useState('');
   const [modal,      setModal]      = useState({ ouvert: false, camion: null, mode: 'form' });
   const [confirmSuppression, setConfirmSuppression] = useState(null);
+  const [page,       setPage]       = useState(1);
+  const [paginInfo,  setPaginInfo]  = useState({ total: 0, pages: 1 });
+  const LIMIT = 15;
 
   const chargerCamions = useCallback(async () => {
     setChargement(true);
     try {
-      const params = {};
+      const params = { paginate: 'true', page, limit: LIMIT };
       if (filtreStatut) params.statut = filtreStatut;
       if (search)       params.search = search;
       const { data } = await api.get('/vehicules', { params });
-      setCamions(data);
+      setCamions(data.data);
+      setPaginInfo({ total: data.total, pages: data.pages });
     } catch {
       setCamions([]);
     } finally {
       setChargement(false);
     }
-  }, [filtreStatut, search]);
+  }, [filtreStatut, search, page]);
 
+  useEffect(() => { setPage(1); }, [filtreStatut, search]);
   useEffect(() => { chargerCamions(); }, [chargerCamions]);
 
   const ouvrirFormulaire = (camion = null) => setModal({ ouvert: true, camion, mode: 'form' });
@@ -247,6 +253,10 @@ export default function Vehicules() {
             </table>
           </div>
         )}
+        <div className="border-top">
+          <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
+                      limit={LIMIT} onChange={setPage} />
+        </div>
       </div>
 
       {/* Modal formulaire / détail */}

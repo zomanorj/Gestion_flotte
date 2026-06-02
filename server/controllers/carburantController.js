@@ -1,5 +1,6 @@
 // Contrôleur carburant — suivi des pleins et statistiques de consommation
-const db = require('../config/db');
+const db      = require('../config/db');
+const paginer = require('../utils/paginer');
 
 /**
  * GET /api/carburant
@@ -22,6 +23,21 @@ const getAll = async (req, res) => {
     if (fin)         { query += ' AND c.date_plein <= ?'; params.push(fin); }
 
     query += ' ORDER BY c.date_plein DESC';
+
+    const pg = paginer(req);
+    if (pg.actif) {
+      let countQ = 'SELECT COUNT(*) AS total FROM carburant c WHERE 1=1';
+      const countP = [];
+      if (vehicule_id) { countQ += ' AND c.vehicule_id = ?'; countP.push(vehicule_id); }
+      if (debut)       { countQ += ' AND c.date_plein >= ?'; countP.push(debut); }
+      if (fin)         { countQ += ' AND c.date_plein <= ?'; countP.push(fin); }
+      const [count] = await db.query(countQ, countP);
+      query += ' LIMIT ? OFFSET ?';
+      params.push(pg.limit, pg.offset);
+      const [rows] = await db.query(query, params);
+      return res.json(pg.reponse(rows, count[0].total));
+    }
+
     const [rows] = await db.query(query, params);
     return res.json(rows);
   } catch (err) {

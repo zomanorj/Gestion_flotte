@@ -1,5 +1,6 @@
 // Contrôleur chauffeurs — CRUD et historique de missions
-const db = require('../config/db');
+const db      = require('../config/db');
+const paginer = require('../utils/paginer');
 
 /**
  * GET /api/chauffeurs
@@ -23,6 +24,22 @@ const getAll = async (req, res) => {
     }
 
     query += ' ORDER BY nom ASC, prenom ASC';
+
+    const pg = paginer(req);
+    if (pg.actif) {
+      const countWhere = ' WHERE 1=1' +
+        (statut ? ' AND statut = ?' : '') +
+        (search ? ' AND (nom LIKE ? OR prenom LIKE ? OR numero_permis LIKE ?)' : '');
+      const [count] = await db.query(
+        'SELECT COUNT(*) AS total FROM chauffeurs' + countWhere,
+        params.slice()
+      );
+      query += ' LIMIT ? OFFSET ?';
+      params.push(pg.limit, pg.offset);
+      const [rows] = await db.query(query, params);
+      return res.json(pg.reponse(rows, count[0].total));
+    }
+
     const [rows] = await db.query(query, params);
     return res.json(rows);
 

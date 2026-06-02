@@ -15,6 +15,8 @@ import Depenses     from './pages/Depenses';
 import Maintenances from './pages/Maintenances';
 import Planning     from './pages/Planning';
 import Clients      from './pages/Clients';
+import Utilisateurs from './pages/Utilisateurs';
+import Paie         from './pages/Paie';
 
 import Sidebar from './components/Sidebar';
 import Navbar  from './components/Navbar';
@@ -83,6 +85,12 @@ export default function App() {
       } />
       <Route path="/carte" element={
         <ProtectedRoute><AppLayoutPleinEcran><CarteGlobale /></AppLayoutPleinEcran></ProtectedRoute>
+      } />
+      <Route path="/utilisateurs" element={
+        <ProtectedRoute><AppLayout><Utilisateurs /></AppLayout></ProtectedRoute>
+      } />
+      <Route path="/paie" element={
+        <ProtectedRoute><AppLayout><Paie /></AppLayout></ProtectedRoute>
       } />
 
       <Route path="*" element={<Navigate to="/" replace />} />

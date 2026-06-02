@@ -3,6 +3,7 @@ import { Fuel, Plus, Pencil, Trash2, AlertTriangle, X, Droplets, DollarSign, Gau
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
+import Pagination from '../components/Pagination';
 
 const TYPES_CARBURANT = { diesel: 'Diesel', essence: 'Essence', gasoil: 'Gasoil' };
 
@@ -34,6 +35,9 @@ export default function Carburant() {
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
   const [pleins,    setPleins]    = useState([]);
+  const [page,      setPage]      = useState(1);
+  const [paginInfo, setPaginInfo] = useState({ total: 0, pages: 1 });
+  const LIMIT = 20;
   const [stats,     setStats]     = useState(null);
   const [vehicules, setVehicules] = useState([]);
   const [chargement, setChargement] = useState(true);
@@ -50,7 +54,7 @@ export default function Carburant() {
   const charger = useCallback(async () => {
     setChargement(true);
     try {
-      const params = {};
+      const params = { paginate: 'true', page, limit: LIMIT };
       if (filtreVehicule) params.vehicule_id = filtreVehicule;
       if (filtreDebut)    params.debut = filtreDebut;
       if (filtreFin)      params.fin   = filtreFin;
@@ -59,15 +63,17 @@ export default function Carburant() {
         api.get('/carburant/stats'),
         api.get('/vehicules')
       ]);
-      setPleins(resPleins.data); setStats(resStats.data); setVehicules(resVehicules.data);
+      setPleins(resPleins.data.data); setPaginInfo({ total: resPleins.data.total, pages: resPleins.data.pages });
+      setStats(resStats.data); setVehicules(resVehicules.data);
       setErreur('');
     } catch {
       setErreur('Impossible de charger les données carburant');
     } finally {
       setChargement(false);
     }
-  }, [filtreVehicule, filtreDebut, filtreFin]);
+  }, [filtreVehicule, filtreDebut, filtreFin, page]);
 
+  useEffect(() => { setPage(1); }, [filtreVehicule, filtreDebut, filtreFin]);
   useEffect(() => { charger(); }, [charger]);
 
   const ouvrirAjout = () => { setForm(FORM_VIDE); setPleinEdite(null); setErrModal(''); setModal('ajout'); };
@@ -297,6 +303,10 @@ export default function Carburant() {
           </div>
         </div>
       )}
+      <div className="border-top">
+        <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
+                    limit={LIMIT} onChange={setPage} />
+      </div>
       <ConfirmModalComponent />
     </div>
   );

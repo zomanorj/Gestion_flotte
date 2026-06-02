@@ -3,6 +3,7 @@ import { Wrench, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, X, Clock } f
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
+import Pagination from '../components/Pagination';
 
 const TYPES = {
   vidange: 'Vidange', freins: 'Freins', pneus: 'Pneus', courroie: 'Courroie',
@@ -63,24 +64,30 @@ export default function Maintenances() {
   const [formCloture,    setFormCloture]    = useState(FORM_CLOTURE);
   const [sauvegardeClt,  setSauvegardeClt]  = useState(false);
 
+  const [page,         setPage]         = useState(1);
+  const [paginInfo,    setPaginInfo]    = useState({ total: 0, pages: 1 });
+  const LIMIT = 20;
+
   const charger = useCallback(async () => {
     setChargement(true);
     try {
-      const params = {};
+      const params = { paginate: 'true', page, limit: LIMIT };
       if (filtreVehicule) params.vehicule_id = filtreVehicule;
       if (filtreStatut)   params.statut      = filtreStatut;
       if (filtrePriorite) params.priorite    = filtrePriorite;
       const [resM, resA, resV] = await Promise.all([
         api.get('/maintenances', { params }), api.get('/maintenances/alertes'), api.get('/vehicules')
       ]);
-      setMaintenances(resM.data); setAlertes(resA.data); setVehicules(resV.data); setErreur('');
+      setMaintenances(resM.data.data); setPaginInfo({ total: resM.data.total, pages: resM.data.pages });
+      setAlertes(resA.data); setVehicules(resV.data); setErreur('');
     } catch {
       setErreur('Impossible de charger les maintenances');
     } finally {
       setChargement(false);
     }
-  }, [filtreVehicule, filtreStatut, filtrePriorite]);
+  }, [filtreVehicule, filtreStatut, filtrePriorite, page]);
 
+  useEffect(() => { setPage(1); }, [filtreVehicule, filtreStatut, filtrePriorite]);
   useEffect(() => { charger(); }, [charger]);
 
   const ouvrirAjout = () => { setForm(FORM_VIDE); setEntiteEditee(null); setErrModal(''); setModal('ajout'); };
@@ -340,6 +347,11 @@ export default function Maintenances() {
             </table>
           </div>
         )}
+      </div>
+
+      <div className="border-top">
+        <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
+                    limit={LIMIT} onChange={setPage} />
       </div>
 
       <ModalForm show={!!modal} />

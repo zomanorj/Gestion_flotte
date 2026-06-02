@@ -1,5 +1,6 @@
 // Contrôleur documents — gestion des documents administratifs des véhicules
-const db = require('../config/db');
+const db      = require('../config/db');
+const paginer = require('../utils/paginer');
 
 // Calcule le statut d'un document à partir de jours_restants (valeur SQL DATEDIFF)
 const statutDepuisJours = (jours) => {
@@ -58,14 +59,27 @@ const getAll = async (req, res) => {
     if (type)        { query += ' AND d.type = ?';        params.push(type); }
 
     query += ' ORDER BY d.date_expiration ASC';
-    const [rows] = await db.query(query, params);
 
+    const pg = paginer(req);
+    if (pg.actif) {
+      let countQ = 'SELECT COUNT(*) AS total FROM documents d WHERE 1=1';
+      const countP = [];
+      if (vehicule_id) { countQ += ' AND d.vehicule_id = ?'; countP.push(vehicule_id); }
+      if (type)        { countQ += ' AND d.type = ?';        countP.push(type); }
+      const [count] = await db.query(countQ, countP);
+      query += ' LIMIT ? OFFSET ?';
+      params.push(pg.limit, pg.offset);
+      const [rows] = await db.query(query, params);
+      const docs = rows.map((r) => ({ ...r, jours_restants: parseInt(r.jours_restants), statut: statutDepuisJours(parseInt(r.jours_restants)) }));
+      return res.json(pg.reponse(docs, count[0].total));
+    }
+
+    const [rows] = await db.query(query, params);
     const docs = rows.map((r) => ({
       ...r,
       jours_restants: parseInt(r.jours_restants),
       statut: statutDepuisJours(parseInt(r.jours_restants))
     }));
-
     return res.json(docs);
   } catch (err) {
     console.error('Erreur getAll documents :', err);
@@ -165,4 +179,33 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getAlertes, create, update, remove };
+/**
+ * POST /api/documents/:id/fichier
+ * Upload d'un fichier pour un document existant.
+ * Le fichier est stocké dans server/uploads/documents/.
+ */
+const uploadFichier = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [existant] = await db.query('SELECT id FROM documents WHERE id = ?', [id]);
+    if (existant.length === 0) return res.status(404).json({ message: 'Document introuvable' });
+
+    if (!req.file) return res.status(400).json({ message: 'Aucun fichier fourni' });
+
+    const fichier_url = `/uploads/documents/${req.file.filename}`;
+    const fichier_nom = req.file.originalname;
+
+    await db.query(
+      'UPDATE documents SET fichier_url=?, fichier_nom=? WHERE id=?',
+      [fichier_url, fichier_nom, id]
+    );
+
+    return res.json({ message: 'Fichier uploadé avec succès', fichier_url, fichier_nom });
+  } catch (err) {
+    console.error('Erreur uploadFichier :', err);
+    return res.status(500).json({ message: 'Erreur interne du serveur' });
+  }
+};
+
+module.exports = { getAll, getAlertes, create, update, remove, uploadFichier };

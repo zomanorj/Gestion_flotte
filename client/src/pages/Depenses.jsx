@@ -3,6 +3,7 @@ import { Receipt, Plus, Pencil, Trash2, AlertTriangle, X, CalendarDays, Trending
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
+import Pagination from '../components/Pagination';
 
 const CATEGORIES = {
   peage: 'Péage', amende: 'Amende', lavage: 'Lavage', pneu: 'Pneu',
@@ -54,10 +55,14 @@ export default function Depenses() {
   const [sauvegarde,  setSauvegarde]  = useState(false);
   const [errModal,    setErrModal]    = useState('');
 
+  const [page,         setPage]         = useState(1);
+  const [paginInfo,    setPaginInfo]    = useState({ total: 0, pages: 1 });
+  const LIMIT = 20;
+
   const charger = useCallback(async () => {
     setChargement(true);
     try {
-      const params = {};
+      const params = { paginate: 'true', page, limit: LIMIT };
       if (filtreVehicule)  params.vehicule_id = filtreVehicule;
       if (filtreCategorie) params.categorie   = filtreCategorie;
       if (filtreDebut)     params.debut       = filtreDebut;
@@ -65,15 +70,17 @@ export default function Depenses() {
       const [resDepenses, resStats, resVehicules] = await Promise.all([
         api.get('/depenses', { params }), api.get('/depenses/stats'), api.get('/vehicules')
       ]);
-      setDepenses(resDepenses.data); setStats(resStats.data); setVehicules(resVehicules.data);
+      setDepenses(resDepenses.data.data); setPaginInfo({ total: resDepenses.data.total, pages: resDepenses.data.pages });
+      setStats(resStats.data); setVehicules(resVehicules.data);
       setErreur('');
     } catch {
       setErreur('Impossible de charger les dépenses');
     } finally {
       setChargement(false);
     }
-  }, [filtreVehicule, filtreCategorie, filtreDebut, filtreFin]);
+  }, [filtreVehicule, filtreCategorie, filtreDebut, filtreFin, page]);
 
+  useEffect(() => { setPage(1); }, [filtreVehicule, filtreCategorie, filtreDebut, filtreFin]);
   useEffect(() => { charger(); }, [charger]);
 
   const ouvrirAjout = () => { setForm(FORM_VIDE); setDepenseEditee(null); setErrModal(''); setModal('ajout'); };
@@ -271,6 +278,10 @@ export default function Depenses() {
           </div>
         </div>
       )}
+      <div className="border-top">
+        <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
+                    limit={LIMIT} onChange={setPage} />
+      </div>
       <ConfirmModalComponent />
     </div>
   );

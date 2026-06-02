@@ -1,5 +1,6 @@
 // Contrôleur maintenances planifiées — suivi et alertes
-const db = require('../config/db');
+const db      = require('../config/db');
+const paginer = require('../utils/paginer');
 
 /**
  * GET /api/maintenances
@@ -24,8 +25,22 @@ const getAll = async (req, res) => {
     if (vehicule_id) { query += ' AND mp.vehicule_id = ?'; params.push(vehicule_id); }
 
     query += ' ORDER BY mp.date_prevue ASC';
-    const [rows] = await db.query(query, params);
 
+    const pg = paginer(req);
+    if (pg.actif) {
+      let countQ = 'SELECT COUNT(*) AS total FROM maintenances_planifiees mp WHERE 1=1';
+      const countP = [];
+      if (statut)      { countQ += ' AND mp.statut = ?';    countP.push(statut); }
+      if (priorite)    { countQ += ' AND mp.priorite = ?';  countP.push(priorite); }
+      if (vehicule_id) { countQ += ' AND mp.vehicule_id = ?'; countP.push(vehicule_id); }
+      const [count] = await db.query(countQ, countP);
+      query += ' LIMIT ? OFFSET ?';
+      params.push(pg.limit, pg.offset);
+      const [rows] = await db.query(query, params);
+      return res.json(pg.reponse(rows.map(r => ({ ...r, depassee: !!r.depassee })), count[0].total));
+    }
+
+    const [rows] = await db.query(query, params);
     return res.json(rows.map(r => ({ ...r, depassee: !!r.depassee })));
   } catch (err) {
     console.error('Erreur getAll maintenances :', err);

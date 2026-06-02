@@ -1,5 +1,6 @@
 // Contrôleur missions — création, suivi et workflow de statuts
-const db = require('../config/db');
+const db      = require('../config/db');
+const paginer = require('../utils/paginer');
 
 // Prix du carburant en Ariary par litre (données marché Madagascar 2024)
 const PRIX_LITRE_ARIARY = 5200;
@@ -40,6 +41,21 @@ const getAll = async (req, res) => {
     }
 
     query += ' ORDER BY m.date_depart DESC';
+
+    const pg = paginer(req);
+    if (pg.actif) {
+      let countQ = 'SELECT COUNT(*) AS total FROM missions m WHERE 1=1';
+      const countP = [];
+      if (statut) { countQ += ' AND m.statut = ?'; countP.push(statut); }
+      if (debut)  { countQ += ' AND m.date_depart >= ?'; countP.push(debut); }
+      if (fin)    { countQ += ' AND m.date_depart <= ?'; countP.push(fin + ' 23:59:59'); }
+      const [count] = await db.query(countQ, countP);
+      query += ' LIMIT ? OFFSET ?';
+      params.push(pg.limit, pg.offset);
+      const [rows] = await db.query(query, params);
+      return res.json(pg.reponse(rows, count[0].total));
+    }
+
     const [rows] = await db.query(query, params);
     return res.json(rows);
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Truck, LayoutDashboard, Users, MapPin,
-  FileText, LogOut, Map, FileCheck, Fuel, Receipt, Wrench, Calendar, Building2
+  FileText, LogOut, Map, FileCheck, Fuel, Receipt, Wrench, Calendar, Building2,
+  Wallet, UserCog
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -71,6 +72,12 @@ export default function Sidebar() {
         <NavItem to="/planning"     Icon={Calendar}    label="Planning" />
         <NavItem to="/clients"      Icon={Building2}   label="Clients" />
         <NavItem to="/rapports"     Icon={FileText}    label="Rapports" />
+        {(user?.role === 'admin' || user?.role === 'gestionnaire') && (
+          <NavItem to="/paie"  Icon={Wallet}   label="Paie" />
+        )}
+        {user?.role === 'admin' && (
+          <NavItem to="/utilisateurs" Icon={UserCog} label="Utilisateurs" />
+        )}
       </nav>
 
       {/* Profil + déconnexion */}

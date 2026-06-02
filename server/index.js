@@ -33,17 +33,26 @@ app.use((req, _res, next) => {
 app.set('io', io);
 
 // Montage des routes de l'API
-app.use('/api/auth',       require('./routes/auth'));
-app.use('/api/vehicules',  require('./routes/vehicules'));
-app.use('/api/chauffeurs', require('./routes/chauffeurs'));
-app.use('/api/missions',   require('./routes/missions'));
-app.use('/api/dashboard',  require('./routes/dashboard'));
-app.use('/api/simulation', require('./routes/simulation'));
+app.use('/api/auth',          require('./routes/auth'));
+app.use('/api/users',         require('./routes/users'));
+app.use('/api/vehicules',     require('./routes/vehicules'));
+app.use('/api/chauffeurs',    require('./routes/chauffeurs'));
+app.use('/api/missions',      require('./routes/missions'));
+app.use('/api/dashboard',     require('./routes/dashboard'));
+app.use('/api/simulation',    require('./routes/simulation'));
 app.use('/api/documents',     require('./routes/documents'));
 app.use('/api/carburant',     require('./routes/carburant'));
 app.use('/api/depenses',      require('./routes/depenses'));
 app.use('/api/maintenances',  require('./routes/maintenances'));
 app.use('/api/clients',       require('./routes/clients'));
+app.use('/api/paie',          require('./routes/paie'));
+app.use('/api/notifications', require('./routes/notifications'));
+
+// Serveur les fichiers uploadés (documents, etc.)
+const path = require('path');
+app.use('/uploads', require('./middleware/authMiddleware').verifierToken,
+  require('express').static(path.join(__dirname, 'uploads'))
+);
 
 // Route de santé : permet de vérifier que le serveur tourne
 app.get('/api/health', (_req, res) => {
@@ -68,6 +77,11 @@ io.on('connection', (socket) => {
     console.log(`[Socket] Client déconnecté : ${socket.id}`);
   });
 });
+
+// Vérification périodique des alertes (documents + maintenances)
+const { verifierAlertesPeriodiques } = require('./controllers/notificationsController');
+setTimeout(() => verifierAlertesPeriodiques(io), 5000);          // 5s après démarrage
+setInterval(() => verifierAlertesPeriodiques(io), 24 * 3600000); // Toutes les 24h
 
 // Démarrage du serveur
 const PORT = process.env.PORT || 5000;

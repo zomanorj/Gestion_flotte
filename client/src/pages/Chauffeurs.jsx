@@ -3,6 +3,7 @@ import { ClipboardList, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 
 const BADGES_STATUT = {
   disponible: 'bg-green-100 text-green-800',
@@ -161,19 +162,26 @@ export default function Chauffeurs() {
   const [modal,       setModal]       = useState({ ouvert: false, chauffeur: null, mode: 'form' });
   const [confirmSupp, setConfirmSupp] = useState(null);
 
+  const [page,      setPage]      = useState(1);
+  const [paginInfo, setPaginInfo] = useState({ total: 0, pages: 1 });
+  const LIMIT = 15;
+
   const chargerChauffeurs = useCallback(async () => {
     setChargement(true);
     try {
-      const params = search ? { search } : {};
+      const params = { paginate: 'true', page, limit: LIMIT };
+      if (search) params.search = search;
       const { data } = await api.get('/chauffeurs', { params });
-      setChauffeurs(data);
+      setChauffeurs(data.data);
+      setPaginInfo({ total: data.total, pages: data.pages });
     } catch {
       setChauffeurs([]);
     } finally {
       setChargement(false);
     }
-  }, [search]);
+  }, [search, page]);
 
+  useEffect(() => { setPage(1); }, [search]);
   useEffect(() => { chargerChauffeurs(); }, [chargerChauffeurs]);
 
   const supprimer = async (id) => {
@@ -293,6 +301,11 @@ export default function Chauffeurs() {
           </button>
         </div>
       </Modal>
+
+      <div className="border-top mt-2">
+        <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
+                    limit={LIMIT} onChange={setPage} />
+      </div>
     </div>
   );
 }
