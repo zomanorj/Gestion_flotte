@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './context/AuthContext';
 
@@ -46,8 +46,28 @@ const AppLayoutPleinEcran = ({ children }) => (
 );
 
 export default function App() {
+  const [bannerMsg, setBannerMsg] = useState('');
+
+  useEffect(() => {
+    const onReseau = () => setBannerMsg('Serveur inaccessible — vérifiez votre connexion.');
+    const on500    = () => setBannerMsg('Erreur serveur (500) — réessayez dans un instant.');
+    window.addEventListener('api:reseau',    onReseau);
+    window.addEventListener('api:erreur500', on500);
+    return () => {
+      window.removeEventListener('api:reseau',    onReseau);
+      window.removeEventListener('api:erreur500', on500);
+    };
+  }, []);
+
   return (
-    <Routes>
+    <>
+      {bannerMsg && (
+        <div className="alert alert-danger m-0 text-center rounded-0 d-flex justify-content-between align-items-center px-4" role="alert">
+          {bannerMsg}
+          <button type="button" className="btn-close" onClick={() => setBannerMsg('')} />
+        </div>
+      )}
+      <Routes>
       <Route path="/login" element={<Login />} />
 
       <Route path="/" element={
@@ -95,5 +115,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

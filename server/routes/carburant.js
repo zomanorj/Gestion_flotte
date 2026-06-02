@@ -4,9 +4,8 @@ const router  = express.Router();
 const ctrl    = require('../controllers/carburantController');
 const { verifierToken, verifierRole } = require('../middleware/authMiddleware');
 
-// Lecture libre
-router.get('/stats', ctrl.getStats);
-router.get('/',      ctrl.getAll);
+router.get('/stats', verifierToken, ctrl.getStats);
+router.get('/',      verifierToken, ctrl.getAll);
 
 // Création et modification — admin ou gestionnaire
 router.post('/',    verifierToken, verifierRole('admin', 'gestionnaire'), ctrl.create);

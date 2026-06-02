@@ -64,6 +64,11 @@ const appliquerMigrations = async () => {
     // ── Colonne missions.client_id ──────────────────────────────────────────
     await ajouterColonne('missions', 'client_id', 'INT NULL AFTER chauffeur_id');
 
+    // ── updated_at sur les tables métier ────────────────────────────────────
+    await ajouterColonne('missions',   'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    await ajouterColonne('vehicules',  'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    await ajouterColonne('chauffeurs', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+
     // ── Table notifications ──────────────────────────────────────────────────
     if (!(await tableExiste('notifications'))) {
       await db.query(`

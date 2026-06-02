@@ -5,6 +5,11 @@ const http      = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
 
+if (!process.env.JWT_SECRET) {
+  console.error('ERREUR : JWT_SECRET manquant dans .env');
+  process.exit(1);
+}
+
 const app    = express();
 const server = http.createServer(app);
 

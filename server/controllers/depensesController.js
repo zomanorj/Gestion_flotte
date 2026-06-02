@@ -121,7 +121,11 @@ const create = async (req, res) => {
     const { vehicule_id, mission_id, categorie, montant, date_depense, description, justificatif_url } = req.body;
 
     if (!vehicule_id || !categorie || !montant || !date_depense) {
-      return res.status(400).json({ message: 'Champs obligatoires : vehicule_id, categorie, montant, date_depense' });
+      return res.status(400).json({ erreur: 'Champs obligatoires : vehicule_id, categorie, montant, date_depense' });
+    }
+    const montantNum = parseFloat(montant);
+    if (isNaN(montantNum) || montantNum <= 0) {
+      return res.status(400).json({ erreur: 'montant doit être un nombre positif' });
     }
 
     const [result] = await db.query(
@@ -156,11 +160,19 @@ const update = async (req, res) => {
     const [existing] = await db.query('SELECT id FROM depenses WHERE id = ?', [id]);
     if (existing.length === 0) return res.status(404).json({ message: 'Dépense introuvable' });
 
+    if (!vehicule_id || !categorie || !montant || !date_depense) {
+      return res.status(400).json({ erreur: 'Champs obligatoires : vehicule_id, categorie, montant, date_depense' });
+    }
+    const montantNum = parseFloat(montant);
+    if (isNaN(montantNum) || montantNum <= 0) {
+      return res.status(400).json({ erreur: 'montant doit être un nombre positif' });
+    }
+
     await db.query(
       `UPDATE depenses
        SET vehicule_id=?, mission_id=?, categorie=?, montant=?, date_depense=?, description=?, justificatif_url=?
        WHERE id=?`,
-      [vehicule_id, mission_id || null, categorie, montant, date_depense,
+      [vehicule_id, mission_id || null, categorie, montantNum, date_depense,
        description || null, justificatif_url || null, id]
     );
 

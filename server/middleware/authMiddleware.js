@@ -16,7 +16,7 @@ const verifierToken = (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'flotte_secret_jwt_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded; // { id, nom, email, role, iat, exp }
     next();
   } catch (err) {

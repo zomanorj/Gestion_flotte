@@ -4,8 +4,8 @@ const router  = express.Router();
 const { login, getMe } = require('../controllers/authController');
 const { verifierToken }  = require('../middleware/authMiddleware');
 
-// Connexion — public
-router.post('/login', login);
+router.post('/login',  login);
+router.post('/logout', (_req, res) => res.json({ message: 'Déconnecté' }));
 
 // Profil du compte connecté — nécessite un token valide
 router.get('/me', verifierToken, getMe);

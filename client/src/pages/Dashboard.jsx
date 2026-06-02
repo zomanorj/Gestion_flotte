@@ -22,9 +22,16 @@ export default function Dashboard() {
   const [erreur,     setErreur]     = useState('');
 
   useEffect(() => {
-    api.get('/dashboard/stats')
+    const controller = new AbortController();
+    api.get('/dashboard/stats', { signal: controller.signal })
       .then(({ data }) => { setStats(data); setChargement(false); })
-      .catch(() => { setErreur('Impossible de charger les statistiques'); setChargement(false); });
+      .catch((err) => {
+        if (err.name !== 'CanceledError') {
+          setErreur('Impossible de charger les statistiques');
+          setChargement(false);
+        }
+      });
+    return () => controller.abort();
   }, []);
 
   if (chargement) {

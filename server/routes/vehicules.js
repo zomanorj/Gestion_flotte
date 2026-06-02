@@ -4,10 +4,9 @@ const router  = express.Router();
 const ctrl    = require('../controllers/vehiculesController');
 const { verifierToken, verifierRole } = require('../middleware/authMiddleware');
 
-// Lecture publique (ou authentifiée selon les besoins de l'entreprise)
-router.get('/',         ctrl.getAll);
-router.get('/alertes',  ctrl.getAlertes);
-router.get('/:id',      ctrl.getById);
+router.get('/',         verifierToken, ctrl.getAll);
+router.get('/alertes',  verifierToken, ctrl.getAlertes);
+router.get('/:id',      verifierToken, ctrl.getById);
 
 // Création et modification — admin ou gestionnaire
 router.post('/',   verifierToken, verifierRole('admin', 'gestionnaire'), ctrl.create);

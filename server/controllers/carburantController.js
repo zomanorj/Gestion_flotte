@@ -121,17 +121,24 @@ const create = async (req, res) => {
     } = req.body;
 
     if (!vehicule_id || !date_plein || !litres || !prix_litre) {
-      return res.status(400).json({ message: 'Champs obligatoires : vehicule_id, date_plein, litres, prix_litre' });
+      return res.status(400).json({ erreur: 'Champs obligatoires : vehicule_id, date_plein, litres, prix_litre' });
     }
-
-    const cout_total = parseFloat(litres) * parseFloat(prix_litre);
+    const litresNum = parseFloat(litres);
+    const prixNum   = parseFloat(prix_litre);
+    if (isNaN(litresNum) || litresNum <= 0) {
+      return res.status(400).json({ erreur: 'litres doit être un nombre positif' });
+    }
+    if (isNaN(prixNum) || prixNum <= 0) {
+      return res.status(400).json({ erreur: 'prix_litre doit être un nombre positif' });
+    }
+    const cout_total = litresNum * prixNum;
 
     const [result] = await db.query(
       `INSERT INTO carburant
         (vehicule_id, mission_id, date_plein, litres, prix_litre, cout_total,
          kilometrage_au_plein, consommation_reelle, station, ville, type_carburant, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [vehicule_id, mission_id || null, date_plein, litres, prix_litre, cout_total,
+      [vehicule_id, mission_id || null, date_plein, litresNum, prixNum, cout_total,
        kilometrage_au_plein || null, consommation_reelle || null,
        station || null, ville || null, type_carburant || 'diesel', notes || null]
     );
@@ -164,14 +171,25 @@ const update = async (req, res) => {
     const [existing] = await db.query('SELECT id FROM carburant WHERE id = ?', [id]);
     if (existing.length === 0) return res.status(404).json({ message: 'Plein introuvable' });
 
-    const cout_total = parseFloat(litres) * parseFloat(prix_litre);
+    if (!vehicule_id || !date_plein || !litres || !prix_litre) {
+      return res.status(400).json({ erreur: 'Champs obligatoires : vehicule_id, date_plein, litres, prix_litre' });
+    }
+    const litresNum = parseFloat(litres);
+    const prixNum   = parseFloat(prix_litre);
+    if (isNaN(litresNum) || litresNum <= 0) {
+      return res.status(400).json({ erreur: 'litres doit être un nombre positif' });
+    }
+    if (isNaN(prixNum) || prixNum <= 0) {
+      return res.status(400).json({ erreur: 'prix_litre doit être un nombre positif' });
+    }
+    const cout_total = litresNum * prixNum;
 
     await db.query(
       `UPDATE carburant
        SET vehicule_id=?, mission_id=?, date_plein=?, litres=?, prix_litre=?, cout_total=?,
            kilometrage_au_plein=?, consommation_reelle=?, station=?, ville=?, type_carburant=?, notes=?
        WHERE id=?`,
-      [vehicule_id, mission_id || null, date_plein, litres, prix_litre, cout_total,
+      [vehicule_id, mission_id || null, date_plein, litresNum, prixNum, cout_total,
        kilometrage_au_plein || null, consommation_reelle || null,
        station || null, ville || null, type_carburant || 'diesel', notes || null, id]
     );

@@ -28,9 +28,8 @@ const upload = multer({
   }
 });
 
-// Alertes et liste (lecture libre)
-router.get('/alertes', ctrl.getAlertes);
-router.get('/',        ctrl.getAll);
+router.get('/alertes', verifierToken, ctrl.getAlertes);
+router.get('/',        verifierToken, ctrl.getAll);
 
 // Création et modification — admin ou gestionnaire
 router.post('/',    verifierToken, verifierRole('admin', 'gestionnaire'), ctrl.create);

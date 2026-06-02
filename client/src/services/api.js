@@ -15,7 +15,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Intercepteur de réponse : redirige vers /login si le token est expiré
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -23,6 +22,10 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
+    } else if (error.response?.status === 500) {
+      window.dispatchEvent(new CustomEvent('api:erreur500'));
+    } else if (!error.response) {
+      window.dispatchEvent(new CustomEvent('api:reseau'));
     }
     return Promise.reject(error);
   }

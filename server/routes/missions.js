@@ -6,8 +6,8 @@ const { verifierToken, verifierRole } = require('../middleware/authMiddleware');
 const { genererBonLivraison } = require('../services/bonLivraisonService');
 const db = require('../config/db');
 
-router.get('/planning', ctrl.getPlanning);
-router.get('/', ctrl.getAll);
+router.get('/planning', verifierToken, ctrl.getPlanning);
+router.get('/',         verifierToken, ctrl.getAll);
 
 /**
  * GET /api/missions/:id/bon-livraison
