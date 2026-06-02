@@ -83,10 +83,17 @@ const { verifierAlertesPeriodiques } = require('./controllers/notificationsContr
 setTimeout(() => verifierAlertesPeriodiques(io), 5000);          // 5s après démarrage
 setInterval(() => verifierAlertesPeriodiques(io), 24 * 3600000); // Toutes les 24h
 
-// Démarrage du serveur
+// Démarrage du serveur — migrations automatiques d'abord
+const { appliquerMigrations } = require('./config/migrations');
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`\nCamionApp — Serveur démarré`);
-  console.log(`   API disponible sur : http://localhost:${PORT}/api`);
-  console.log(`   Environnement      : ${process.env.NODE_ENV || 'development'}\n`);
+
+appliquerMigrations().then(() => {
+  server.listen(PORT, () => {
+    console.log(`\nCamionApp — Serveur démarré`);
+    console.log(`   API disponible sur : http://localhost:${PORT}/api`);
+    console.log(`   Environnement      : ${process.env.NODE_ENV || 'development'}\n`);
+  });
+}).catch((err) => {
+  console.error('Erreur migrations au démarrage :', err);
+  process.exit(1);
 });
