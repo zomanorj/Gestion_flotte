@@ -1,59 +1,158 @@
-# CamionApp — Système de Gestion de Flotte
+# FlotteApp — Système de Gestion de Flotte
 
-> Projet réalisé dans le cadre d'une recherche de stage — L3 Informatique
-> Étudiant : Manoa | Antananarivo, Madagascar
+> Projet de portfolio réalisé en L3 Informatique — Antananarivo, Madagascar  
+> Auteur : Manoa
 
 ---
 
-## Technologies
+## Présentation
+
+FlotteApp est une application web full-stack de gestion de flotte de transport développée dans le contexte malgache. Elle couvre l'ensemble du cycle opérationnel d'une entreprise de transport : planification des missions, suivi des véhicules en temps réel, gestion administrative, finances et ressources humaines.
+
+Le projet a été structuré en trois phases successives, chacune ajoutant une couche de complexité fonctionnelle et technique, de la gestion métier de base jusqu'aux modules ERP (paie, utilisateurs, notifications temps réel).
+
+---
+
+## Stack technique
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white&style=flat-square)
 ![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white&style=flat-square)
-![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white&style=flat-square)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-38B2AC?logo=tailwind-css&logoColor=white&style=flat-square)
+![MySQL](https://img.shields.io/badge/MySQL-5.7+-4479A1?logo=mysql&logoColor=white&style=flat-square)
+![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?logo=bootstrap&logoColor=white&style=flat-square)
 ![Socket.io](https://img.shields.io/badge/Socket.io-4-010101?logo=socket.io&logoColor=white&style=flat-square)
 ![JWT](https://img.shields.io/badge/JWT-Auth-000000?logo=jsonwebtokens&logoColor=white&style=flat-square)
 ![Leaflet](https://img.shields.io/badge/Leaflet-Maps-199900?logo=leaflet&logoColor=white&style=flat-square)
 ![FullCalendar](https://img.shields.io/badge/FullCalendar-6-4285F4?style=flat-square)
 ![PDFKit](https://img.shields.io/badge/PDFKit-PDF-red?style=flat-square)
 
+| Couche | Technologies |
+|--------|-------------|
+| Frontend | React 18, Vite, Bootstrap 5, Leaflet, FullCalendar, Recharts, jsPDF, SheetJS |
+| Backend | Node.js, Express 4, Socket.io 4, JWT, bcrypt, Multer, PDFKit |
+| Base de données | MySQL 5.7+ (pool de connexions via mysql2) |
+| Temps réel | Socket.io — simulation GPS, notifications push |
+| Cartographie | Leaflet + OpenStreetMap, calcul de routes OSRM |
+
 ---
 
-## Modules
+## Fonctionnalités
 
 ### Gestion de la flotte
-| Module | Description |
-|--------|-------------|
-| **Camions** | CRUD complet — immatriculation, marque, modèle, tonnage, kilométrage, statut, alertes maintenance |
-| **Chauffeurs** | CRUD — numéro de permis, statut disponibilité, historique missions par chauffeur |
-| **Missions** | Workflow planifiée → en cours → terminée/annulée, calcul distance automatique via ORS, coût carburant en Ariary, sélection client optionnelle |
+
+| Module | Détail |
+|--------|--------|
+| Véhicules | CRUD complet — immatriculation, marque, modèle, tonnage, kilométrage, statut, alertes maintenance |
+| Chauffeurs | CRUD — numéro de permis, catégorie, salaire de base, prime par mission, historique |
+| Missions | Workflow planifiée → en cours → terminée / annulée, calcul de distance automatique via OSRM, coût carburant en Ariary, association client optionnelle |
+| Clients | CRUD entreprises et particuliers, historique des missions par client |
 
 ### Suivi en temps réel
-| Module | Description |
-|--------|-------------|
-| **Carte globale** | Tous les camions en mission sur une carte Leaflet centrée Madagascar, position mise à jour via Socket.io, boutons de vitesse x1/x5/x10/x30/x60 globale et par camion |
-| **Simulation** | Simulation de trajet GPS avec événements aléatoires (pauses, incidents), calcul de route via OpenRouteService |
+
+| Module | Détail |
+|--------|--------|
+| Carte globale | Tous les camions actifs sur une carte Leaflet centrée sur Madagascar, positions mises à jour via Socket.io, sélecteur de vitesse x1 / x5 / x10 / x30 / x60 global et par véhicule |
+| Simulation GPS | Déplacement progressif le long d'une route réelle (OSRM), événements aléatoires (pauses, incidents), broadcast Socket.io vers tous les clients connectés |
+| Notifications | Alertes push temps réel (expiration de documents, maintenances urgentes, démarrage de mission) persistées en base et émises via Socket.io |
 
 ### Finances et opérations
-| Module | Description |
-|--------|-------------|
-| **Carburant** | Suivi des pleins — litres, prix/litre, coût total (Ar), station, kilométrage, consommation réelle, stats mensuelles |
-| **Dépenses** | Suivi par catégorie (péage, amende, lavage, pneus, pièces, main-d'œuvre, parking, divers), stats par véhicule et évolution mensuelle |
-| **Bon de livraison** | Génération PDF (PDFKit) — en-tête, trajet, camion, chauffeur, client, zone signatures |
 
-### Administration
-| Module | Description |
-|--------|-------------|
-| **Documents** | Gestion des documents administratifs (carte grise, assurance, vignette, visite technique, autorisation transport), alertes d'expiration avec badges Sidebar |
-| **Maintenances** | Planification (vidange, freins, pneus, courroie, filtres, révision générale), priorités (faible/normale/haute/urgente avec animate-pulse), modal de clôture avec coût réel |
-| **Clients** | CRUD entreprises et particuliers, historique des missions par client |
-| **Planning** | Calendrier FullCalendar — vues mois/semaine/jour, couleurs par statut, popup détail au clic |
-| **Rapports** | Filtrage par période, export PDF (jsPDF) et Excel (SheetJS) |
+| Module | Détail |
+|--------|--------|
+| Carburant | Suivi des pleins — litres, prix au litre, station, kilométrage, consommation réelle calculée, statistiques mensuelles |
+| Dépenses | Catégorisation (péage, amende, pneus, pièces, main-d'œuvre, parking…), statistiques par véhicule et évolution mensuelle |
+| Bon de livraison | Génération PDF côté serveur (PDFKit) — en-tête, trajet, références camion / chauffeur / client, zone de signatures |
+| Rapports | Filtrage par période, export PDF (jsPDF) et export Excel (SheetJS) |
+
+### Ressources humaines et administration
+
+| Module | Détail |
+|--------|--------|
+| Paie | Calcul mensuel par chauffeur : salaire de base + primes par mission + bonus kilométrique (tranches de 500 km) + cotisation CNAPS 1 % — génération du bulletin PDF |
+| Utilisateurs | CRUD des comptes (admin uniquement) — activation / désactivation, réinitialisation du mot de passe, liaison avec le profil chauffeur |
+| Maintenances | Planification (vidange, freins, pneus, révision…), quatre niveaux de priorité, modal de clôture avec coût réel et date effective |
+| Documents | Gestion des pièces administratives (carte grise, assurance, vignette, visite technique), upload de fichier, alertes d'expiration dans la Sidebar |
+| Planning | Calendrier FullCalendar — vues mois / semaine / jour, code couleur par statut, popup détail au clic |
 
 ### Sécurité
-| Module | Description |
-|--------|-------------|
-| **Authentification** | JWT avec 3 rôles : admin (tout), gestionnaire (CRUD sans suppression), chauffeur (lecture seule) |
+
+Authentification stateless par token JWT (expiration 24 h). Trois rôles appliqués côté serveur sur chaque route :
+
+| Rôle | Permissions |
+|------|-------------|
+| admin | Toutes les opérations, y compris suppression et gestion des utilisateurs |
+| gestionnaire | Création et modification — aucune suppression |
+| chauffeur | Lecture seule |
+
+---
+
+## Architecture
+
+```
+flotte-app/
+├── database/
+│   ├── schema.sql                     # Schéma initial + données de démonstration
+│   ├── migrate_modules.sql            # Carburant, dépenses, documents
+│   ├── migrate_maintenances.sql       # Maintenances planifiées
+│   ├── migrate_clients.sql            # Clients + client_id sur missions
+│   ├── migrate_v2.sql                 # Salaires, événements, historique carburant
+│   └── migrate_phase3.sql             # Utilisateurs, paie, upload, notifications
+│
+├── server/                            # API REST Node.js + Express + Socket.io
+│   ├── index.js                       # Point d'entrée, montage des routes, config Socket.io
+│   ├── config/db.js                   # Pool de connexions MySQL2
+│   ├── middleware/
+│   │   └── authMiddleware.js          # verifierToken + verifierRole (JWT)
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── usersController.js
+│   │   ├── vehiculesController.js
+│   │   ├── chauffeursController.js
+│   │   ├── missionsController.js      # Inclut planning FullCalendar + bon de livraison
+│   │   ├── dashboardController.js
+│   │   ├── documentsController.js
+│   │   ├── carburantController.js
+│   │   ├── depensesController.js
+│   │   ├── maintenancesController.js
+│   │   ├── clientsController.js
+│   │   ├── paieController.js          # Calcul + PDF bulletin
+│   │   └── notificationsController.js # Lecture + marquage lu + émission Socket.io
+│   ├── routes/                        # Miroir des controllers
+│   └── services/
+│       ├── simulationService.js       # Simulation GPS temps réel
+│       ├── routeService.js            # Calcul d'itinéraire OSRM
+│       ├── evenementService.js        # Événements aléatoires (pauses, incidents)
+│       ├── paieService.js             # Calcul salaire, primes, CNAPS
+│       └── bonLivraisonService.js     # Génération PDF (PDFKit)
+│
+└── client/                            # Application React 18 + Vite + Bootstrap 5
+    └── src/
+        ├── context/
+        │   └── AuthContext.jsx        # Contexte global auth + persistance localStorage
+        ├── services/api.js            # Instance Axios centralisée + intercepteur JWT
+        ├── components/
+        │   ├── Sidebar.jsx            # Navigation + badges alertes documents/maintenances
+        │   ├── Navbar.jsx
+        │   ├── Modal.jsx
+        │   ├── ConfirmModal.jsx       # Modal de confirmation stylisé (remplace window.confirm)
+        │   ├── StatCard.jsx
+        │   └── Toast.jsx              # Notifications toast + hook useToast
+        └── pages/
+            ├── Login.jsx
+            ├── Dashboard.jsx          # KPI globaux + graphique missions
+            ├── Vehicules.jsx
+            ├── Chauffeurs.jsx
+            ├── Missions.jsx
+            ├── CarteGlobale.jsx       # Carte temps réel + contrôles vitesse
+            ├── Documents.jsx
+            ├── Carburant.jsx
+            ├── Depenses.jsx
+            ├── Maintenances.jsx
+            ├── Planning.jsx
+            ├── Clients.jsx
+            ├── Rapports.jsx
+            ├── Utilisateurs.jsx       # Gestion des comptes (admin)
+            └── Paie.jsx               # Bulletins + masse salariale
+```
 
 ---
 
@@ -62,41 +161,35 @@
 ### Prérequis
 
 - Node.js v18+
-- MySQL 8+
+- MySQL 5.7 ou 8+
 - Git
 
 ### Étapes
 
 ```bash
 # 1. Cloner le projet
-git clone https://github.com/TON_USERNAME/flotte-app
-cd flotte-app
+git clone https://github.com/zomanorj/Gestion_flotte.git
+cd Gestion_flotte
 
-# 2. Initialiser la base de données principale
+# 2. Initialiser la base de données
 mysql -u root -p < database/schema.sql
-
-# 3. Appliquer les migrations des modules
 mysql -u root -p flotte_db < database/migrate_modules.sql
 mysql -u root -p flotte_db < database/migrate_maintenances.sql
 mysql -u root -p flotte_db < database/migrate_clients.sql
+mysql -u root -p flotte_db < database/migrate_v2.sql
+mysql -u root -p flotte_db < database/migrate_phase3.sql
 
-# 4. Configurer le backend
+# 3. Configurer le backend
 cp server/.env.example server/.env
-# Éditer server/.env — renseigner DB_HOST, DB_USER, DB_PASSWORD, JWT_SECRET
+# Renseigner DB_HOST, DB_USER, DB_PASSWORD, JWT_SECRET, CLIENT_URL
 
-# 5. Démarrer le backend
-cd server
-npm install
-npm run dev        # nodemon (rechargement auto)
-# ou npm start     # node classique
+# 4. Démarrer le backend
+cd server && npm install && npm run dev
 
-# 6. Démarrer le frontend (nouveau terminal)
-cd client
-npm install
-npm run dev
+# 5. Démarrer le frontend (nouveau terminal)
+cd client && npm install && npm run dev
 
-# 7. Ouvrir dans le navigateur
-# http://localhost:5173
+# L'application est disponible sur http://localhost:5173
 ```
 
 ### Variables d'environnement (`server/.env`)
@@ -104,185 +197,96 @@ npm run dev
 ```env
 DB_HOST=localhost
 DB_USER=root
-DB_PASSWORD=ton_mot_de_passe
+DB_PASSWORD=mot_de_passe
 DB_NAME=flotte_db
-JWT_SECRET=une_chaine_secrete_longue
+JWT_SECRET=chaine_secrete_longue_et_aleatoire
 PORT=5000
 CLIENT_URL=http://localhost:5173
 ```
 
 ---
 
-## Comptes de test
+## Comptes de démonstration
 
-| Email | Mot de passe | Rôle | Permissions |
-|-------|-------------|------|-------------|
-| admin@flotte.mg | password123 | Admin | CRUD complet + suppression |
-| gestionnaire@flotte.mg | password123 | Gestionnaire | Création et modification |
-| chauffeur@flotte.mg | password123 | Chauffeur | Lecture seule |
-
-> Pour régénérer les hash bcrypt :
-> ```bash
-> node -e "require('bcrypt').hash('password123',10).then(console.log)"
-> ```
+| Email | Mot de passe | Rôle |
+|-------|-------------|------|
+| admin@flotte.mg | password123 | Admin |
+| gestionnaire@flotte.mg | password123 | Gestionnaire |
+| chauffeur@flotte.mg | password123 | Chauffeur |
 
 ---
 
-## Flotte de démonstration
+## API — Référence des endpoints
 
-| Immatriculation | Marque | Modèle | Tonnage | Statut |
-|----------------|--------|--------|---------|--------|
-| MAD-001-24 | Toyota | HiLux | — | disponible |
-| MAD-002-24 | Mitsubishi | L200 | — | disponible |
-| MAD-003-23 | Ford | Ranger | — | disponible |
-| MAD-004-22 | Nissan | Navara | — | disponible |
+### Authentification
 
----
-
-## Structure du projet
-
-```
-flotte-app/
-├── database/
-│   ├── schema.sql                    # Tables principales + données initiales
-│   ├── migrate_modules.sql           # Tables carburant, dépenses, documents
-│   ├── migrate_maintenances.sql      # Table maintenances_planifiees
-│   └── migrate_clients.sql           # Table clients + colonne missions.client_id
-│
-├── server/                           # API REST Node.js + Express + Socket.io
-│   ├── index.js                      # Point d'entrée, montage des routes
-│   ├── config/db.js                  # Pool de connexions MySQL2
-│   ├── middleware/authMiddleware.js  # Vérification JWT + rôles
-│   ├── controllers/
-│   │   ├── authController.js
-│   │   ├── vehiculesController.js
-│   │   ├── chauffeursController.js
-│   │   ├── missionsController.js     # + getPlanning (FullCalendar)
-│   │   ├── dashboardController.js
-│   │   ├── documentsController.js
-│   │   ├── carburantController.js
-│   │   ├── depensesController.js
-│   │   ├── maintenancesController.js
-│   │   └── clientsController.js
-│   ├── routes/
-│   │   ├── auth.js
-│   │   ├── vehicules.js
-│   │   ├── chauffeurs.js
-│   │   ├── missions.js               # + GET /planning + GET /:id/bon-livraison
-│   │   ├── dashboard.js
-│   │   ├── simulation.js
-│   │   ├── documents.js
-│   │   ├── carburant.js
-│   │   ├── depenses.js
-│   │   ├── maintenances.js
-│   │   └── clients.js
-│   └── services/
-│       ├── simulationService.js      # Simulation GPS temps réel
-│       ├── routeService.js           # Calcul de route via OpenRouteService
-│       ├── evenementService.js       # Événements aléatoires (pauses, incidents)
-│       └── bonLivraisonService.js    # Génération PDF (PDFKit)
-│
-└── client/                           # Application React 18 + Vite + TailwindCSS
-    └── src/
-        ├── components/
-        │   ├── Sidebar.jsx           # Navigation + badges alertes
-        │   ├── Navbar.jsx
-        │   ├── Modal.jsx
-        │   ├── StatCard.jsx
-        │   ├── AlerteBadge.jsx
-        │   └── Toast.jsx             # Notifications toast + hook useToast
-        └── pages/
-            ├── Login.jsx
-            ├── Dashboard.jsx         # Stats + graphique missions + raccourci carte
-            ├── Vehicules.jsx
-            ├── Chauffeurs.jsx
-            ├── Missions.jsx          # Distance auto + toast démarrage + PDF
-            ├── CarteGlobale.jsx      # Carte temps réel + contrôles vitesse
-            ├── Documents.jsx         # Alertes expiration
-            ├── Carburant.jsx         # KPI + tableau + modal
-            ├── Depenses.jsx          # KPI + tableau + badges catégorie
-            ├── Maintenances.jsx      # Alertes urgentes + modal clôture
-            ├── Planning.jsx          # FullCalendar mois/semaine/jour
-            ├── Clients.jsx           # CRUD + historique missions
-            └── Rapports.jsx          # Export PDF et Excel
-```
-
----
-
-## API — Endpoints principaux
-
-### Auth
 | Méthode | Route | Auth | Description |
 |---------|-------|------|-------------|
 | POST | `/api/auth/login` | — | Connexion, retourne un token JWT |
-| GET | `/api/auth/profil` | ✓ | Profil de l'utilisateur connecté |
+| GET | `/api/auth/profil` | Tous | Profil de l'utilisateur connecté |
 
 ### Véhicules
+
 | Méthode | Route | Auth | Description |
 |---------|-------|------|-------------|
-| GET | `/api/vehicules` | — | Liste des camions (filtre `?statut=`) |
-| GET | `/api/vehicules/alertes` | — | Camions nécessitant une maintenance |
-| POST | `/api/vehicules` | gestionnaire | Créer un camion |
-| PUT | `/api/vehicules/:id` | gestionnaire | Modifier un camion |
-| DELETE | `/api/vehicules/:id` | admin | Supprimer un camion |
+| GET | `/api/vehicules` | — | Liste avec filtre `?statut=` |
+| GET | `/api/vehicules/alertes` | — | Véhicules nécessitant une maintenance |
+| POST | `/api/vehicules` | gestionnaire | Créer |
+| PUT | `/api/vehicules/:id` | gestionnaire | Modifier |
+| DELETE | `/api/vehicules/:id` | admin | Supprimer |
 
 ### Missions
+
 | Méthode | Route | Auth | Description |
 |---------|-------|------|-------------|
-| GET | `/api/missions` | — | Liste (filtres `?statut=&debut=&fin=`) |
-| GET | `/api/missions/planning` | — | Format FullCalendar avec couleurs statut |
-| POST | `/api/missions` | gestionnaire | Créer une mission |
+| GET | `/api/missions` | — | Liste avec filtres `?statut=&debut=&fin=` |
+| GET | `/api/missions/planning` | — | Format FullCalendar avec couleurs par statut |
+| POST | `/api/missions` | gestionnaire | Créer |
 | PUT | `/api/missions/:id/statut` | gestionnaire | Changer le statut |
-| DELETE | `/api/missions/:id` | admin | Supprimer (remet camion/chauffeur dispo) |
-| GET | `/api/missions/:id/bon-livraison` | ✓ | Télécharger le PDF |
+| DELETE | `/api/missions/:id` | admin | Supprimer (remet camion et chauffeur disponibles) |
+| GET | `/api/missions/:id/bon-livraison` | Tous | Télécharger le bon de livraison PDF |
 
-### Documents
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| GET | `/api/documents` | Liste (filtres `?vehicule_id=&type=`) |
-| GET | `/api/documents/alertes` | Expirés ou expirant dans 30 jours |
-| POST/PUT/DELETE | `/api/documents` | CRUD |
+### Paie
 
-### Carburant
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| GET | `/api/carburant` | Liste (filtres `?vehicule_id=&debut=&fin=`) |
-| GET | `/api/carburant/stats` | Totaux, répartition, évolution mensuelle |
-| POST/PUT/DELETE | `/api/carburant` | CRUD |
+| Méthode | Route | Auth | Description |
+|---------|-------|------|-------------|
+| GET | `/api/paie/:annee/:mois` | gestionnaire | Masse salariale mensuelle — toutes les fiches |
+| GET | `/api/paie/:annee/:mois/:id` | gestionnaire | Fiche individuelle d'un chauffeur |
+| GET | `/api/paie/:annee/:mois/:id/pdf` | gestionnaire | Télécharger le bulletin PDF |
+| PUT | `/api/paie/salaire/:id` | admin | Modifier salaire de base et prime mission |
 
-### Dépenses
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| GET | `/api/depenses` | Liste (filtres `?vehicule_id=&categorie=&debut=&fin=`) |
-| GET | `/api/depenses/stats` | Totaux mois/année, répartition, évolution |
-| POST/PUT/DELETE | `/api/depenses` | CRUD |
+### Notifications
 
-### Maintenances
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| GET | `/api/maintenances` | Liste (filtres `?statut=&priorite=&vehicule_id=`) |
-| GET | `/api/maintenances/alertes` | Urgentes, dépassées, km atteint |
-| POST/PUT | `/api/maintenances` | Créer / Modifier |
-| PUT | `/api/maintenances/:id/terminer` | Clôturer avec date réelle + coût |
-| DELETE | `/api/maintenances/:id` | Supprimer |
+| Méthode | Route | Auth | Description |
+|---------|-------|------|-------------|
+| GET | `/api/notifications` | Tous | Liste des notifications (filtre `?non_lues=1`) |
+| PUT | `/api/notifications/:id/lire` | Tous | Marquer comme lue |
+| PUT | `/api/notifications/lire-tout` | Tous | Marquer toutes comme lues |
 
-### Clients
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| GET | `/api/clients` | Liste avec nombre de missions |
-| GET | `/api/clients/:id/missions` | Historique missions d'un client |
-| POST/PUT/DELETE | `/api/clients` | CRUD |
+### Simulation
 
-### Simulation (temps réel)
 | Méthode | Route | Description |
 |---------|-------|-------------|
 | POST | `/api/simulation/demarrer/:id` | Lancer la simulation GPS d'une mission |
-| POST | `/api/simulation/vitesse/:id` | Changer le multiplicateur de vitesse |
+| POST | `/api/simulation/vitesse/:id` | Modifier le multiplicateur de vitesse |
 | GET | `/api/simulation/villes` | Liste des villes de Madagascar |
-| POST | `/api/simulation/route` | Calculer distance + durée via ORS |
+| POST | `/api/simulation/route` | Calculer distance et durée via OSRM |
+
+### Documents
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| GET | `/api/documents` | Liste avec filtres `?vehicule_id=&type=` |
+| GET | `/api/documents/alertes` | Expirés ou expirant dans les 30 prochains jours |
+| POST | `/api/documents` | Créer (upload de fichier via multipart/form-data) |
+| PUT / DELETE | `/api/documents/:id` | Modifier / Supprimer |
+
+### Statistiques et autres modules
+
+Chaque module (carburant, dépenses, maintenances, clients, utilisateurs) expose des routes CRUD standard ainsi qu'un endpoint `/stats` ou `/alertes` selon le cas.
 
 ---
 
 ## Auteur
 
-**Manoa** — Étudiant L3 Informatique — Antananarivo, Madagascar
+**Manoa** — Etudiant L3 Informatique — Antananarivo, Madagascar
