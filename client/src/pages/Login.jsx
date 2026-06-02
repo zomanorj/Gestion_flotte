@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Car, AlertTriangle, Mail, KeyRound, Loader2 } from 'lucide-react';
+import { Truck, AlertTriangle, Mail, KeyRound, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -41,7 +41,7 @@ export default function Login() {
         <div className="text-center mb-4">
           <div className="d-inline-flex align-items-center justify-content-center rounded-3 mb-3"
                style={{ width: '80px', height: '80px', backgroundColor: 'rgba(255,255,255,0.2)' }}>
-            <Car size={40} color="white" />
+            <Truck size={44} color="white" />
           </div>
           <h1 className="fw-bold text-white fs-3">FlotteApp</h1>
           <p style={{ color: '#bfdbfe' }}>Gestion de Flotte — Madagascar</p>
