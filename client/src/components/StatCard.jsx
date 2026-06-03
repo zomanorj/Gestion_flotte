@@ -12,7 +12,7 @@ export default function StatCard({ titre, valeur, icone, couleur = 'blue', sousT
   const p = palettes[couleur] || palettes.blue;
 
   return (
-    <div className={`rounded-3 border ${p.bg} ${p.border} p-3 d-flex align-items-center gap-3`}>
+    <div className={`rounded-3 border ${p.bg} ${p.border} p-3 d-flex align-items-center gap-3 h-100`}>
       <div className={`rounded-3 ${p.icon} d-flex align-items-center justify-content-center flex-shrink-0`}
            style={{ width: '56px', height: '56px' }}>
         {icone}

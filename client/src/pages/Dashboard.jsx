@@ -81,7 +81,7 @@ export default function Dashboard() {
     <div className="d-flex flex-column gap-4">
 
       {/* KPIs */}
-      <div className="row g-3">
+      <div className="row g-3 align-items-stretch">
         <div className="col-12 col-sm-6 col-xl">
           <StatCard titre="Camions disponibles" valeur={stats.vehiculesDisponibles}
             icone={<Truck size={28} />} couleur="green"
