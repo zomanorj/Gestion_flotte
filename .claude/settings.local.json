@@ -36,7 +36,13 @@
       "Bash(npm run *)",
       "Bash(git push *)",
       "Bash(git pull *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(xargs -I{} sh -c 'git show -s --format=\"%B\" {} 2>/dev/null')",
+      "Bash(git filter-branch *)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'sed \"/^Co-Authored-By:/d\"' -- --all)",
+      "Bash(git update-ref *)",
+      "Bash(git reflog *)",
+      "Bash(git gc *)"
     ]
   }
 }
