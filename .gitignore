@@ -30,3 +30,11 @@ client/build/
 # Cache
 .cache/
 .parcel-cache/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Fichiers uploadés
+server/uploads/
