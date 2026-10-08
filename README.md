@@ -15,6 +15,7 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 
 ## Stack technique
 
+[![CI](https://github.com/zomanorj/Gestion_flotte/actions/workflows/ci.yml/badge.svg)](https://github.com/zomanorj/Gestion_flotte/actions/workflows/ci.yml)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white&style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white&style=flat-square)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white&style=flat-square)
@@ -246,6 +247,24 @@ La liste complète et commentée est dans `server/.env.example`.
 - **Secrets** : `JWT_SECRET` long et aléatoire, propre à la production.
 
 La documentation interactive de l'API est disponible sur http://localhost:5000/docs (Swagger, généré par FastAPI).
+
+---
+
+## Tests et intégration continue
+
+Le backend est couvert par plus de 300 tests (`server/tests/`) :
+
+- **unitaires** : règles métier (cycle de vie des missions, paie, simulation), sécurité (limitation des connexions, stockage), utilitaires ;
+- **intégration** : l'API complète appelée en HTTP et Socket.io sur une base MySQL jetable initialisée avec les scripts du dépôt (droits par rôle, chevauchement des missions y compris en concurrence, révocation des sessions, notifications, fichiers, paie).
+
+```bash
+cd server
+.venv/bin/pip install -r requirements-dev.txt
+docker run -d --name flotte-test-db -e MYSQL_ROOT_PASSWORD=test -p 3307:3306 --tmpfs /var/lib/mysql mysql:8.0
+.venv/bin/pytest
+```
+
+Détails dans `server/tests/README.md`. À chaque push et pull request, GitHub Actions (`.github/workflows/ci.yml`) exécute le lint (ruff), les tests, le build du frontend, puis construit et démarre la stack Docker complète.
 
 ---
 

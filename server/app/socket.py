@@ -24,7 +24,7 @@ async def connect(sid, _environ, auth):
         user = await utilisateur_depuis_token(token)
     except ErreurApi as err:
         # Refus explicite : le client reçoit connect_error avec ce message
-        raise socketio.exceptions.ConnectionRefusedError(err.message)
+        raise socketio.exceptions.ConnectionRefusedError(err.message) from None
 
     await sio.save_session(sid, {"user": user})
     await sio.enter_room(sid, f"user:{user['id']}")

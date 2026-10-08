@@ -74,7 +74,7 @@ class StockageS3:
         try:
             reponse = await asyncio.to_thread(self.client.get_object, Bucket=self.bucket, Key=cle)
         except self.client.exceptions.NoSuchKey:
-            raise FichierIntrouvable(cle)
+            raise FichierIntrouvable(cle) from None
         return await asyncio.to_thread(reponse["Body"].read)
 
     async def supprimer(self, cle: str) -> None:

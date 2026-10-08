@@ -1,0 +1,6 @@
+# Outils de développement et de test (en plus de requirements.txt)
+-r requirements.txt
+pytest==8.3.5
+ruff==0.11.10
+# Client Socket.io asynchrone utilisé par les tests temps réel
+aiohttp==3.11.18

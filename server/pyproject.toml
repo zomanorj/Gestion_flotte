@@ -1,0 +1,24 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+# E/F : erreurs et noms indéfinis, B : pièges courants, I : ordre des imports
+select = ["E4", "E7", "E9", "F", "B", "I"]
+# B008 : Depends(...) en valeur par défaut est l'usage normal de FastAPI
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: nécessite MySQL et lance l'API dans un sous-processus",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# main.py charge le .env avant d'importer les modules qui lisent l'environnement à l'import
+"main.py" = ["E402"]

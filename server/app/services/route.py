@@ -1,6 +1,7 @@
 # Service de calcul de route via OSRM (OpenStreetMap Routing Machine)
 # Pas de clé API requise — serveur public OSRM basé sur OpenStreetMap
 import math
+import os
 
 import httpx
 
@@ -18,8 +19,8 @@ VILLES_MADAGASCAR = {
     "Manakara":     {"lat": -22.1333, "lng": 48.0167},
 }
 
-# Serveur OSRM public — profil voiture
-OSRM_URL = "http://router.project-osrm.org/route/v1/driving"
+# Serveur OSRM — public par défaut (profil voiture), surchargeable (instance privée, tests)
+OSRM_URL = os.getenv("OSRM_URL", "http://router.project-osrm.org/route/v1/driving")
 
 # Nombre cible de points après décimation — compromis précision/performance Socket.io
 POINTS_CIBLE = 300

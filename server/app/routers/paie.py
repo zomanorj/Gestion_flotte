@@ -15,7 +15,7 @@ async def _fiche(id: int, annee: int, mois: int) -> dict:
     try:
         return await calculer_fiche_paie(id, annee, mois)
     except ChauffeurIntrouvable as err:
-        raise ErreurApi(404, str(err))
+        raise ErreurApi(404, str(err)) from None
 
 
 @router.get("/{annee}/{mois}", dependencies=[Gestionnaire])

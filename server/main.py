@@ -29,8 +29,20 @@ from app.auth import Connecte
 from app.erreurs import ErreurApi, installer_gestionnaires
 from app.migrations import appliquer_migrations, initialiser_admin
 from app.routers import (
-    auth, carburant, chauffeurs, clients, dashboard, depenses, documents,
-    maintenances, missions, notifications, paie, simulation, users, vehicules,
+    auth,
+    carburant,
+    chauffeurs,
+    clients,
+    dashboard,
+    depenses,
+    documents,
+    maintenances,
+    missions,
+    notifications,
+    paie,
+    simulation,
+    users,
+    vehicules,
 )
 from app.services.notifications import verifier_alertes_periodiques
 from app.socket import sio
@@ -97,7 +109,7 @@ async def fichier_uploade(chemin: str):
     try:
         contenu = await stockage.lire(chemin)
     except FichierIntrouvable:
-        raise ErreurApi(404, "Fichier introuvable")
+        raise ErreurApi(404, "Fichier introuvable") from None
     return Response(
         content=contenu,
         media_type=mimetypes.guess_type(chemin)[0] or "application/octet-stream",

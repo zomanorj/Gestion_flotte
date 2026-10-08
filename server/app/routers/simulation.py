@@ -25,7 +25,7 @@ async def calculer_route(request: Request):
     try:
         route = await get_route(b.get("villeDepart"), b.get("villeArrivee"))
     except VilleInconnue as err:
-        raise ErreurApi(400, str(err))
+        raise ErreurApi(400, str(err)) from None
     return {
         "distanceKm":  round(route["distanceKm"]),
         "dureeMin":    round(route["dureeMin"]),

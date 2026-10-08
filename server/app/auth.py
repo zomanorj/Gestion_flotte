@@ -42,9 +42,9 @@ async def utilisateur_depuis_token(token: str | None) -> dict:
     try:
         payload = jwt.decode(token, os.environ["JWT_SECRET"], algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
-        raise ErreurApi(401, "Session expirée, veuillez vous reconnecter")
+        raise ErreurApi(401, "Session expirée, veuillez vous reconnecter") from None
     except jwt.InvalidTokenError:
-        raise ErreurApi(401, "Token invalide")
+        raise ErreurApi(401, "Token invalide") from None
 
     user = await db.query_one(
         "SELECT id, nom, email, role, is_active, token_version FROM users WHERE id = %s",

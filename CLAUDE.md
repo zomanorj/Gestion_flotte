@@ -26,7 +26,18 @@ docker compose up --build
 docker compose down -v                      # also wipes the DB and uploads volumes
 ```
 
-There is no test suite, linter or formatter. To check the backend, use `curl http://localhost:5000/api/health`; Swagger is at `/docs`.
+Backend tests and lint (details in `server/tests/README.md`):
+
+```bash
+cd server && .venv/bin/pip install -r requirements-dev.txt
+docker run -d --name flotte-test-db -e MYSQL_ROOT_PASSWORD=test -p 3307:3306 --tmpfs /var/lib/mysql mysql:8.0
+.venv/bin/pytest                                   # all (needs the MySQL above)
+.venv/bin/pytest tests/unit                        # no DB needed
+.venv/bin/pytest tests/integration/test_missions.py::TestChevauchements -q   # single class/test
+.venv/bin/ruff check .
+```
+
+Integration tests create a throwaway database from the repo's SQL files (so SQL changes are tested too), start uvicorn in a subprocess with `--proxy-headers`, and call it over HTTP/Socket.io. Tests must create their own data through the fixtures in `tests/conftest.py` (`unique()` ids) and never depend on order; tests that trigger failed logins use their own account. CI (`.github/workflows/ci.yml`) runs ruff, pytest, the frontend build and a Docker stack smoke test. No frontend tests or linter yet. Swagger is at `/docs`.
 
 Demo accounts (`admin@`, `gestionnaire@`, `chauffeur@flotte.mg`, all `password123`) exist only when `database/seed_demo.sql` is loaded (Docker does it when `SEED_DEMO=1`, the default). Without seed, the first admin is created at startup from `ADMIN_EMAIL` / `ADMIN_PASSWORD` (`initialiser_admin` in `migrations.py`).
 

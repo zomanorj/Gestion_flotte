@@ -38,3 +38,6 @@ __pycache__/
 
 # Fichiers uploadés
 server/uploads/
+.pytest_cache/
+.ruff_cache/
+rapport-tests.xml
