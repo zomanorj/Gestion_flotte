@@ -16,21 +16,22 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 ## Stack technique
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white&style=flat-square)
-![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white&style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white&style=flat-square)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white&style=flat-square)
 ![MySQL](https://img.shields.io/badge/MySQL-5.7+-4479A1?logo=mysql&logoColor=white&style=flat-square)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?logo=bootstrap&logoColor=white&style=flat-square)
 ![Socket.io](https://img.shields.io/badge/Socket.io-4-010101?logo=socket.io&logoColor=white&style=flat-square)
 ![JWT](https://img.shields.io/badge/JWT-Auth-000000?logo=jsonwebtokens&logoColor=white&style=flat-square)
 ![Leaflet](https://img.shields.io/badge/Leaflet-Maps-199900?logo=leaflet&logoColor=white&style=flat-square)
 ![FullCalendar](https://img.shields.io/badge/FullCalendar-6-4285F4?style=flat-square)
-![PDFKit](https://img.shields.io/badge/PDFKit-PDF-red?style=flat-square)
+![ReportLab](https://img.shields.io/badge/ReportLab-PDF-red?style=flat-square)
 
 | Couche | Technologies |
 |--------|-------------|
-| Frontend | React 18, Vite, Bootstrap 5, Leaflet, FullCalendar, Recharts, jsPDF, SheetJS |
-| Backend | Node.js, Express 4, Socket.io 4, JWT, bcrypt, Multer, PDFKit |
-| Base de données | MySQL 5.7+ (pool de connexions via mysql2) |
-| Temps réel | Socket.io — simulation GPS, notifications push |
+| Frontend | React 18, Vite, Bootstrap 5, Leaflet, FullCalendar, Chart.js, jsPDF, SheetJS |
+| Backend | Python 3.12, FastAPI, python-socketio, PyJWT, bcrypt, ReportLab |
+| Base de données | MySQL 5.7+ (pool de connexions async via aiomysql) |
+| Temps réel | Socket.io (python-socketio, compatible socket.io-client v4) — simulation GPS, notifications push |
 | Cartographie | Leaflet + OpenStreetMap, calcul de routes OSRM |
 
 ---
@@ -60,7 +61,7 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 |--------|--------|
 | Carburant | Suivi des pleins — litres, prix au litre, station, kilométrage, consommation réelle calculée, statistiques mensuelles |
 | Dépenses | Catégorisation (péage, amende, pneus, pièces, main-d'œuvre, parking…), statistiques par véhicule et évolution mensuelle |
-| Bon de livraison | Génération PDF côté serveur (PDFKit) — en-tête, trajet, références camion / chauffeur / client, zone de signatures |
+| Bon de livraison | Génération PDF côté serveur (ReportLab) — en-tête, trajet, références camion / chauffeur / client, zone de signatures |
 | Rapports | Filtrage par période, export PDF (jsPDF) et export Excel (SheetJS) |
 
 ### Ressources humaines et administration
@@ -97,32 +98,24 @@ flotte-app/
 │   ├── migrate_v2.sql                 # Salaires, événements, historique carburant
 │   └── migrate_phase3.sql             # Utilisateurs, paie, upload, notifications
 │
-├── server/                            # API REST Node.js + Express + Socket.io
-│   ├── index.js                       # Point d'entrée, montage des routes, config Socket.io
-│   ├── config/db.js                   # Pool de connexions MySQL2
-│   ├── middleware/
-│   │   └── authMiddleware.js          # verifierToken + verifierRole (JWT)
-│   ├── controllers/
-│   │   ├── authController.js
-│   │   ├── usersController.js
-│   │   ├── vehiculesController.js
-│   │   ├── chauffeursController.js
-│   │   ├── missionsController.js      # Inclut planning FullCalendar + bon de livraison
-│   │   ├── dashboardController.js
-│   │   ├── documentsController.js
-│   │   ├── carburantController.js
-│   │   ├── depensesController.js
-│   │   ├── maintenancesController.js
-│   │   ├── clientsController.js
-│   │   ├── paieController.js          # Calcul + PDF bulletin
-│   │   └── notificationsController.js # Lecture + marquage lu + émission Socket.io
-│   ├── routes/                        # Miroir des controllers
-│   └── services/
-│       ├── simulationService.js       # Simulation GPS temps réel
-│       ├── routeService.js            # Calcul d'itinéraire OSRM
-│       ├── evenementService.js        # Événements aléatoires (pauses, incidents)
-│       ├── paieService.js             # Calcul salaire, primes, CNAPS
-│       └── bonLivraisonService.js     # Génération PDF (PDFKit)
+├── server/                            # API REST Python + FastAPI + Socket.io
+│   ├── main.py                        # Point d'entrée : app FastAPI + Socket.io (ASGI), migrations, CORS
+│   ├── requirements.txt
+│   ├── Procfile                       # Commande de démarrage (Railway)
+│   └── app/
+│       ├── db.py                      # Pool aiomysql (MYSQL_URL ou variables DB_*)
+│       ├── migrations.py              # Migrations idempotentes appliquées au démarrage
+│       ├── auth.py                    # verifier_token + verifier_role (JWT)
+│       ├── erreurs.py                 # Format d'erreur { message } attendu par le client
+│       ├── socket.py                  # Serveur Socket.io partagé
+│       ├── routers/                   # Un router par module (vehicules, missions, paie…)
+│       └── services/
+│           ├── simulation.py          # Simulation GPS temps réel (tâches asyncio)
+│           ├── route.py               # Calcul d'itinéraire OSRM
+│           ├── evenement.py           # Événements aléatoires (pauses, incidents)
+│           ├── paie.py                # Calcul salaire, primes, CNAPS + bulletin PDF
+│           ├── bon_livraison.py       # Bon de livraison PDF
+│           └── notifications.py       # Notifications + vérification périodique des alertes
 │
 └── client/                            # Application React 18 + Vite + Bootstrap 5
     └── src/
@@ -158,13 +151,31 @@ flotte-app/
 
 ## Installation
 
-### Prérequis
+### Avec Docker (recommandé)
 
-- Node.js v18+
+Prérequis : Docker et Docker Compose.
+
+```bash
+git clone https://github.com/zomanorj/Gestion_flotte.git
+cd Gestion_flotte
+docker compose up --build
+# L'application est disponible sur http://localhost:8080
+```
+
+Au premier démarrage, MySQL 8 exécute les scripts de `database/` dans l'ordre (`database/docker-init.sh`). nginx sert le client React et relaie `/api` et `/socket.io` vers le backend. Les données MySQL et les fichiers uploadés sont gardés dans des volumes Docker (`docker compose down -v` remet tout à zéro).
+
+Variables optionnelles (dans un fichier `.env` à la racine) : `JWT_SECRET`, `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `APP_PORT` (8080 par défaut).
+
+### Sans Docker
+
+#### Prérequis
+
+- Python 3.12+
+- Node.js v18+ (frontend uniquement)
 - MySQL 5.7 ou 8+
 - Git
 
-### Étapes
+#### Étapes
 
 ```bash
 # 1. Cloner le projet
@@ -183,8 +194,11 @@ mysql -u root -p flotte_db < database/migrate_phase3.sql
 cp server/.env.example server/.env
 # Renseigner DB_HOST, DB_USER, DB_PASSWORD, JWT_SECRET, CLIENT_URL
 
-# 4. Démarrer le backend
-cd server && npm install && npm run dev
+# 4. Démarrer le backend (port 5000)
+cd server
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn main:app --reload --port 5000
 
 # 5. Démarrer le frontend (nouveau terminal)
 cd client && npm install && npm run dev
@@ -196,13 +210,17 @@ cd client && npm install && npm run dev
 
 ```env
 DB_HOST=localhost
+DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=mot_de_passe
 DB_NAME=flotte_db
 JWT_SECRET=chaine_secrete_longue_et_aleatoire
 PORT=5000
 CLIENT_URL=http://localhost:5173
+# Production : MYSQL_URL=mysql://user:pass@host:port/db remplace les DB_*
 ```
+
+La documentation interactive de l'API est disponible sur http://localhost:5000/docs (Swagger, généré par FastAPI).
 
 ---
 
@@ -211,8 +229,8 @@ CLIENT_URL=http://localhost:5173
 | Email | Mot de passe | Rôle |
 |-------|-------------|------|
 | admin@flotte.mg | password123 | Admin |
-| gestionnaire@flotte.mg | password123 | Gestionnaire |
-| chauffeur@flotte.mg | password123 | Chauffeur |
+
+`schema.sql` crée aussi `gestionnaire@flotte.mg` et `chauffeur@flotte.mg`, mais `migrate_v2.sql` remet la base à zéro et ne garde que l'admin. Les autres comptes se créent depuis la page Utilisateurs.
 
 ---
 

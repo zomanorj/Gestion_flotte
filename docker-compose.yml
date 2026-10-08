@@ -1,0 +1,50 @@
+# FlotteApp — environnement complet : MySQL 8 + API FastAPI + client React (nginx)
+# Lancement : docker compose up --build   →   http://localhost:8080
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_flotte}
+      MYSQL_DATABASE: flotte_db
+      MYSQL_USER: flotte
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-flotte}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./database:/sql:ro
+      - ./database/docker-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+  server:
+    build: ./server
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: flotte
+      DB_PASSWORD: ${MYSQL_PASSWORD:-flotte}
+      DB_NAME: flotte_db
+      JWT_SECRET: ${JWT_SECRET:-change-moi-en-production}
+      # Origine du navigateur (nginx) — contrôlée par CORS et par Socket.io
+      CLIENT_URL: http://localhost:${APP_PORT:-8080}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  client:
+    build: ./client
+    ports:
+      - "${APP_PORT:-8080}:80"
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
+  uploads:
