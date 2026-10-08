@@ -1,6 +1,10 @@
 // Service axios — configuration globale des appels API
 import axios from 'axios';
 
+// Socket.io : même origine par défaut (proxy Vite en dev, nginx en Docker),
+// ou VITE_SOCKET_URL quand l'API est sur un autre domaine (Vercel + Railway)
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' }
@@ -30,5 +34,23 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * Télécharge un fichier protégé par JWT (PDF, document uploadé…).
+ * Un simple <a href> n'envoie pas le token : on passe par axios puis par un lien blob.
+ * @param {string} chemin     - Chemin relatif à l'API, ex. "/missions/3/bon-livraison"
+ * @param {string} nomFichier - Nom proposé pour l'enregistrement
+ */
+export const telechargerFichier = async (chemin, nomFichier) => {
+  const { data } = await api.get(chemin, { responseType: 'blob' });
+  const url  = URL.createObjectURL(data);
+  const lien = document.createElement('a');
+  lien.href     = url;
+  lien.download = nomFichier;
+  document.body.appendChild(lien);
+  lien.click();
+  lien.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 export default api;

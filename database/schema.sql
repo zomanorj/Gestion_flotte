@@ -119,12 +119,12 @@ CREATE TABLE IF NOT EXISTS alertes (
 -- ============================================================
 
 -- Utilisateurs
--- Mot de passe "password123" : régénérer le hash avec bcrypt si nécessaire
--- node -e "require('bcrypt').hash('password123',10).then(console.log)"
+-- Mot de passe "password123" — pour régénérer le hash :
+-- python3 -c "import bcrypt; print(bcrypt.hashpw(b'password123', bcrypt.gensalt(10)).decode())"
 INSERT INTO users (nom, email, password_hash, role) VALUES
-  ('Rakoto Jean',  'admin@flotte.mg',        '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
-  ('Rabe Marie',   'gestionnaire@flotte.mg', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'gestionnaire'),
-  ('Randria Paul', 'chauffeur@flotte.mg',    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'chauffeur');
+  ('Rakoto Jean',  'admin@flotte.mg',        '$2b$10$6G7jp5IK3Fn6tTSeljrySep.r867bHZaNIe.aumypReBksQZfUOVC', 'admin'),
+  ('Rabe Marie',   'gestionnaire@flotte.mg', '$2b$10$6G7jp5IK3Fn6tTSeljrySep.r867bHZaNIe.aumypReBksQZfUOVC', 'gestionnaire'),
+  ('Randria Paul', 'chauffeur@flotte.mg',    '$2b$10$6G7jp5IK3Fn6tTSeljrySep.r867bHZaNIe.aumypReBksQZfUOVC', 'chauffeur');
 
 -- Camions lourds (immatriculations malgaches)
 INSERT INTO vehicules

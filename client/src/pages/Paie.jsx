@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, Download, Pencil, AlertTriangle, Users, TrendingUp, MapPin } from 'lucide-react';
-import api from '../services/api';
+import api, { telechargerFichier } from '../services/api';
 
 const MOIS_FR = ['', 'Janvier','Février','Mars','Avril','Mai','Juin',
                  'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -35,12 +35,15 @@ export default function Paie() {
 
   useEffect(() => { charger(); }, [annee, mois]);
 
-  const telechargerPDF = (chauffeurId) => {
-    const token = localStorage.getItem('token');
-    window.open(
-      `http://localhost:5000/api/paie/chauffeur/${chauffeurId}/${annee}/${mois}/pdf`,
-      '_blank'
-    );
+  const telechargerPDF = async (fiche) => {
+    try {
+      await telechargerFichier(
+        `/paie/chauffeur/${fiche.chauffeur_id}/${annee}/${mois}/pdf`,
+        `bulletin_${fiche.nom}_${mois}_${annee}.pdf`
+      );
+    } catch {
+      setErreur('Impossible de télécharger le bulletin');
+    }
   };
 
   const ouvrirSalaire = (fiche) => {
@@ -165,7 +168,7 @@ export default function Paie() {
                     <td className="px-3 py-2 fw-bold text-success text-nowrap">{fmtMontant(f.net_a_payer)}</td>
                     <td className="px-3 py-2">
                       <div className="d-flex gap-1">
-                        <button onClick={() => telechargerPDF(f.chauffeur_id)}
+                        <button onClick={() => telechargerPDF(f)}
                                 className="btn btn-sm btn-outline-danger" title="Bulletin PDF">
                           <Download size={14} />
                         </button>

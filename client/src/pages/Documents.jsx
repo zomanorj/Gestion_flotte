@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { FileCheck, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, X, Download } from 'lucide-react';
-import api from '../services/api';
+import api, { telechargerFichier } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
@@ -110,6 +110,15 @@ export default function Documents() {
     } catch (err) {
       setErrModal(err.response?.data?.message || 'Erreur lors de la sauvegarde');
     } finally { setSauvegarde(false); }
+  };
+
+  const telechargerDocument = async (doc) => {
+    try {
+      // fichier_url = "/uploads/documents/…", servi par l'API sous /api/uploads/…
+      await telechargerFichier(doc.fichier_url, doc.fichier_nom || doc.fichier_url.split('/').pop());
+    } catch {
+      setErreur('Impossible de télécharger le fichier');
+    }
   };
 
   const supprimer = async (doc) => {
@@ -222,10 +231,10 @@ export default function Documents() {
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-2">
                         {doc.fichier_url && (
-                          <a href={`http://localhost:5000${doc.fichier_url}`} target="_blank" rel="noopener noreferrer"
-                             className="btn btn-sm btn-outline-secondary" title="Télécharger le fichier">
+                          <button onClick={() => telechargerDocument(doc)}
+                                  className="btn btn-sm btn-outline-secondary" title="Télécharger le fichier">
                             <Download size={14} />
-                          </a>
+                          </button>
                         )}
                         {peutModifier && (
                           <>

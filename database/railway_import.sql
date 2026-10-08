@@ -116,12 +116,12 @@ CREATE TABLE IF NOT EXISTS alertes (
 -- ============================================================
 
 -- Utilisateurs
--- Mot de passe "password123" : régénérer le hash avec bcrypt si nécessaire
--- node -e "require('bcrypt').hash('password123',10).then(console.log)"
+-- Mot de passe "password123" — pour régénérer le hash :
+-- python3 -c "import bcrypt; print(bcrypt.hashpw(b'password123', bcrypt.gensalt(10)).decode())"
 INSERT INTO users (nom, email, password_hash, role) VALUES
-  ('Rakoto Jean',  'admin@flotte.mg',        '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
-  ('Rabe Marie',   'gestionnaire@flotte.mg', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'gestionnaire'),
-  ('Randria Paul', 'chauffeur@flotte.mg',    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'chauffeur');
+  ('Rakoto Jean',  'admin@flotte.mg',        '$2b$10$6G7jp5IK3Fn6tTSeljrySep.r867bHZaNIe.aumypReBksQZfUOVC', 'admin'),
+  ('Rabe Marie',   'gestionnaire@flotte.mg', '$2b$10$6G7jp5IK3Fn6tTSeljrySep.r867bHZaNIe.aumypReBksQZfUOVC', 'gestionnaire'),
+  ('Randria Paul', 'chauffeur@flotte.mg',    '$2b$10$6G7jp5IK3Fn6tTSeljrySep.r867bHZaNIe.aumypReBksQZfUOVC', 'chauffeur');
 
 -- Camions lourds (immatriculations malgaches)
 INSERT INTO vehicules
@@ -450,18 +450,49 @@ UPDATE users SET nom = 'Administrateur', email = 'admin@flotte.mg' WHERE role = 
 -- ============================================================
 
 
+-- ── Procédures utilitaires ───────────────────────────────────────────────────
+-- La syntaxe « ADD COLUMN IF NOT EXISTS » / « CREATE INDEX IF NOT EXISTS »
+-- n'existe que sous MariaDB : ces procédures font la même chose sur MySQL 5.7 et 8.
+DROP PROCEDURE IF EXISTS ajouter_colonne;
+DROP PROCEDURE IF EXISTS ajouter_index;
+
+DELIMITER //
+CREATE PROCEDURE ajouter_colonne(IN p_table VARCHAR(64), IN p_colonne VARCHAR(64), IN p_definition VARCHAR(255))
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = p_table AND COLUMN_NAME = p_colonne
+  ) THEN
+    SET @ddl = CONCAT('ALTER TABLE `', p_table, '` ADD COLUMN `', p_colonne, '` ', p_definition);
+    PREPARE stmt FROM @ddl;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END IF;
+END //
+
+CREATE PROCEDURE ajouter_index(IN p_table VARCHAR(64), IN p_index VARCHAR(64), IN p_colonnes VARCHAR(255))
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = p_table AND INDEX_NAME = p_index
+  ) THEN
+    SET @ddl = CONCAT('CREATE INDEX `', p_index, '` ON `', p_table, '`(', p_colonnes, ')');
+    PREPARE stmt FROM @ddl;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END IF;
+END //
+DELIMITER ;
+
 -- ── Utilisateurs : ajout is_active ───────────────────────────────────────────
-ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS is_active TINYINT(1) NOT NULL DEFAULT 1 AFTER role;
+CALL ajouter_colonne('users', 'is_active', 'TINYINT(1) NOT NULL DEFAULT 1 AFTER role');
 
 -- ── Chauffeurs : salaire_base et prime_mission (si migrate_v2 pas appliqué) ──
-ALTER TABLE chauffeurs
-  ADD COLUMN IF NOT EXISTS salaire_base  DECIMAL(10,2) DEFAULT 800000 AFTER statut,
-  ADD COLUMN IF NOT EXISTS prime_mission DECIMAL(10,2) DEFAULT 50000  AFTER salaire_base;
+CALL ajouter_colonne('chauffeurs', 'salaire_base',  'DECIMAL(10,2) DEFAULT 800000 AFTER statut');
+CALL ajouter_colonne('chauffeurs', 'prime_mission', 'DECIMAL(10,2) DEFAULT 50000 AFTER salaire_base');
 
--- ── Missions : salaire_mission (si migrate_v2 pas appliqué) ──────────────────
-ALTER TABLE missions
-  ADD COLUMN IF NOT EXISTS client_id  INT NULL AFTER chauffeur_id;
+-- ── Missions : client_id (si migrate_clients pas appliqué) ───────────────────
+CALL ajouter_colonne('missions', 'client_id', 'INT NULL AFTER chauffeur_id');
 
 -- Recréer FK client si elle n'existe pas
 SET @fk_exists = (
@@ -478,14 +509,12 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- ── Documents : colonnes fichier (si absentes) ────────────────────────────────
-ALTER TABLE documents
-  ADD COLUMN IF NOT EXISTS fichier_nom VARCHAR(255) NULL AFTER notes,
-  ADD COLUMN IF NOT EXISTS fichier_url VARCHAR(500) NULL AFTER fichier_nom;
+CALL ajouter_colonne('documents', 'fichier_nom', 'VARCHAR(255) NULL AFTER notes');
+CALL ajouter_colonne('documents', 'fichier_url', 'VARCHAR(500) NULL AFTER fichier_nom');
 
 -- ── Notifications : ajout user_id pour ciblage ────────────────────────────────
 -- Table créée dans migrate_v2.sql — on ajoute user_id si absent
-ALTER TABLE notifications
-  ADD COLUMN IF NOT EXISTS user_id INT NULL AFTER vehicule_id;
+CALL ajouter_colonne('notifications', 'user_id', 'INT NULL AFTER vehicule_id');
 
 -- ── mission_salaires (si migrate_v2 pas appliqué) ────────────────────────────
 CREATE TABLE IF NOT EXISTS mission_salaires (
@@ -524,16 +553,19 @@ CREATE TABLE IF NOT EXISTS clients (
 ) ENGINE=InnoDB;
 
 -- ── Indexes de performance ────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_missions_statut       ON missions(statut);
-CREATE INDEX IF NOT EXISTS idx_missions_date         ON missions(date_depart);
-CREATE INDEX IF NOT EXISTS idx_missions_client       ON missions(client_id);
-CREATE INDEX IF NOT EXISTS idx_carburant_date        ON carburant(date_plein);
-CREATE INDEX IF NOT EXISTS idx_carburant_vehicule    ON carburant(vehicule_id);
-CREATE INDEX IF NOT EXISTS idx_depenses_date         ON depenses(date_depense);
-CREATE INDEX IF NOT EXISTS idx_depenses_vehicule     ON depenses(vehicule_id);
-CREATE INDEX IF NOT EXISTS idx_documents_expiration  ON documents(date_expiration);
-CREATE INDEX IF NOT EXISTS idx_maintenances_date     ON maintenances_planifiees(date_prevue);
-CREATE INDEX IF NOT EXISTS idx_maintenances_vehicule ON maintenances_planifiees(vehicule_id);
+CALL ajouter_index('missions', 'idx_missions_statut', 'statut');
+CALL ajouter_index('missions', 'idx_missions_date', 'date_depart');
+CALL ajouter_index('missions', 'idx_missions_client', 'client_id');
+CALL ajouter_index('carburant', 'idx_carburant_date', 'date_plein');
+CALL ajouter_index('carburant', 'idx_carburant_vehicule', 'vehicule_id');
+CALL ajouter_index('depenses', 'idx_depenses_date', 'date_depense');
+CALL ajouter_index('depenses', 'idx_depenses_vehicule', 'vehicule_id');
+CALL ajouter_index('documents', 'idx_documents_expiration', 'date_expiration');
+CALL ajouter_index('maintenances_planifiees', 'idx_maintenances_date', 'date_prevue');
+CALL ajouter_index('maintenances_planifiees', 'idx_maintenances_vehicule', 'vehicule_id');
+
+DROP PROCEDURE ajouter_colonne;
+DROP PROCEDURE ajouter_index;
 
 SELECT 'Migration Phase 3 appliquée avec succès' AS resultat;
 

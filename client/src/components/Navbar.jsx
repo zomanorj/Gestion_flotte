@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Bell, CheckCheck, AlertTriangle, Wrench, FileText, MapPin, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import api, { SOCKET_URL } from '../services/api';
 import { io } from 'socket.io-client';
 
 const TITRES = {
@@ -61,7 +61,7 @@ export default function Navbar() {
   useEffect(() => {
     chargerNotifs();
 
-    socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
+    socketRef.current = io(SOCKET_URL);
     socketRef.current.on('notification:nouvelle', (notif) => {
       setNotifs(prev => [notif, ...prev].slice(0, 50));
       setNonLues(prev => prev + 1);

@@ -10,6 +10,11 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true
+      },
+      // Socket.io (polling + websocket) — l'en-tête Origin est conservé pour le contrôle CORS
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        ws: true
       }
     }
   }

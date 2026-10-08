@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, Loader2, FileDown } from 'lucide-react';
-import api from '../services/api';
+import api, { telechargerFichier } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
@@ -293,6 +293,14 @@ export default function Missions() {
     }
   };
 
+  const telechargerBonLivraison = async (mission) => {
+    try {
+      await telechargerFichier(`/missions/${mission.id}/bon-livraison`, `bon-livraison-${mission.id}.pdf`);
+    } catch {
+      ajouterToast('Erreur', 'Impossible de télécharger le bon de livraison', true);
+    }
+  };
+
   const supprimerMission = async (mission) => {
     const consequences = ['Cette action est irréversible'];
     if (mission.statut === 'en_cours') {
@@ -402,11 +410,10 @@ export default function Missions() {
                             <Eye size={12} /> Détail
                           </button>
                         )}
-                        <a href={`http://localhost:5000/api/missions/${m.id}/bon-livraison`}
-                           target="_blank" rel="noopener noreferrer"
-                           className="btn btn-sm btn-outline-primary" title="Bon de livraison PDF">
+                        <button onClick={() => telechargerBonLivraison(m)}
+                                className="btn btn-sm btn-outline-primary" title="Bon de livraison PDF">
                           <FileDown size={14} />
-                        </a>
+                        </button>
                         {user?.role === 'admin' && (
                           <button onClick={() => supprimerMission(m)}
                                   className="btn btn-sm btn-outline-danger" title="Supprimer">
