@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Bell, CheckCheck, AlertTriangle, Wrench, FileText, MapPin, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import api, { SOCKET_URL } from '../services/api';
-import { io } from 'socket.io-client';
+import api, { creerSocket } from '../services/api';
 
 const TITRES = {
   '/':             'Tableau de bord — Flotte de Camions',
@@ -61,7 +60,7 @@ export default function Navbar() {
   useEffect(() => {
     chargerNotifs();
 
-    socketRef.current = io(SOCKET_URL);
+    socketRef.current = creerSocket();
     socketRef.current.on('notification:nouvelle', (notif) => {
       setNotifs(prev => [notif, ...prev].slice(0, 50));
       setNonLues(prev => prev + 1);

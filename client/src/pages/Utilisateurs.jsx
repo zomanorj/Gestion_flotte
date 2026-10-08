@@ -14,7 +14,7 @@ const ROLE_COULEURS = {
 const FORM_VIDE = { nom: '', email: '', password: '', role: 'gestionnaire' };
 
 export default function Utilisateurs() {
-  const { user: moi }    = useAuth();
+  const { user: moi, majToken } = useAuth();
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
   const [utilisateurs, setUtilisateurs] = useState([]);
@@ -93,7 +93,9 @@ export default function Utilisateurs() {
     e.preventDefault();
     setErrMdp('');
     try {
-      await api.patch(`/users/${modalMdp}/password`, { password: nouveauMdp });
+      const { data } = await api.patch(`/users/${modalMdp}/password`, { password: nouveauMdp });
+      // Les sessions du compte sont révoquées : pour son propre compte, l'API renvoie un nouveau token
+      if (data.token) majToken(data.token);
       setModalMdp(null); setNouveauMdp('');
     } catch (err) {
       setErrMdp(err.response?.data?.message || 'Erreur');
@@ -212,9 +214,9 @@ export default function Utilisateurs() {
               </div>
               {!userEdite && (
                 <div>
-                  <label className="form-label">Mot de passe * (min. 6 caractères)</label>
+                  <label className="form-label">Mot de passe * (min. 8 caractères)</label>
                   <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})}
-                         required minLength={6} className="form-control form-control-sm" />
+                         required minLength={8} className="form-control form-control-sm" />
                 </div>
               )}
               <div>
@@ -246,7 +248,7 @@ export default function Utilisateurs() {
               <div>
                 <label className="form-label">Nouveau mot de passe *</label>
                 <input type="password" value={nouveauMdp} onChange={e => setNouveauMdp(e.target.value)}
-                       required minLength={6} className="form-control form-control-sm" />
+                       required minLength={8} className="form-control form-control-sm" />
               </div>
               <div className="d-flex gap-2">
                 <button type="button" onClick={() => setModalMdp(null)}

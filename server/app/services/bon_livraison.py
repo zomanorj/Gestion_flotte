@@ -1,6 +1,5 @@
 # Service de génération du bon de livraison PDF
-from datetime import date
-
+from ..temps import aujourdhui
 from .pdf import Pdf, date_fr
 
 BLEU  = "#1e3a5f"
@@ -18,7 +17,7 @@ def generer_bon_livraison(mission: dict) -> bytes:
     pdf.rect(0, 0, largeur, 90, remplir=BLEU)
     pdf.texte("BON DE LIVRAISON", 50, 25, taille=22, gras=True, couleur="#ffffff")
     pdf.texte(f"N° BL-{mission['id']:05d}", 50, 52, taille=11, couleur="#ffffff")
-    pdf.texte(f"Émis le {date_fr(date.today())}", 0, 52, couleur="#ffffff", largeur=largeur - 50, align="right")
+    pdf.texte(f"Émis le {date_fr(aujourdhui())}", 0, 52, couleur="#ffffff", largeur=largeur - 50, align="right")
     pdf.texte("FlotteCamion — Gestion de flotte Madagascar", 50, 70, taille=9, couleur="#c7d0dc")
 
     # ── Corps (mise en page en flux, y = curseur courant) ──────────────────

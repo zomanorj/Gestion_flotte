@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
-import { io } from 'socket.io-client';
 import L from 'leaflet';
 import { Truck, RefreshCw, ChevronLeft, ChevronRight, MapPin, AlertTriangle, Clock, Gauge } from 'lucide-react';
-import api, { SOCKET_URL } from '../services/api';
+import api, { creerSocket } from '../services/api';
 
 const PALETTE = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#eab308', '#06b6d4', '#ec4899'];
 const couleurParIndex = (index) => PALETTE[index % PALETTE.length];
@@ -71,7 +70,7 @@ export default function CarteGlobale() {
 
   useEffect(() => {
     chargerActifs();
-    socketRef.current = io(SOCKET_URL);
+    socketRef.current = creerSocket();
     const socket = socketRef.current;
 
     socket.on('flotte:positions', (positions) => {

@@ -76,13 +76,18 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 
 ### Sécurité
 
-Authentification stateless par token JWT (expiration 24 h). Trois rôles appliqués côté serveur sur chaque route :
+Authentification par token JWT (expiration 24 h). Trois rôles appliqués côté serveur sur chaque route :
 
 | Rôle | Permissions |
 |------|-------------|
 | admin | Toutes les opérations, y compris suppression et gestion des utilisateurs |
 | gestionnaire | Création et modification — aucune suppression |
-| chauffeur | Lecture seule |
+| chauffeur | Lecture seule ; ne voit ni les salaires des autres chauffeurs ni les alertes de gestion, et ne peut télécharger que son propre bulletin de paie |
+
+- Chaque requête vérifie que le compte est toujours actif : désactiver un compte, changer son rôle ou son mot de passe révoque immédiatement ses sessions (y compris ses connexions temps réel).
+- Socket.io exige un token valide ; les notifications sont envoyées uniquement à leurs destinataires, avec un état lu / supprimé propre à chaque utilisateur.
+- Connexion protégée contre la force brute : 5 échecs par compte ou 20 par adresse IP en 15 minutes déclenchent un blocage temporaire (HTTP 429).
+- Missions : un camion ou un chauffeur ne peut pas être affecté à deux missions actives sur des périodes qui se chevauchent ; les changements de statut suivent un cycle de vie strict (planifiée → en cours → terminée, ou annulée) et sont faits en transaction.
 
 ---
 
@@ -164,7 +169,7 @@ docker compose up --build
 
 Au premier démarrage, MySQL 8 exécute les scripts de `database/` dans l'ordre (`database/docker-init.sh`). nginx sert le client React et relaie `/api` et `/socket.io` vers le backend. Les données MySQL et les fichiers uploadés sont gardés dans des volumes Docker (`docker compose down -v` remet tout à zéro).
 
-Variables optionnelles (dans un fichier `.env` à la racine) : `JWT_SECRET`, `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `APP_PORT` (8080 par défaut).
+Variables optionnelles (dans un fichier `.env` à la racine) : `JWT_SECRET`, `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `APP_PORT` (8080 par défaut), `SEED_DEMO` (1 par défaut : données et comptes de démonstration), `ADMIN_EMAIL` / `ADMIN_PASSWORD` (premier administrateur quand `SEED_DEMO=0`).
 
 ### Sans Docker
 
@@ -182,17 +187,20 @@ Variables optionnelles (dans un fichier `.env` à la racine) : `JWT_SECRET`, `MY
 git clone https://github.com/zomanorj/Gestion_flotte.git
 cd Gestion_flotte
 
-# 2. Initialiser la base de données
+# 2. Initialiser la base de données (structure)
 mysql -u root -p < database/schema.sql
 mysql -u root -p flotte_db < database/migrate_modules.sql
 mysql -u root -p flotte_db < database/migrate_maintenances.sql
 mysql -u root -p flotte_db < database/migrate_clients.sql
 mysql -u root -p flotte_db < database/migrate_v2.sql
 mysql -u root -p flotte_db < database/migrate_phase3.sql
+# Optionnel, en local uniquement : données et comptes de démonstration
+mysql -u root -p flotte_db < database/seed_demo.sql
 
 # 3. Configurer le backend
 cp server/.env.example server/.env
-# Renseigner DB_HOST, DB_USER, DB_PASSWORD, JWT_SECRET, CLIENT_URL
+# Renseigner DB_*, JWT_SECRET, CLIENT_URL
+# Sans seed_demo.sql : renseigner ADMIN_EMAIL / ADMIN_PASSWORD pour créer le premier administrateur
 
 # 4. Démarrer le backend (port 5000)
 cd server
@@ -218,7 +226,24 @@ JWT_SECRET=chaine_secrete_longue_et_aleatoire
 PORT=5000
 CLIENT_URL=http://localhost:5173
 # Production : MYSQL_URL=mysql://user:pass@host:port/db remplace les DB_*
+
+APP_TIMEZONE=Indian/Antananarivo   # fuseau des dates métier (MySQL suit le même)
+ADMIN_EMAIL=                       # premier administrateur, créé si aucun admin actif n'existe
+ADMIN_PASSWORD=                    # 8 caractères minimum
+
+STOCKAGE=local                     # local (UPLOADS_DIR) ou s3 (S3_BUCKET, S3_ENDPOINT_URL, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_REGION)
+UPLOADS_DIR=
 ```
+
+La liste complète et commentée est dans `server/.env.example`.
+
+### Mise en production (Railway)
+
+- **Base** : importer `railway_import.sql` (structure uniquement, aucune donnée de démonstration).
+- **Premier administrateur** : définir `ADMIN_EMAIL` et `ADMIN_PASSWORD` ; il est créé au démarrage si aucun admin actif n'existe.
+- **Fichiers uploadés** : le disque d'un conteneur est effacé à chaque redéploiement. Utiliser un volume Railway monté sur `UPLOADS_DIR`, ou un stockage S3 (Cloudflare R2, AWS S3) avec `STOCKAGE=s3`.
+- **Proxy** : définir `FORWARDED_ALLOW_IPS=*` pour que l'API voie l'adresse IP réelle des clients (nécessaire à la protection contre la force brute).
+- **Secrets** : `JWT_SECRET` long et aléatoire, propre à la production.
 
 La documentation interactive de l'API est disponible sur http://localhost:5000/docs (Swagger, généré par FastAPI).
 
@@ -226,8 +251,17 @@ La documentation interactive de l'API est disponible sur http://localhost:5000/d
 
 ## Comptes de démonstration
 
+Disponibles uniquement si `database/seed_demo.sql` a été chargé (automatique avec Docker, `SEED_DEMO=1`) :
+
 | Email | Mot de passe | Rôle |
 |-------|-------------|------|
+| admin@flotte.mg | password123 | Admin |
+| gestionnaire@flotte.mg | password123 | Gestionnaire |
+| chauffeur@flotte.mg | password123 | Chauffeur |
+
+Ne jamais charger ces données en production.
+
+-------|-------------|------|
 | admin@flotte.mg | password123 | Admin |
 
 `schema.sql` crée aussi `gestionnaire@flotte.mg` et `chauffeur@flotte.mg`, mais `migrate_v2.sql` remet la base à zéro et ne garde que l'admin. Les autres comptes se créent depuis la page Utilisateurs.

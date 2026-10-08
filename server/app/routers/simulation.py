@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 from .. import db
 from ..auth import Connecte, Gestionnaire
 from ..erreurs import ErreurApi
+from ..services.missions import occuper_ressources, verifier_transition
 from ..services.route import VILLES_MADAGASCAR, VilleInconnue, get_route
 from ..services.simulation import arreter_simulation, changer_vitesse, demarrer_simulation, etats_actifs
 from ..utils import corps
@@ -35,24 +36,23 @@ async def calculer_route(request: Request):
 @router.post("/demarrer/{mission_id}", dependencies=[Gestionnaire])
 async def demarrer(mission_id: int):
     """Passe une mission planifiée en "en_cours" puis lance la boucle de simulation."""
-    mission = await db.query_one(
-        """SELECT m.*, c.nom AS chauffeur_nom,
-                  v.immatriculation, v.statut AS vehicule_statut
-           FROM missions m
-           JOIN chauffeurs c ON m.chauffeur_id = c.id
-           JOIN vehicules  v ON m.vehicule_id  = v.id
-           WHERE m.id = %s""",
-        [mission_id],
-    )
-    if not mission:
-        raise ErreurApi(404, "Mission introuvable")
+    async with db.transaction() as tx:
+        # FOR UPDATE sur la mission : deux démarrages simultanés ne peuvent pas réussir tous les deux
+        mission = await tx.query_one(
+            """SELECT m.*, c.nom AS chauffeur_nom, v.immatriculation
+               FROM missions m
+               JOIN chauffeurs c ON m.chauffeur_id = c.id
+               JOIN vehicules  v ON m.vehicule_id  = v.id
+               WHERE m.id = %s
+               FOR UPDATE""",
+            [mission_id],
+        )
+        if not mission:
+            raise ErreurApi(404, "Mission introuvable")
+        verifier_transition(mission["statut"], "en_cours")
 
-    if mission["statut"] != "planifiee":
-        raise ErreurApi(409, f'Impossible de simuler une mission au statut "{mission["statut"]}"')
-
-    await db.execute("UPDATE missions   SET statut = 'en_cours'   WHERE id = %s", [mission_id])
-    await db.execute("UPDATE vehicules  SET statut = 'en_mission' WHERE id = %s", [mission["vehicule_id"]])
-    await db.execute("UPDATE chauffeurs SET statut = 'en_mission' WHERE id = %s", [mission["chauffeur_id"]])
+        await tx.execute("UPDATE missions SET statut = 'en_cours' WHERE id = %s", [mission_id])
+        await occuper_ressources(tx, mission)
 
     await demarrer_simulation(str(mission_id), mission)
 

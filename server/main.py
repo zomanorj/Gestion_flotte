@@ -17,23 +17,24 @@ if not os.getenv("JWT_SECRET"):
     print("ERREUR : JWT_SECRET manquant dans .env")
     sys.exit(1)
 
+import mimetypes
+
 import socketio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse, Response
 
 from app import db
 from app.auth import Connecte
 from app.erreurs import ErreurApi, installer_gestionnaires
-from app.migrations import appliquer_migrations
+from app.migrations import appliquer_migrations, initialiser_admin
 from app.routers import (
     auth, carburant, chauffeurs, clients, dashboard, depenses, documents,
     maintenances, missions, notifications, paie, simulation, users, vehicules,
 )
 from app.services.notifications import verifier_alertes_periodiques
 from app.socket import sio
-
-UPLOADS = Path(__file__).parent / "uploads"
+from app.stockage import FichierIntrouvable, stockage
 
 
 async def _alertes_periodiques():
@@ -49,13 +50,14 @@ async def lifespan(_app: FastAPI):
     try:
         await db.connecter()
     except Exception as err:
-        print("❌ Impossible de se connecter à MySQL :", err)
+        print("ERREUR : impossible de se connecter à MySQL :", err)
         print("   Vérifiez vos paramètres dans server/.env")
         sys.exit(1)
 
     # Migrations automatiques avant d'accepter les requêtes
     await appliquer_migrations()
-    (UPLOADS / "documents").mkdir(parents=True, exist_ok=True)
+    await initialiser_admin()
+    await stockage.preparer()
     tache_alertes = asyncio.create_task(_alertes_periodiques())
 
     print("\nCamionApp — Serveur démarré (FastAPI)")
@@ -92,15 +94,28 @@ for module, prefixe in [
 @api.get("/api/uploads/{chemin:path}", dependencies=[Connecte])
 async def fichier_uploade(chemin: str):
     """Sert les fichiers uploadés (documents…) — réservé aux utilisateurs connectés."""
-    fichier = (UPLOADS / chemin).resolve()
-    if not fichier.is_relative_to(UPLOADS.resolve()) or not fichier.is_file():
-        raise ErreurApi(404, "Route introuvable")
-    return FileResponse(fichier)
+    try:
+        contenu = await stockage.lire(chemin)
+    except FichierIntrouvable:
+        raise ErreurApi(404, "Fichier introuvable")
+    return Response(
+        content=contenu,
+        media_type=mimetypes.guess_type(chemin)[0] or "application/octet-stream",
+        # Toujours en téléchargement : un fichier uploadé ne doit jamais s'exécuter dans la page
+        headers={
+            "Content-Disposition": f'attachment; filename="{Path(chemin).name}"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @api.get("/api/health")
 async def sante():
-    """Route de santé : permet de vérifier que le serveur tourne."""
+    """Route de santé : vérifie que l'API répond et que la base est joignable."""
+    try:
+        await db.query_one("SELECT 1 AS ok")
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "KO", "message": "Base de données injoignable"})
     return {"status": "OK", "message": "Serveur flotte opérationnel"}
 
 

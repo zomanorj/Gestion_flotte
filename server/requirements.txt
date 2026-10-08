@@ -9,3 +9,5 @@ python-dotenv==1.1.0
 httpx==0.28.1
 reportlab==4.4.1
 python-multipart==0.0.20
+tzdata==2025.2
+boto3==1.38.23

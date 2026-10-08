@@ -1,11 +1,10 @@
 # Routes maintenances planifiées — suivi et alertes
-from datetime import date
-
 from fastapi import APIRouter, Request
 
 from .. import db
-from ..auth import Admin, Gestionnaire
+from ..auth import Admin, Connecte, Gestionnaire
 from ..erreurs import ErreurApi
+from ..temps import aujourdhui
 from ..utils import Pagination, corps, ou_none
 
 router = APIRouter()
@@ -21,8 +20,7 @@ def avec_depassee(rows: list[dict]) -> list[dict]:
     return [{**r, "depassee": bool(r["depassee"])} for r in rows]
 
 
-# Lecture libre (pas de token requis)
-@router.get("/alertes")
+@router.get("/alertes", dependencies=[Connecte])
 async def get_alertes():
     """
     Maintenances urgentes :
@@ -46,7 +44,7 @@ async def get_alertes():
     return avec_depassee(rows)
 
 
-@router.get("")
+@router.get("", dependencies=[Connecte])
 async def get_all(
     request: Request,
     statut: str | None = None,
@@ -133,7 +131,7 @@ async def terminer(id: int, request: Request):
         """UPDATE maintenances_planifiees
            SET statut='terminee', date_realisee=%s, cout_reel=%s, notes=%s
            WHERE id=%s""",
-        [b.get("date_realisee") or date.today().isoformat(), ou_none(b.get("cout_reel")), ou_none(b.get("notes")), id],
+        [b.get("date_realisee") or aujourdhui().isoformat(), ou_none(b.get("cout_reel")), ou_none(b.get("notes")), id],
     )
     return await db.query_one(SELECT_MAINTENANCE, [id])
 

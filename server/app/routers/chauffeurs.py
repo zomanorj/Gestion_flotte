@@ -1,16 +1,30 @@
 # Routes chauffeurs — CRUD et historique de missions
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
 from .. import db
-from ..auth import Admin, Connecte, Gestionnaire
+from ..auth import ROLES_GESTION, Admin, Connecte, Gestionnaire, verifier_token
 from ..erreurs import ErreurApi
 from ..utils import Pagination, corps, ou_none
 
 router = APIRouter()
 
+CHAMPS_SALAIRE = ("salaire_base", "prime_mission")
 
-@router.get("", dependencies=[Connecte])
-async def get_all(request: Request, statut: str | None = None, search: str | None = None):
+
+def masquer_salaire(chauffeur: dict, user: dict) -> dict:
+    """La rémunération n'est visible que par la gestion, ou par le chauffeur pour sa propre fiche."""
+    if user["role"] in ROLES_GESTION or chauffeur.get("user_id") == user["id"]:
+        return chauffeur
+    return {k: v for k, v in chauffeur.items() if k not in CHAMPS_SALAIRE}
+
+
+@router.get("")
+async def get_all(
+    request: Request,
+    statut: str | None = None,
+    search: str | None = None,
+    user: dict = Depends(verifier_token),
+):
     """Tous les chauffeurs, avec filtres optionnels ?statut=&search="""
     where, params = " WHERE 1=1", []
     if statut:
@@ -26,13 +40,13 @@ async def get_all(request: Request, statut: str | None = None, search: str | Non
     if pg.actif:
         count = await db.query_one("SELECT COUNT(*) AS total FROM chauffeurs" + where, params)
         rows = await db.query(query + " LIMIT %s OFFSET %s", params + [pg.limit, pg.offset])
-        return pg.reponse(rows, count["total"])
+        return pg.reponse([masquer_salaire(r, user) for r in rows], count["total"])
 
-    return await db.query(query, params)
+    return [masquer_salaire(r, user) for r in await db.query(query, params)]
 
 
-@router.get("/{id}", dependencies=[Connecte])
-async def get_by_id(id: int):
+@router.get("/{id}")
+async def get_by_id(id: int, user: dict = Depends(verifier_token)):
     """Un chauffeur avec ses statistiques de missions."""
     chauffeur = await db.query_one("SELECT * FROM chauffeurs WHERE id = %s", [id])
     if not chauffeur:
@@ -46,7 +60,7 @@ async def get_by_id(id: int):
         FROM missions
         WHERE chauffeur_id = %s
     """, [id])
-    return {**chauffeur, "stats": stats}
+    return {**masquer_salaire(chauffeur, user), "stats": stats}
 
 
 @router.get("/{id}/missions", dependencies=[Connecte])

@@ -17,8 +17,3 @@ CREATE TABLE IF NOT EXISTS clients (
 -- Ajout colonne client_id dans missions
 ALTER TABLE missions ADD COLUMN client_id INT REFERENCES clients(id);
 
-INSERT INTO clients (nom, type, contact_nom, telephone, ville) VALUES
-('COLAS Madagascar',    'entreprise', 'Rakoto Fils',  '034 11 111 11', 'Antananarivo'),
-('Jirama',              'entreprise', 'Rabe Pierre',  '033 22 222 22', 'Toamasina'),
-('Shoprite Madagascar', 'entreprise', 'Randria Jean', '032 33 333 33', 'Antananarivo'),
-('Holcim Madagascar',   'entreprise', 'Razafy Marc',  '034 44 444 44', 'Mahajanga');

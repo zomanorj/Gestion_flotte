@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../services/api';
+import { creerSocket } from '../services/api';
 import L from 'leaflet';
 import { Truck, AlertTriangle, CheckCircle2, Clock, MapPin, Zap, X, Gauge, Route, Timer, Flag } from 'lucide-react';
 
@@ -69,7 +68,7 @@ export default function SimulationMission({ mission, onFermer }) {
   }, [tempsDebut, etat]);
 
   useEffect(() => {
-    socketRef.current = io(SOCKET_URL);
+    socketRef.current = creerSocket();
     const socket = socketRef.current;
 
     socket.on(`mission:${mission.id}:debut`, (data) => {

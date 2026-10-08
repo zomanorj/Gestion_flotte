@@ -10,16 +10,17 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 class ErreurApi(Exception):
     """Erreur métier renvoyée telle quelle au client : { cle: message }."""
 
-    def __init__(self, status: int, message: str, cle: str = "message"):
+    def __init__(self, status: int, message: str, cle: str = "message", headers: dict | None = None):
         self.status = status
         self.message = message
         self.cle = cle
+        self.headers = headers
 
 
 def installer_gestionnaires(app: FastAPI) -> None:
     @app.exception_handler(ErreurApi)
     async def _erreur_api(_req: Request, exc: ErreurApi):
-        return JSONResponse(status_code=exc.status, content={exc.cle: exc.message})
+        return JSONResponse(status_code=exc.status, content={exc.cle: exc.message}, headers=exc.headers)
 
     @app.exception_handler(StarletteHTTPException)
     async def _http(_req: Request, exc: StarletteHTTPException):

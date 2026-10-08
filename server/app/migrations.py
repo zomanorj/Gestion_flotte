@@ -1,5 +1,8 @@
 # Auto-migration au démarrage — compatible MySQL 5.7+
+import os
+
 from . import db
+from .auth import hacher_mdp
 
 
 async def colonne_existe(table: str, colonne: str) -> bool:
@@ -48,6 +51,8 @@ async def appliquer_migrations() -> None:
     try:
         # ── Colonnes users ──────────────────────────────────────────────────────
         await ajouter_colonne("users", "is_active", "TINYINT(1) NOT NULL DEFAULT 1 AFTER role")
+        # Incrémentée pour révoquer tous les tokens d'un compte (voir auth.py)
+        await ajouter_colonne("users", "token_version", "INT NOT NULL DEFAULT 0 AFTER is_active")
 
         # ── Colonnes chauffeurs ─────────────────────────────────────────────────
         await ajouter_colonne("chauffeurs", "salaire_base",  "DECIMAL(10,2) DEFAULT 800000 AFTER statut")
@@ -106,6 +111,23 @@ async def appliquer_migrations() -> None:
             print("[Migration] + table mission_salaires")
             ok += 1
 
+        # ── Table notification_etats : lu / supprimé par utilisateur ─────────────
+        if not await table_existe("notification_etats"):
+            await db.execute("""
+                CREATE TABLE notification_etats (
+                  notification_id INT NOT NULL,
+                  user_id         INT NOT NULL,
+                  est_lue         TINYINT(1) NOT NULL DEFAULT 0,
+                  supprimee       TINYINT(1) NOT NULL DEFAULT 0,
+                  updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (notification_id, user_id),
+                  FOREIGN KEY (notification_id) REFERENCES notifications(id) ON DELETE CASCADE,
+                  FOREIGN KEY (user_id)         REFERENCES users(id)         ON DELETE CASCADE
+                ) ENGINE=InnoDB
+            """)
+            print("[Migration] + table notification_etats")
+            ok += 1
+
         # ── Indexes de performance ───────────────────────────────────────────────
         await ajouter_index("missions",                "idx_missions_statut",   "statut")
         await ajouter_index("missions",                "idx_missions_date",     "date_depart")
@@ -113,8 +135,45 @@ async def appliquer_migrations() -> None:
         await ajouter_index("depenses",                "idx_depenses_date",     "date_depense")
         await ajouter_index("documents",               "idx_documents_exp",     "date_expiration")
         await ajouter_index("maintenances_planifiees", "idx_maintenances_date", "date_prevue")
+        # Détection des chevauchements de missions (camion / chauffeur + statut + période)
+        await ajouter_index("missions",      "idx_missions_vehicule_periode",  "vehicule_id, statut, date_depart")
+        await ajouter_index("missions",      "idx_missions_chauffeur_periode", "chauffeur_id, statut, date_depart")
+        await ajouter_index("notifications", "idx_notifications_user_date",    "user_id, created_at")
 
-        print(f"[Migration] ✅ {ok} changement(s) appliqué(s)")
+        print(f"[Migration] {ok} changement(s) appliqué(s)")
     except Exception as err:
-        print("[Migration] ❌ Erreur :", err)
+        print("[Migration] Erreur :", err)
         raise
+
+
+async def initialiser_admin() -> None:
+    """
+    Garantit qu'un administrateur actif existe.
+    Sur une base vide (production), le premier compte admin est créé à partir de
+    ADMIN_EMAIL / ADMIN_PASSWORD (et ADMIN_NOM, optionnel). Sans ces variables, l'API
+    démarre quand même mais signale qu'aucun admin ne peut se connecter.
+    """
+    if await db.query_one("SELECT id FROM users WHERE role = 'admin' AND is_active = 1 LIMIT 1"):
+        return
+
+    email = (os.getenv("ADMIN_EMAIL") or "").strip().lower()
+    password = os.getenv("ADMIN_PASSWORD") or ""
+    if not email or len(password) < 8:
+        print("[Admin] ATTENTION : aucun administrateur actif. Définissez ADMIN_EMAIL et "
+              "ADMIN_PASSWORD (8 caractères minimum) puis redémarrez.")
+        return
+
+    hash_ = await hacher_mdp(password)
+    existant = await db.query_one("SELECT id FROM users WHERE email = %s", [email])
+    if existant:
+        await db.execute(
+            "UPDATE users SET role = 'admin', is_active = 1, password_hash = %s, "
+            "token_version = token_version + 1 WHERE id = %s",
+            [hash_, existant["id"]],
+        )
+    else:
+        await db.execute(
+            "INSERT INTO users (nom, email, password_hash, role) VALUES (%s, %s, %s, 'admin')",
+            [os.getenv("ADMIN_NOM", "Administrateur"), email, hash_],
+        )
+    print(f"[Admin] Compte administrateur {email} initialisé")

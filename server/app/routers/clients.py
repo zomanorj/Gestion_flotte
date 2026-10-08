@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Request
 
 from .. import db
-from ..auth import Admin, Gestionnaire
+from ..auth import Admin, Connecte, Gestionnaire
 from ..erreurs import ErreurApi
 from ..utils import Pagination, corps, ou_none
 
@@ -16,8 +16,7 @@ def valeurs_client(b: dict) -> list:
     ]
 
 
-# Lecture libre (pas de token requis)
-@router.get("")
+@router.get("", dependencies=[Connecte])
 async def get_all(request: Request):
     """Tous les clients avec le nombre de missions associées."""
     rows = await db.query("""
@@ -37,7 +36,7 @@ async def get_all(request: Request):
     return rows
 
 
-@router.get("/{id}/missions")
+@router.get("/{id}/missions", dependencies=[Connecte])
 async def get_missions(id: int):
     """Historique des missions d'un client donné."""
     client = await db.query_one("SELECT id, nom FROM clients WHERE id = %s", [id])
@@ -87,9 +86,9 @@ async def update(id: int, request: Request):
 @router.delete("/{id}", dependencies=[Admin])
 async def remove(id: int):
     """Supprime un client (les missions liées gardent client_id = NULL)."""
-    if not await db.query("SELECT id FROM clients WHERE id = %s", [id]):
-        raise ErreurApi(404, "Client introuvable")
-
-    await db.execute("UPDATE missions SET client_id = NULL WHERE client_id = %s", [id])
-    await db.execute("DELETE FROM clients WHERE id = %s", [id])
+    async with db.transaction() as tx:
+        if not await tx.query("SELECT id FROM clients WHERE id = %s FOR UPDATE", [id]):
+            raise ErreurApi(404, "Client introuvable")
+        await tx.execute("UPDATE missions SET client_id = NULL WHERE client_id = %s", [id])
+        await tx.execute("DELETE FROM clients WHERE id = %s", [id])
     return {"message": "Client supprimé"}

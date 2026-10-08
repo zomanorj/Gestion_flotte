@@ -2,11 +2,17 @@
 #
 # Les requêtes utilisent le style de paramètres %s de PyMySQL.
 # Sans paramètres (params=None), les % littéraux du SQL (DATE_FORMAT, LIKE…) sont laissés tels quels.
+#
+# Écritures sur plusieurs tables : toujours dans `async with db.transaction() as tx:`
+# (tx expose query / query_one / execute ; commit à la sortie, rollback sur exception).
 import os
+from contextlib import asynccontextmanager
 from decimal import Decimal
-from urllib.parse import urlparse, unquote
+from urllib.parse import unquote, urlparse
 
 import aiomysql
+
+from .temps import decalage_mysql
 
 _pool: aiomysql.Pool | None = None
 
@@ -41,8 +47,11 @@ async def connecter() -> None:
         charset="utf8mb4",
         autocommit=True,
         cursorclass=aiomysql.DictCursor,
+        # CURDATE() / NOW() en heure locale de l'application, pas celle du serveur MySQL
+        init_command=f"SET time_zone = '{decalage_mysql()}'",
+        pool_recycle=3600,
     )
-    print("✅ Connexion MySQL établie")
+    print("[DB] Connexion MySQL établie")
 
 
 async def fermer() -> None:
@@ -56,13 +65,44 @@ def _normaliser(row: dict) -> dict:
     return {k: float(v) if isinstance(v, Decimal) else v for k, v in row.items()}
 
 
+class Connexion:
+    """Accès SQL sur une connexion donnée (utilisé pour les transactions)."""
+
+    def __init__(self, conn: aiomysql.Connection):
+        self._conn = conn
+
+    async def query(self, sql: str, params: list | tuple | None = None) -> list[dict]:
+        async with self._conn.cursor() as cur:
+            await cur.execute(sql, params)
+            return [_normaliser(r) for r in await cur.fetchall()]
+
+    async def query_one(self, sql: str, params: list | tuple | None = None) -> dict | None:
+        rows = await self.query(sql, params)
+        return rows[0] if rows else None
+
+    async def execute(self, sql: str, params: list | tuple | None = None) -> int:
+        """Exécute une écriture et retourne l'id inséré (lastrowid)."""
+        async with self._conn.cursor() as cur:
+            await cur.execute(sql, params)
+            return cur.lastrowid
+
+
+@asynccontextmanager
+async def transaction():
+    async with _pool.acquire() as conn:
+        await conn.begin()
+        try:
+            yield Connexion(conn)
+            await conn.commit()
+        except BaseException:
+            await conn.rollback()
+            raise
+
+
 async def query(sql: str, params: list | tuple | None = None) -> list[dict]:
     """Exécute une requête de lecture et retourne la liste des lignes (dict)."""
     async with _pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(sql, params)
-            rows = await cur.fetchall()
-            return [_normaliser(r) for r in rows]
+        return await Connexion(conn).query(sql, params)
 
 
 async def query_one(sql: str, params: list | tuple | None = None) -> dict | None:
@@ -71,8 +111,6 @@ async def query_one(sql: str, params: list | tuple | None = None) -> dict | None
 
 
 async def execute(sql: str, params: list | tuple | None = None) -> int:
-    """Exécute une requête d'écriture et retourne l'id inséré (lastrowid)."""
+    """Exécute une requête d'écriture (autocommit) et retourne l'id inséré (lastrowid)."""
     async with _pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(sql, params)
-            return cur.lastrowid
+        return await Connexion(conn).execute(sql, params)

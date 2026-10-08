@@ -7,3 +7,9 @@ for f in schema migrate_modules migrate_maintenances migrate_clients migrate_v2 
   echo "[init] $f.sql"
   mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" < "/sql/$f.sql"
 done
+
+# Données de démonstration : uniquement en local (SEED_DEMO=1), jamais en production
+if [ "${SEED_DEMO:-0}" = "1" ]; then
+  echo "[init] seed_demo.sql"
+  mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" < /sql/seed_demo.sql
+fi

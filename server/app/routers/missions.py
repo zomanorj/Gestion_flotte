@@ -6,9 +6,10 @@ from .. import db
 from ..auth import Admin, Connecte, Gestionnaire
 from ..erreurs import ErreurApi
 from ..services.bon_livraison import generer_bon_livraison
+from ..services.missions import liberer_ressources, occuper_ressources, verifier_disponibilite, verifier_transition
 from ..services.simulation import arreter_simulation
 from ..socket import sio
-from ..utils import Pagination, corps, ou_none
+from ..utils import Pagination, corps, date_heure, ou_none
 
 router = APIRouter()
 
@@ -126,83 +127,80 @@ async def bon_livraison(id: int):
 
 @router.post("", status_code=201, dependencies=[Gestionnaire])
 async def create(request: Request):
-    """Crée une nouvelle mission après vérification de la disponibilité du véhicule et du chauffeur."""
+    """
+    Crée une mission planifiée. Le camion et le chauffeur ne doivent avoir aucune autre
+    mission active sur la même période (vérifié en transaction, ressources verrouillées).
+    """
     b = await corps(request)
     requis = ("titre", "vehicule_id", "chauffeur_id", "lieu_depart", "lieu_destination",
               "date_depart", "date_retour_prevue")
     if not all(b.get(k) for k in requis):
         raise ErreurApi(400, "Champs obligatoires manquants")
 
-    vehicule = await db.query_one("SELECT id, statut FROM vehicules WHERE id = %s", [b["vehicule_id"]])
-    if not vehicule:
-        raise ErreurApi(404, "Camion introuvable")
-    if vehicule["statut"] != "disponible":
-        raise ErreurApi(409, f"Le camion n'est pas disponible (statut : {vehicule['statut']})")
+    debut = date_heure(b["date_depart"], "date_depart")
+    fin = date_heure(b["date_retour_prevue"], "date_retour_prevue")
 
-    chauffeur = await db.query_one("SELECT id, statut FROM chauffeurs WHERE id = %s", [b["chauffeur_id"]])
-    if not chauffeur:
-        raise ErreurApi(404, "Chauffeur introuvable")
-    if chauffeur["statut"] != "disponible":
-        raise ErreurApi(409, f"Le chauffeur n'est pas disponible (statut : {chauffeur['statut']})")
+    async with db.transaction() as tx:
+        await verifier_disponibilite(tx, b["vehicule_id"], b["chauffeur_id"], debut, fin)
+        new_id = await tx.execute(
+            """INSERT INTO missions
+                 (titre, vehicule_id, chauffeur_id, lieu_depart, lieu_destination,
+                  distance_km, date_depart, date_retour_prevue, notes, poids_charge, statut)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'planifiee')""",
+            [
+                b["titre"], b["vehicule_id"], b["chauffeur_id"], b["lieu_depart"], b["lieu_destination"],
+                b.get("distance_km") or 0, debut, fin,
+                ou_none(b.get("notes")), ou_none(b.get("poids_charge")),
+            ],
+        )
 
-    new_id = await db.execute(
-        """INSERT INTO missions
-             (titre, vehicule_id, chauffeur_id, lieu_depart, lieu_destination,
-              distance_km, date_depart, date_retour_prevue, notes, poids_charge, statut)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'planifiee')""",
-        [
-            b["titre"], b["vehicule_id"], b["chauffeur_id"], b["lieu_depart"], b["lieu_destination"],
-            b.get("distance_km") or 0, b["date_depart"], b["date_retour_prevue"],
-            ou_none(b.get("notes")), ou_none(b.get("poids_charge")),
-        ],
-    )
-
-    # Notifier via Socket.io les autres clients connectés
+    # Émis après le commit : les autres clients rechargent des données déjà visibles
     await sio.emit("mission:nouvelle", {"id": new_id, "titre": b["titre"]})
-
     return await db.query_one(SELECT_MISSION_RESUME, [new_id])
 
 
 @router.put("/{id}/statut", dependencies=[Gestionnaire])
 async def update_statut(id: int, request: Request):
     """
-    Met à jour le statut d'une mission et synchronise véhicule + chauffeur.
-    Calcule le coût carburant lors de la clôture.
+    Fait avancer le cycle de vie : planifiee → en_cours | annulee, en_cours → terminee | annulee.
+    Synchronise camion + chauffeur et calcule le coût carburant à la clôture.
     """
     statut = (await corps(request)).get("statut")
     statuts_valides = ["en_cours", "terminee", "annulee"]
     if not statut or statut not in statuts_valides:
         raise ErreurApi(400, f"Statut invalide. Valeurs acceptées : {', '.join(statuts_valides)}")
 
-    mission = await db.query_one("SELECT * FROM missions WHERE id = %s", [id])
-    if not mission:
-        raise ErreurApi(404, "Mission introuvable")
+    async with db.transaction() as tx:
+        mission = await tx.query_one("SELECT * FROM missions WHERE id = %s FOR UPDATE", [id])
+        if not mission:
+            raise ErreurApi(404, "Mission introuvable")
+        verifier_transition(mission["statut"], statut)
 
-    update_mission, params_mission = "UPDATE missions SET statut = %s", [statut]
+        update_mission, params_mission = "UPDATE missions SET statut = %s", [statut]
 
-    if statut == "en_cours":
-        statut_ressources = "en_mission"
-    else:
-        # terminee ou annulee : camion et chauffeur redeviennent disponibles
-        statut_ressources = "disponible"
+        if statut == "terminee":
+            # Coût carburant : distance × consommation × prix/litre
+            vehicule = await tx.query_one(
+                "SELECT consommation_litre_km FROM vehicules WHERE id = %s", [mission["vehicule_id"]]
+            )
+            consommation = (vehicule or {}).get("consommation_litre_km") or 0.08
+            cout_carburant = round((mission["distance_km"] or 0) * consommation * PRIX_LITRE_ARIARY, 2)
+            update_mission += ", date_retour_reelle = NOW(), cout_carburant = %s"
+            params_mission.append(cout_carburant)
 
-    if statut == "terminee":
-        # Calcul du coût carburant : distance × consommation × prix/litre
-        vehicule = await db.query_one(
-            "SELECT consommation_litre_km FROM vehicules WHERE id = %s", [mission["vehicule_id"]]
-        )
-        consommation = (vehicule or {}).get("consommation_litre_km") or 0.08
-        cout_carburant = round((mission["distance_km"] or 0) * consommation * PRIX_LITRE_ARIARY, 2)
-        update_mission += ", date_retour_reelle = NOW(), cout_carburant = %s"
-        params_mission.append(cout_carburant)
+        await tx.execute(update_mission + " WHERE id = %s", params_mission + [id])
 
-    await db.execute(update_mission + " WHERE id = %s", params_mission + [id])
-    await db.execute("UPDATE vehicules SET statut = %s WHERE id = %s", [statut_ressources, mission["vehicule_id"]])
-    await db.execute("UPDATE chauffeurs SET statut = %s WHERE id = %s", [statut_ressources, mission["chauffeur_id"]])
+        if statut == "en_cours":
+            await occuper_ressources(tx, mission)
+        elif mission["statut"] == "en_cours":
+            # terminee / annulee depuis en_cours : les ressources étaient occupées
+            await liberer_ressources(tx, mission)
+
+    if statut != "en_cours":
+        arreter_simulation(str(id))
 
     # Événement temps réel
     await sio.emit("mission:statut", {"id": id, "statut": statut})
-
     return await db.query_one(SELECT_MISSION_RESUME, [id])
 
 
@@ -213,14 +211,13 @@ async def remove(id: int):
     Si la mission est en cours : remet camion + chauffeur à "disponible"
     et arrête la simulation si elle est active.
     """
-    mission = await db.query_one("SELECT * FROM missions WHERE id = %s", [id])
-    if not mission:
-        raise ErreurApi(404, "Mission introuvable")
+    async with db.transaction() as tx:
+        mission = await tx.query_one("SELECT * FROM missions WHERE id = %s FOR UPDATE", [id])
+        if not mission:
+            raise ErreurApi(404, "Mission introuvable")
+        if mission["statut"] == "en_cours":
+            await liberer_ressources(tx, mission)
+        await tx.execute("DELETE FROM missions WHERE id = %s", [id])
 
-    if mission["statut"] == "en_cours":
-        await db.execute("UPDATE vehicules  SET statut = 'disponible' WHERE id = %s", [mission["vehicule_id"]])
-        await db.execute("UPDATE chauffeurs SET statut = 'disponible' WHERE id = %s", [mission["chauffeur_id"]])
-        arreter_simulation(str(id))
-
-    await db.execute("DELETE FROM missions WHERE id = %s", [id])
+    arreter_simulation(str(id))
     return {"message": "Mission supprimée"}

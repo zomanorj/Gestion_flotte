@@ -1,9 +1,10 @@
 // Service axios — configuration globale des appels API
 import axios from 'axios';
+import { io } from 'socket.io-client';
 
 // Socket.io : même origine par défaut (proxy Vite en dev, nginx en Docker),
 // ou VITE_SOCKET_URL quand l'API est sur un autre domaine (Vercel + Railway)
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -22,7 +23,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Un 401 sur /auth/login signifie "identifiants incorrects" : on laisse la page l'afficher
+    const estLogin = error.config?.url?.endsWith('/auth/login');
+    if (error.response?.status === 401 && !estLogin) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -52,5 +55,15 @@ export const telechargerFichier = async (chemin, nomFichier) => {
   lien.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
+
+/**
+ * Ouvre une connexion Socket.io authentifiée.
+ * Le token est relu à chaque (re)connexion : un token renouvelé est pris en compte
+ * sans recréer le socket.
+ */
+export const creerSocket = () =>
+  io(SOCKET_URL, {
+    auth: (cb) => cb({ token: localStorage.getItem('token') })
+  });
 
 export default api;

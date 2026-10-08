@@ -1,4 +1,6 @@
 # Utilitaires partagés : lecture du corps JSON, pagination, conversions
+from datetime import datetime
+
 from fastapi import Request
 
 from .erreurs import ErreurApi
@@ -59,3 +61,16 @@ class Pagination:
 
 def introuvable(message: str) -> ErreurApi:
     return ErreurApi(404, message)
+
+
+def date_heure(valeur, champ: str) -> datetime:
+    """
+    Parse une date ou date-heure ISO venant du client ('2026-10-08', '2026-10-08T08:00',
+    '2026-10-08 08:00:00'). Lève 400 avec le nom du champ si le format est invalide.
+    """
+    if isinstance(valeur, str):
+        try:
+            return datetime.fromisoformat(valeur.strip().replace("Z", "")).replace(tzinfo=None)
+        except ValueError:
+            pass
+    raise ErreurApi(400, f"Date invalide pour {champ}")

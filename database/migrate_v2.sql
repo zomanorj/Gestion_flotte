@@ -80,23 +80,3 @@ ALTER TABLE clients ADD COLUMN site_web      VARCHAR(200);
 ALTER TABLE clients ADD COLUMN secteur       VARCHAR(100);
 ALTER TABLE clients ADD COLUMN limite_credit DECIMAL(12,2) DEFAULT 0;
 
--- ── Nettoyage des données de test ─────────────────────────────────────────────
-SET FOREIGN_KEY_CHECKS = 0;
-TRUNCATE TABLE mission_evenements;
-TRUNCATE TABLE mission_salaires;
-TRUNCATE TABLE carburant_historique;
-TRUNCATE TABLE carburant;
-TRUNCATE TABLE depenses;
-TRUNCATE TABLE documents;
-TRUNCATE TABLE maintenances_planifiees;
-TRUNCATE TABLE alertes;
-TRUNCATE TABLE notifications;
-TRUNCATE TABLE missions;
-TRUNCATE TABLE chauffeurs;
-TRUNCATE TABLE vehicules;
-TRUNCATE TABLE clients;
-SET FOREIGN_KEY_CHECKS = 1;
-
--- ── Garde uniquement l'admin ──────────────────────────────────────────────────
-DELETE FROM users WHERE role != 'admin';
-UPDATE users SET nom = 'Administrateur', email = 'admin@flotte.mg' WHERE role = 'admin';

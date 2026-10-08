@@ -33,6 +33,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Remplace le token courant (ex. renvoyé après un changement de son propre mot de passe)
+  const majToken = (nouveauToken) => {
+    setToken(nouveauToken);
+    localStorage.setItem('token', nouveauToken);
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -41,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, majToken }}>
       {children}
     </AuthContext.Provider>
   );

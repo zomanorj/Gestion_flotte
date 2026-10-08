@@ -1,9 +1,9 @@
 # Routes paie chauffeurs — bulletins et masse salariale
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
 from .. import db
-from ..auth import Connecte, Gestionnaire
+from ..auth import ROLES_GESTION, Gestionnaire, verifier_token
 from ..erreurs import ErreurApi
 from ..services.paie import ChauffeurIntrouvable, calculer_fiche_paie, generer_bulletin_pdf, resume_mensuel
 from ..utils import corps
@@ -40,9 +40,13 @@ async def get_chauffeur_mensuel(id: int, annee: int, mois: int):
     return await _fiche(id, annee, mois)
 
 
-@router.get("/chauffeur/{id}/{annee}/{mois}/pdf", dependencies=[Connecte])
-async def get_bulletin_pdf(id: int, annee: int, mois: int):
-    """Bulletin PDF d'un chauffeur."""
+@router.get("/chauffeur/{id}/{annee}/{mois}/pdf")
+async def get_bulletin_pdf(id: int, annee: int, mois: int, user: dict = Depends(verifier_token)):
+    """Bulletin PDF d'un chauffeur : gestion, ou le chauffeur lui-même pour son propre bulletin."""
+    if user["role"] not in ROLES_GESTION:
+        proprietaire = await db.query_one("SELECT user_id FROM chauffeurs WHERE id = %s", [id])
+        if not proprietaire or proprietaire["user_id"] != user["id"]:
+            raise ErreurApi(403, "Accès refusé : ce bulletin ne vous appartient pas")
     fiche = await _fiche(id, annee, mois)
     nom_fichier = f"bulletin_{fiche['chauffeur']['nom']}_{mois}_{annee}.pdf"
     return Response(
