@@ -96,21 +96,15 @@ Authentification par token JWT (expiration 24 h). Trois rôles appliqués côté
 
 ```
 flotte-app/
-├── database/
-│   ├── schema.sql                     # Schéma initial + données de démonstration
-│   ├── migrate_modules.sql            # Carburant, dépenses, documents
-│   ├── migrate_maintenances.sql       # Maintenances planifiées
-│   ├── migrate_clients.sql            # Clients + client_id sur missions
-│   ├── migrate_v2.sql                 # Salaires, événements, historique carburant
-│   └── migrate_phase3.sql             # Utilisateurs, paie, upload, notifications
-│
 ├── server/                            # API REST Python + FastAPI + Socket.io
 │   ├── main.py                        # Point d'entrée : app FastAPI + Socket.io (ASGI), migrations, CORS
+│   ├── migrations/versions/           # Migrations du schéma (Alembic), appliquées au démarrage
+│   ├── donnees/demo.sql               # Données de démonstration (SEED_DEMO=1)
 │   ├── requirements.txt
 │   ├── Procfile                       # Commande de démarrage (Railway)
 │   └── app/
 │       ├── db.py                      # Pool aiomysql, transactions (MYSQL_URL ou variables DB_*)
-│       ├── migrations.py              # Migrations idempotentes appliquées au démarrage
+│       ├── migrations.py              # Application des migrations, reprise des bases historiques
 │       ├── auth.py                    # JWT, vérification du compte à chaque requête, rôles
 │       ├── exceptions.py              # Exceptions métier (introuvable, conflit, accès refusé…)
 │       ├── erreurs.py                 # Traduction en réponses HTTP { message }
@@ -167,7 +161,7 @@ docker compose up --build
 # L'application est disponible sur http://localhost:8080
 ```
 
-Au premier démarrage, MySQL 8 exécute les scripts de `database/` dans l'ordre (`database/docker-init.sh`). nginx sert le client React et relaie `/api` et `/socket.io` vers le backend. Les données MySQL et les fichiers uploadés sont gardés dans des volumes Docker (`docker compose down -v` remet tout à zéro).
+Au démarrage, l'API crée ou met à jour le schéma de la base (migrations versionnées) puis charge les données de démonstration si la base est vide. nginx sert le client React et relaie `/api` et `/socket.io` vers le backend. Les données MySQL et les fichiers uploadés sont gardés dans des volumes Docker (`docker compose down -v` remet tout à zéro).
 
 Variables optionnelles (dans un fichier `.env` à la racine) : `JWT_SECRET`, `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `APP_PORT` (8080 par défaut), `SEED_DEMO` (1 par défaut : données et comptes de démonstration), `ADMIN_EMAIL` / `ADMIN_PASSWORD` (premier administrateur quand `SEED_DEMO=0`).
 
@@ -187,20 +181,14 @@ Variables optionnelles (dans un fichier `.env` à la racine) : `JWT_SECRET`, `MY
 git clone https://github.com/zomanorj/Gestion_flotte.git
 cd Gestion_flotte
 
-# 2. Initialiser la base de données (structure)
-mysql -u root -p < database/schema.sql
-mysql -u root -p flotte_db < database/migrate_modules.sql
-mysql -u root -p flotte_db < database/migrate_maintenances.sql
-mysql -u root -p flotte_db < database/migrate_clients.sql
-mysql -u root -p flotte_db < database/migrate_v2.sql
-mysql -u root -p flotte_db < database/migrate_phase3.sql
-# Optionnel, en local uniquement : données et comptes de démonstration
-mysql -u root -p flotte_db < database/seed_demo.sql
+# 2. Créer une base vide (les tables sont créées par l'API au démarrage)
+mysql -u root -p -e "CREATE DATABASE flotte_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 
 # 3. Configurer le backend
 cp server/.env.example server/.env
 # Renseigner DB_*, JWT_SECRET, CLIENT_URL
-# Sans seed_demo.sql : renseigner ADMIN_EMAIL / ADMIN_PASSWORD pour créer le premier administrateur
+# SEED_DEMO=1 pour les données de démonstration en local,
+# sinon ADMIN_EMAIL / ADMIN_PASSWORD pour créer le premier administrateur
 
 # 4. Démarrer le backend (port 5000)
 cd server
@@ -237,9 +225,21 @@ UPLOADS_DIR=
 
 La liste complète et commentée est dans `server/.env.example`.
 
+### Faire évoluer le schéma de la base
+
+Toute modification passe par une révision Alembic dans `server/migrations/versions/`, appliquée automatiquement au démarrage de l'API (verrou MySQL : une seule instance migre à la fois).
+
+```bash
+cd server
+.venv/bin/alembic revision --rev-id 0003 -m "description du changement"   # puis écrire upgrade() et downgrade()
+.venv/bin/alembic upgrade head        # appliquer (sinon : au prochain démarrage)
+.venv/bin/alembic downgrade -1        # défaire la dernière révision
+.venv/bin/alembic history             # liste des révisions
+```
+
 ### Mise en production (Railway)
 
-- **Base** : importer `railway_import.sql` (structure uniquement, aucune donnée de démonstration).
+- **Base** : rien à importer. Au démarrage, l'API crée le schéma sur une base vide, ou met à jour une base existante (une base créée avant les migrations versionnées est reconnue, complétée puis versionnée automatiquement).
 - **Premier administrateur** : définir `ADMIN_EMAIL` et `ADMIN_PASSWORD` ; il est créé au démarrage si aucun admin actif n'existe.
 - **Fichiers uploadés** : le disque d'un conteneur est effacé à chaque redéploiement. Utiliser un volume Railway monté sur `UPLOADS_DIR`, ou un stockage S3 (Cloudflare R2, AWS S3) avec `STOCKAGE=s3`.
 - **Proxy** : définir `FORWARDED_ALLOW_IPS=*` pour que l'API voie l'adresse IP réelle des clients (nécessaire à la protection contre la force brute).
@@ -271,7 +271,7 @@ Détails dans `server/tests/README.md`. À chaque push et pull request, GitHub A
 
 ## Comptes de démonstration
 
-Disponibles uniquement si `database/seed_demo.sql` a été chargé (automatique avec Docker, `SEED_DEMO=1`) :
+Disponibles uniquement si l'API a démarré avec `SEED_DEMO=1` sur une base sans aucun compte (valeur par défaut avec Docker) : elle charge alors `server/donnees/demo.sql`.
 
 | Email | Mot de passe | Rôle |
 |-------|-------------|------|
@@ -280,11 +280,6 @@ Disponibles uniquement si `database/seed_demo.sql` a été chargé (automatique 
 | chauffeur@flotte.mg | password123 | Chauffeur |
 
 Ne jamais charger ces données en production.
-
--------|-------------|------|
-| admin@flotte.mg | password123 | Admin |
-
-`schema.sql` crée aussi `gestionnaire@flotte.mg` et `chauffeur@flotte.mg`, mais `migrate_v2.sql` remet la base à zéro et ne garde que l'admin. Les autres comptes se créent depuis la page Utilisateurs.
 
 ---
 

@@ -8,13 +8,9 @@ services:
       MYSQL_DATABASE: flotte_db
       MYSQL_USER: flotte
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-flotte}
-      # 1 = charge database/seed_demo.sql au premier démarrage (comptes de démo en password123)
-      SEED_DEMO: ${SEED_DEMO:-1}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./database:/sql:ro
-      - ./database/docker-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 5s
@@ -34,7 +30,10 @@ services:
       # Origine du navigateur (nginx) — contrôlée par CORS et par Socket.io
       CLIENT_URL: http://localhost:${APP_PORT:-8080}
       APP_TIMEZONE: ${APP_TIMEZONE:-Indian/Antananarivo}
-      # Premier administrateur, créé seulement si aucun admin actif n'existe (base sans seed)
+      # Le schéma est créé et mis à jour par l'API au démarrage (migrations Alembic).
+      # 1 = données de démonstration chargées si la base n'a aucun compte (comptes en password123)
+      SEED_DEMO: ${SEED_DEMO:-1}
+      # Premier administrateur, créé seulement si aucun admin actif n'existe (base sans démo)
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       # nginx est le seul proxy devant l'API sur le réseau Docker

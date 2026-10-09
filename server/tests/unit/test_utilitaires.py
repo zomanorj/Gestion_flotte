@@ -7,9 +7,9 @@ from app.pdf.base import montant_fr, tronquer
 from app.repositories.base import Conditions, Plage, Resultat
 from app.services.evenement import generer_evenements
 from app.services.route import VILLES_MADAGASCAR, calculer_distance, decimer_points, route_ligne_droite
+from app.sql_outils import instructions_sql
 from app.temps import decalage_mysql
 from app.utils import Pagination
-from tests.conftest import instructions_sql
 
 
 class TestPagination:

@@ -10,9 +10,10 @@ tests/
 `unit/test_architecture.py` analyse les imports du code : un router qui importe `db` ou un
 repository, un service qui importe FastAPI, ou du SQL hors des repositories fait échouer la CI.
 
-Les tests d'intégration créent une base MySQL jetable, y exécutent les scripts du dépôt
-(`database/schema.sql`, migrations, `seed_demo.sql`), lancent l'API dans un sous-processus,
-puis suppriment la base. Aucun accès Internet n'est nécessaire (OSRM est désactivé : l'API
+Les tests d'intégration créent une base MySQL vide, lancent l'API dans un sous-processus (qui
+crée le schéma avec les migrations Alembic et charge les données de démonstration), puis
+suppriment la base. `integration/test_migrations.py` vérifie en plus qu'une base créée par
+les anciens scripts (`donnees/historique/`) migre vers un schéma identique à une base neuve. Aucun accès Internet n'est nécessaire (OSRM est désactivé : l'API
 utilise son tracé de secours).
 
 ## Lancer les tests en local

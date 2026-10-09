@@ -37,9 +37,9 @@ docker run -d --name flotte-test-db -e MYSQL_ROOT_PASSWORD=test -p 3307:3306 --t
 .venv/bin/ruff check .
 ```
 
-Integration tests create a throwaway database from the repo's SQL files (so SQL changes are tested too), start uvicorn in a subprocess with `--proxy-headers`, and call it over HTTP/Socket.io. Tests must create their own data through the fixtures in `tests/conftest.py` (`unique()` ids) and never depend on order; tests that trigger failed logins use their own account. CI (`.github/workflows/ci.yml`) runs ruff, pytest, the frontend build and a Docker stack smoke test. No frontend tests or linter yet. Swagger is at `/docs`.
+Integration tests create an empty throwaway database, start uvicorn (which builds the schema with the Alembic migrations and loads the demo data, so migrations are tested on every run) in a subprocess with `--proxy-headers`, and call it over HTTP/Socket.io. Tests must create their own data through the fixtures in `tests/conftest.py` (`unique()` ids) and never depend on order; tests that trigger failed logins use their own account. CI (`.github/workflows/ci.yml`) runs ruff, pytest, the frontend build and a Docker stack smoke test. No frontend tests or linter yet. Swagger is at `/docs`.
 
-Demo accounts (`admin@`, `gestionnaire@`, `chauffeur@flotte.mg`, all `password123`) exist only when `database/seed_demo.sql` is loaded (Docker does it when `SEED_DEMO=1`, the default). Without seed, the first admin is created at startup from `ADMIN_EMAIL` / `ADMIN_PASSWORD` (`initialiser_admin` in `migrations.py`).
+Demo accounts (`admin@`, `gestionnaire@`, `chauffeur@flotte.mg`, all `password123`) exist only when the API starts with `SEED_DEMO=1` on a database with no user: it then loads `server/donnees/demo.sql` (`app/demarrage.py`; Docker Compose sets `SEED_DEMO=1` by default). Without demo data, the first admin is created at startup from `ADMIN_EMAIL` / `ADMIN_PASSWORD` (`initialiser_admin`).
 
 ## Database
 
@@ -47,10 +47,10 @@ Demo accounts (`admin@`, `gestionnaire@`, `chauffeur@flotte.mg`, all `password12
 - SQL uses PyMySQL `%s` placeholders. When `params` is passed, literal `%` in the SQL must be doubled; queries with `DATE_FORMAT(..., '%Y-%m')` or `LIKE CONCAT('%', …)` are run without params so the `%` stays as is.
 - `DECIMAL` values are converted to `float` in `db.py`, so they come out as JSON numbers and can be used directly in Python arithmetic.
 - Each session runs `SET time_zone` to the offset of `APP_TIMEZONE` (default `Indian/Antananarivo`), so `NOW()`/`CURDATE()` are local time even though containers run in UTC. In Python use `app/temps.py` (`maintenant()`, `aujourdhui()`), never `date.today()`/`datetime.now()`.
-- SQL files hold structure only; all demo data lives in `database/seed_demo.sql`. Never add `INSERT`/`TRUNCATE` to the schema or migration files.
-- New install: `database/schema.sql`, then the `migrate_*.sql` files in the order of `database/docker-init.sh` (that script is what the Docker MySQL runs on first start). SQL files must stay compatible with MySQL 5.7/8: no MariaDB-only `ADD COLUMN IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` (see the helper procedures in `migrate_phase3.sql`).
-- `railway_import.sql` (root and `database/`, identical) is the concatenation of those files without `CREATE DATABASE`/`USE`; regenerate it when a source SQL file changes.
-- **Schema changes go through `server/app/migrations.py`.** On startup (FastAPI lifespan), `appliquer_migrations()` runs idempotent helpers (`ajouter_colonne`, `ajouter_index`, `table_existe`) before requests are served. Add new columns, tables and indexes there so existing databases (including production) upgrade on the next boot.
+- **The schema is defined only by Alembic revisions** in `server/migrations/versions/` (raw SQL through `op.execute`, no SQLAlchemy models, no autogenerate). `0001_socle` is the full schema as it existed when versioning started; later revisions change it. At startup, `mettre_a_jour_schema()` (`app/migrations.py`, run in a thread from the lifespan) takes a MySQL `GET_LOCK` so only one instance migrates, then: empty DB → upgrade from 0001; versioned DB → apply missing revisions; **historical DB** (has `users` but no `alembic_version`, i.e. created by the old `database/*.sql` + startup patches) → `rattraper_base_historique()` creates/adds whatever the baseline has and the DB lacks, stamps `0001`, then upgrades. Do not extend the historical catch-up: new changes are new revisions.
+- New revision: `cd server && .venv/bin/alembic revision --rev-id 0003 -m "..."`, write `upgrade()` and a real `downgrade()`, keep MySQL 5.7/8 syntax (no MariaDB-only `IF NOT EXISTS` on columns/indexes), clean data before adding constraints. `alembic upgrade head` / `downgrade -1` / `history` use the same `DB_*`/`MYSQL_URL` variables as the API.
+- `tests/integration/test_migrations.py` proves that a DB built with the frozen pre-Alembic scripts (`tests/donnees/historique/`, never edit them) ends up identical (columns, indexes, FKs) to a fresh one, including the partial import that production may have; it also checks idempotence, 0002 downgrade/upgrade, the lock and a single head.
+- Demo data lives only in `server/donnees/demo.sql`; migrations never insert demo data.
 
 ## Backend architecture
 

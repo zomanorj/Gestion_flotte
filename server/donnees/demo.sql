@@ -1,9 +1,9 @@
 -- ============================================================
 -- Données de démonstration — FlotteApp
--- À exécuter APRÈS schema.sql et toutes les migrations.
+-- Chargé par l'API au démarrage (app/demarrage.py) si SEED_DEMO=1 et que la base n'a aucun compte.
 -- Ne jamais exécuter en production : crée des comptes au mot de passe connu.
---   mysql -u root -p flotte_db < seed_demo.sql
--- Avec Docker : chargé automatiquement si SEED_DEMO=1 (valeur par défaut).
+-- Format : une instruction SQL par bloc, terminée par ";".
+-- Docker Compose active SEED_DEMO=1 par défaut ; à laisser désactivé en production.
 -- ============================================================
 
 -- Utilisateurs

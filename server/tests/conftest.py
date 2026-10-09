@@ -2,9 +2,10 @@
 Fixtures partagées.
 
 Les tests d'intégration testent l'API comme un client réel :
-- une base MySQL jetable est créée pour la session et initialisée avec les scripts du dépôt
-  (database/schema.sql, migrations, seed_demo.sql) — les tests valident donc aussi ces scripts ;
-- l'API est lancée dans un sous-processus uvicorn (migrations au démarrage, Socket.io inclus) ;
+- une base MySQL vide est créée pour la session ;
+- l'API est lancée dans un sous-processus uvicorn : au démarrage, elle crée le schéma avec les
+  migrations Alembic et charge les données de démonstration (SEED_DEMO=1) — chaque exécution de
+  la suite valide donc aussi les migrations ;
 - les tests l'appellent en HTTP et en Socket.io.
 
 MySQL de test : variables TEST_MYSQL_HOST / TEST_MYSQL_PORT / TEST_MYSQL_USER / TEST_MYSQL_PASSWORD
@@ -23,13 +24,6 @@ import pymysql
 import pytest
 
 RACINE_SERVEUR = Path(__file__).resolve().parents[1]
-DOSSIER_SQL = RACINE_SERVEUR.parent / "database"
-
-# Même ordre que database/docker-init.sh
-SCRIPTS_SQL = [
-    "schema.sql", "migrate_modules.sql", "migrate_maintenances.sql", "migrate_clients.sql",
-    "migrate_v2.sql", "migrate_phase3.sql", "seed_demo.sql",
-]
 
 MOT_DE_PASSE_DEMO = "password123"
 JWT_SECRET_TEST = "secret-de-test-uniquement"
@@ -52,37 +46,9 @@ def _config_mysql() -> dict:
     }
 
 
-def instructions_sql(texte: str):
-    """
-    Découpe un script SQL en instructions, comme le client mysql :
-    gère la directive DELIMITER (procédures stockées) et ignore CREATE DATABASE / USE,
-    pour pouvoir exécuter les scripts du dépôt dans une base au nom différent.
-    """
-    delimiteur, courante = ";", []
-    for ligne in texte.splitlines():
-        brute = ligne.strip()
-        # Lignes de commentaire ignorées partout : un "-- ...;" ne doit pas couper une instruction
-        if brute.startswith("--") or (not courante and not brute):
-            continue
-        if brute.upper().startswith("DELIMITER "):
-            delimiteur = brute.split()[1]
-            continue
-        courante.append(ligne)
-        if brute.endswith(delimiteur):
-            instruction = "\n".join(courante).rstrip()[: -len(delimiteur)].strip()
-            courante = []
-            entete = instruction.upper().lstrip()
-            if entete.startswith(("CREATE DATABASE", "USE ")):
-                continue
-            yield instruction
-    reste = "\n".join(courante).strip()
-    if reste:
-        yield reste
-
-
 @pytest.fixture(scope="session")
 def base_de_test():
-    """Crée une base vide, y exécute les scripts du dépôt, puis la supprime en fin de session."""
+    """Crée une base vide (l'API la construit au démarrage), puis la supprime en fin de session."""
     config = _config_mysql()
     nom = f"flotte_test_{uuid.uuid4().hex[:8]}"
     try:
@@ -95,16 +61,6 @@ def base_de_test():
         )
     with admin.cursor() as cur:
         cur.execute(f"CREATE DATABASE `{nom}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-
-    conn = pymysql.connect(**config, database=nom, autocommit=True)
-    with conn.cursor() as cur:
-        for script in SCRIPTS_SQL:
-            for instruction in instructions_sql((DOSSIER_SQL / script).read_text(encoding="utf-8")):
-                try:
-                    cur.execute(instruction)
-                except pymysql.MySQLError as err:
-                    raise RuntimeError(f"{script} : {err}\n{instruction[:300]}") from err
-    conn.close()
 
     yield {**config, "database": nom}
 
@@ -156,6 +112,8 @@ def serveur(base_de_test, tmp_path_factory):
         "OSRM_URL": "http://127.0.0.1:9/route/v1/driving",
         # Modèles de réponse stricts : une colonne SQL absente d'un schéma fait échouer le test
         "API_SCHEMAS_STRICTS": "1",
+        # Comptes et données de démonstration chargés sur la base vide
+        "SEED_DEMO": "1",
         "ADMIN_EMAIL": "",
         "ADMIN_PASSWORD": "",
     }

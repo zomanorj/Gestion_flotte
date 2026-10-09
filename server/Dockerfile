@@ -11,8 +11,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY main.py .
+COPY main.py alembic.ini ./
 COPY app ./app
+COPY migrations ./migrations
+COPY donnees ./donnees
 
 # Utilisateur non-root ; uploads/ est monté en volume par docker compose
 RUN useradd --create-home flotte && mkdir -p uploads/documents && chown -R flotte:flotte uploads

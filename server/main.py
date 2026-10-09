@@ -26,9 +26,10 @@ from fastapi.responses import JSONResponse, Response
 
 from app import db
 from app.auth import Connecte
+from app.demarrage import charger_donnees_demo, initialiser_admin
 from app.erreurs import installer_gestionnaires
 from app.exceptions import Introuvable
-from app.migrations import appliquer_migrations, initialiser_admin
+from app.migrations import mettre_a_jour_schema
 from app.routers import (
     auth,
     carburant,
@@ -68,8 +69,10 @@ async def lifespan(_app: FastAPI):
         print("   Vérifiez vos paramètres dans server/.env")
         sys.exit(1)
 
-    # Migrations automatiques avant d'accepter les requêtes
-    await appliquer_migrations()
+    # Schéma à jour avant d'accepter les requêtes (Alembic, synchrone : exécuté dans un thread)
+    revision = await asyncio.to_thread(mettre_a_jour_schema)
+    print(f"[Migration] Schéma à jour (révision {revision})")
+    await charger_donnees_demo()
     await initialiser_admin()
     await stockage.preparer()
     tache_alertes = asyncio.create_task(_alertes_periodiques())
