@@ -4,6 +4,7 @@ from ..repositories import missions as depot_missions
 from ..repositories import vehicules as depot
 from ..repositories.base import Plage, Resultat
 from ..schemas.flotte import VehiculeCreation, VehiculeMiseAJour
+from . import parametres
 
 INTROUVABLE = "Camion introuvable"
 
@@ -13,7 +14,8 @@ async def lister(statut: str | None, recherche: str | None, plage: Plage | None)
 
 
 async def alertes() -> list[dict]:
-    return await depot.alertes()
+    p = await parametres.actuels()
+    return await depot.alertes(p.jours_alerte_controle_technique, p.km_alerte_vidange)
 
 
 async def detail(id: int) -> dict:
@@ -33,6 +35,8 @@ async def _verifier_immatriculation_libre(immatriculation: str, sauf_id: int | N
 
 async def creer(donnees: VehiculeCreation) -> dict:
     champs = {**donnees.model_dump(), "immatriculation": donnees.immatriculation.upper()}
+    if champs["consommation_litre_km"] is None:
+        champs["consommation_litre_km"] = (await parametres.actuels()).consommation_par_defaut
     await _verifier_immatriculation_libre(champs["immatriculation"])
     return await depot.obtenir(await depot.creer(champs))
 

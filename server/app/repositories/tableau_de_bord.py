@@ -35,9 +35,9 @@ async def nombre_alertes_non_lues() -> int:
     return int(ligne["nb"])
 
 
-async def nombre_documents_a_renouveler() -> int:
+async def nombre_documents_a_renouveler(jours: int) -> int:
     ligne = await db.query_one(
-        "SELECT COUNT(*) AS nb FROM documents WHERE date_expiration <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)"
+        "SELECT COUNT(*) AS nb FROM documents WHERE date_expiration <= DATE_ADD(CURDATE(), INTERVAL %s DAY)", [jours]
     )
     return int(ligne["nb"])
 

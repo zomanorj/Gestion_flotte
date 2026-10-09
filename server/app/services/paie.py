@@ -1,38 +1,37 @@
 # Règles métier : paie mensuelle des chauffeurs
 #
 # Salaire brut = salaire de base + prime par mission terminée dans le mois
-#                + bonus kilométrique de 20 000 Ar par tranche de 500 km au-delà de 500 km.
-# Net à payer  = brut − cotisation salariale CNAPS de 1 % (simplifiée).
-# Une mission compte pour le mois de son retour réel.
+#                + bonus kilométrique par tranche complète au-delà d'un seuil.
+# Net à payer  = brut − cotisation salariale CNAPS (taux en %).
+# Une mission compte pour le mois de son retour réel. Le barème (défauts, seuil, tranche,
+# bonus, taux) est un paramètre métier modifiable par l'administrateur (services/parametres.py).
+#
+# Limite connue : un mois passé est recalculé avec le barème en vigueur aujourd'hui (les mois
+# ne sont pas encore clôturés).
 from ..exceptions import AccesRefuse, trouve
 from ..pdf.bulletin_paie import generer_bulletin_pdf
 from ..repositories import chauffeurs as depot_chauffeurs
 from ..repositories import missions as depot_missions
 from ..schemas.pilotage import SalaireSaisie
+from . import parametres
 from .chauffeurs import peut_voir_remuneration
-
-SALAIRE_BASE_DEFAUT = 800000
-PRIME_MISSION_DEFAUT = 50000
-SEUIL_BONUS_KM = 500
-TRANCHE_BONUS_KM = 500
-BONUS_PAR_TRANCHE = 20000
-TAUX_CNAPS = 0.01
+from .parametres import Parametres
 
 INTROUVABLE = "Chauffeur introuvable"
 
 
 def calculer_remuneration(salaire_base: float | None, prime_mission: float | None,
-                          distances_km: list[float]) -> dict:
+                          distances_km: list[float], bareme: Parametres) -> dict:
     """Calcul de paie d'un mois à partir des distances des missions terminées."""
-    salaire_base = salaire_base or SALAIRE_BASE_DEFAUT
-    prime_mission = prime_mission or PRIME_MISSION_DEFAUT
+    salaire_base = salaire_base or bareme.salaire_base_defaut
+    prime_mission = prime_mission or bareme.prime_mission_defaut
     nb_missions = len(distances_km)
     total_km = sum(d or 0 for d in distances_km)
     total_primes = nb_missions * prime_mission
-    km_bonus = (int((total_km - SEUIL_BONUS_KM) // TRANCHE_BONUS_KM) * BONUS_PAR_TRANCHE
-                if total_km > SEUIL_BONUS_KM else 0)
+    km_bonus = (int((total_km - bareme.seuil_bonus_km) // bareme.tranche_bonus_km) * bareme.bonus_par_tranche
+                if total_km > bareme.seuil_bonus_km else 0)
     total_brut = salaire_base + total_primes + km_bonus
-    cnaps = round(total_brut * TAUX_CNAPS)
+    cnaps = round(total_brut * bareme.taux_cnaps / 100)
     return {
         "nb_missions":  nb_missions,
         "total_km":     round(total_km),
@@ -49,13 +48,14 @@ async def fiche(chauffeur_id: int, annee: int, mois: int) -> dict:
     """Fiche de paie détaillée d'un chauffeur pour un mois (1–12)."""
     chauffeur = trouve(await depot_chauffeurs.obtenir(chauffeur_id), INTROUVABLE)
     missions = await depot_missions.terminees_du_mois(chauffeur_id, annee, mois)
+    bareme = await parametres.actuels()
     calcul = calculer_remuneration(chauffeur["salaire_base"], chauffeur["prime_mission"],
-                                   [m["distance_km"] for m in missions])
+                                   [m["distance_km"] for m in missions], bareme)
     return {
         "chauffeur": {
             **{k: chauffeur[k] for k in ("id", "nom", "prenom", "telephone", "numero_permis", "categorie_permis")},
             "salaire_base":  calcul["salaire_base"],
-            "prime_mission": chauffeur["prime_mission"] or PRIME_MISSION_DEFAUT,
+            "prime_mission": chauffeur["prime_mission"] or bareme.prime_mission_defaut,
         },
         "periode": {"annee": annee, "mois": mois},
         "missions": missions,
@@ -67,10 +67,11 @@ async def masse_salariale(annee: int, mois: int) -> dict:
     """Résumé du mois pour tous les chauffeurs (deux requêtes au total, quel que soit leur nombre)."""
     chauffeurs = await depot_chauffeurs.tous_pour_paie()
     distances = await depot_missions.distances_terminees_du_mois(annee, mois)
+    bareme = await parametres.actuels()
 
     fiches = []
     for c in chauffeurs:
-        calcul = calculer_remuneration(c["salaire_base"], c["prime_mission"], distances.get(c["id"], []))
+        calcul = calculer_remuneration(c["salaire_base"], c["prime_mission"], distances.get(c["id"], []), bareme)
         fiches.append({
             "chauffeur_id": c["id"], "nom": c["nom"], "prenom": c["prenom"],
             **{k: calcul[k] for k in ("nb_missions", "total_km", "salaire_base", "total_primes", "km_bonus",

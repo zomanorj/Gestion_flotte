@@ -10,6 +10,7 @@ from ..exceptions import Introuvable
 from ..repositories import comptes as depot
 from ..socket import sio
 from ..temps import maintenant
+from . import parametres
 
 DUREE_CONSERVATION_JOURS = 90
 NOMBRE_AFFICHE = 50
@@ -73,7 +74,7 @@ async def tout_marquer_lu(user: dict) -> None:
 async def verifier_alertes_periodiques() -> None:
     """Crée les notifications d'alertes (une fois par jour et par élément au maximum), puis purge."""
     try:
-        documents = await depot.documents_a_notifier()
+        documents = await depot.documents_a_notifier((await parametres.actuels()).jours_alerte_documents)
         for doc in documents:
             await creer_notification("document_expiration", f"{doc['type']} — {doc['immatriculation']}",
                                      message_expiration(int(doc["jours"])), vehicule_id=doc["vehicule_id"])

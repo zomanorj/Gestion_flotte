@@ -6,7 +6,6 @@
 # - incrémenter users.token_version révoque tous les tokens déjà émis (changement de
 #   mot de passe, de rôle, désactivation).
 import asyncio
-import os
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -14,10 +13,10 @@ import jwt
 from fastapi import Depends, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from .config import config
 from .exceptions import AccesRefuse, NonAuthentifie
 from .repositories import comptes as depot_comptes
 
-DUREE_TOKEN = timedelta(hours=24)
 ROLES_GESTION = ("admin", "gestionnaire")
 
 # Hash factice : au login d'un email inconnu, on vérifie quand même un mot de passe pour que
@@ -31,9 +30,9 @@ def generer_token(user: dict) -> str:
         "id": user["id"], "nom": user["nom"], "email": user["email"], "role": user["role"],
         "tv": user.get("token_version", 0),
         "iat": maintenant,
-        "exp": maintenant + DUREE_TOKEN,
+        "exp": maintenant + timedelta(hours=config().duree_token_heures),
     }
-    return jwt.encode(payload, os.environ["JWT_SECRET"], algorithm="HS256")
+    return jwt.encode(payload, config().jwt_secret.get_secret_value(), algorithm="HS256")
 
 
 async def utilisateur_depuis_token(token: str | None) -> dict:
@@ -41,7 +40,7 @@ async def utilisateur_depuis_token(token: str | None) -> dict:
     if not token:
         raise NonAuthentifie("Token manquant ou mal formaté")
     try:
-        payload = jwt.decode(token, os.environ["JWT_SECRET"], algorithms=["HS256"])
+        payload = jwt.decode(token, config().jwt_secret.get_secret_value(), algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise NonAuthentifie("Session expirée, veuillez vous reconnecter") from None
     except jwt.InvalidTokenError:

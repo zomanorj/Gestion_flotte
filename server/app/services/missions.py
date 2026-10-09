@@ -20,14 +20,9 @@ from ..repositories import vehicules as depot_vehicules
 from ..repositories.base import Plage, Resultat
 from ..schemas.flotte import MissionCreation
 from ..socket import sio
-from . import simulation
+from . import parametres, simulation
 
 INTROUVABLE = "Mission introuvable"
-
-# Prix du carburant en Ariary par litre (données marché Madagascar 2024)
-PRIX_LITRE_ARIARY = 5200
-# Consommation retenue si le camion n'en a pas (L/km)
-CONSOMMATION_PAR_DEFAUT = 0.08
 
 # Transitions autorisées : statut actuel → nouveaux statuts possibles
 TRANSITIONS = {
@@ -54,10 +49,13 @@ COULEURS_PLANNING = {
 
 # ── Règles pures ───────────────────────────────────────────────────────────────
 
-def cout_carburant(distance_km: float | None, consommation_litre_km: float | None,
-                   prix_litre: float = PRIX_LITRE_ARIARY) -> float:
-    """Distance × consommation × prix au litre, en Ariary, arrondi au centime."""
-    return round((distance_km or 0) * (consommation_litre_km or CONSOMMATION_PAR_DEFAUT) * prix_litre, 2)
+def cout_carburant(distance_km: float | None, consommation_litre_km: float | None, prix_litre: float,
+                   consommation_par_defaut: float) -> float:
+    """
+    Distance × consommation × prix au litre, en Ariary, arrondi au centime. La consommation par
+    défaut sert si le camion n'en a pas.
+    """
+    return round((distance_km or 0) * (consommation_litre_km or consommation_par_defaut) * prix_litre, 2)
 
 
 def verifier_transition(actuel: str, nouveau: str) -> None:
@@ -188,7 +186,9 @@ async def changer_statut(id: int, statut: str) -> dict:
 
         if statut == "terminee":
             vehicule = await depot_vehicules.obtenir(mission["vehicule_id"], tx)
-            cout = cout_carburant(mission["distance_km"], (vehicule or {}).get("consommation_litre_km"))
+            p = await parametres.actuels()
+            cout = cout_carburant(mission["distance_km"], (vehicule or {}).get("consommation_litre_km"),
+                                  p.prix_litre_gasoil, p.consommation_par_defaut)
             await depot.cloturer(id, cout, tx)
         else:
             await depot.modifier(id, {"statut": statut}, tx)

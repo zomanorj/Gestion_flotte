@@ -120,22 +120,22 @@ async def creer_notification(champs: dict) -> int:
     return await base.inserer("notifications", champs)
 
 
-async def documents_a_notifier() -> list[dict]:
-    """Documents expirés ou expirant sous 30 jours, pas encore notifiés aujourd'hui."""
+async def documents_a_notifier(jours: int) -> list[dict]:
+    """Documents expirés ou expirant sous `jours` jours, pas encore notifiés aujourd'hui."""
     return await db.query("""
         SELECT d.id, d.type, d.vehicule_id, d.date_expiration, v.immatriculation,
                DATEDIFF(d.date_expiration, CURDATE()) AS jours
         FROM documents d
         JOIN vehicules v ON v.id = d.vehicule_id
-        WHERE d.date_expiration <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+        WHERE d.date_expiration <= DATE_ADD(CURDATE(), INTERVAL %s DAY)
           AND NOT EXISTS (
             SELECT 1 FROM notifications n
             WHERE n.vehicule_id = d.vehicule_id
               AND n.type = 'document_expiration'
               AND DATE(n.created_at) = CURDATE()
-              AND n.titre LIKE CONCAT(d.type, ' %')
+              AND n.titre LIKE CONCAT(d.type, ' %%')
           )
-    """)
+    """, [jours])
 
 
 async def maintenances_a_notifier() -> list[dict]:

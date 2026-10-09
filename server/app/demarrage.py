@@ -1,9 +1,9 @@
 # Initialisation des données au démarrage (après les migrations du schéma)
-import os
 from pathlib import Path
 
 from . import db
 from .auth import hacher_mdp
+from .config import config
 from .sql_outils import instructions_sql
 
 FICHIER_DEMO = Path(__file__).resolve().parents[1] / "donnees" / "demo.sql"
@@ -14,7 +14,7 @@ async def charger_donnees_demo() -> bool:
     Avec SEED_DEMO=1, charge les données de démonstration (comptes en password123, camions,
     missions…) dans une base sans aucun compte. Jamais en production. Retourne True si chargé.
     """
-    if os.getenv("SEED_DEMO") != "1":
+    if not config().seed_demo:
         return False
     if (await db.query_one("SELECT COUNT(*) AS nb FROM users"))["nb"]:
         return False
@@ -35,9 +35,9 @@ async def initialiser_admin() -> None:
     if await db.query_one("SELECT id FROM users WHERE role = 'admin' AND is_active = 1 LIMIT 1"):
         return
 
-    email = (os.getenv("ADMIN_EMAIL") or "").strip().lower()
-    password = os.getenv("ADMIN_PASSWORD") or ""
-    if not email or len(password) < 8:
+    email = (config().admin_email or "").strip().lower()
+    password = config().mot_de_passe_admin
+    if not email:
         print("[Admin] ATTENTION : aucun administrateur actif. Définissez ADMIN_EMAIL et "
               "ADMIN_PASSWORD (8 caractères minimum) puis redémarrez.")
         return
@@ -53,6 +53,6 @@ async def initialiser_admin() -> None:
     else:
         await db.execute(
             "INSERT INTO users (nom, email, password_hash, role) VALUES (%s, %s, %s, 'admin')",
-            [os.getenv("ADMIN_NOM", "Administrateur"), email, hash_],
+            [config().admin_nom, email, hash_],
         )
     print(f"[Admin] Compte administrateur {email} initialisé")

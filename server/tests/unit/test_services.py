@@ -10,6 +10,9 @@ import pytest
 
 from app.exceptions import AccesRefuse, Conflit, Introuvable
 from app.services import chauffeurs, documents, exploitation, missions, notifications, paie, tableau_de_bord, vehicules
+from app.services.parametres import Parametres
+
+BAREME = Parametres.par_defaut()
 
 ADMIN = {"id": 1, "role": "admin"}
 GESTIONNAIRE = {"id": 2, "role": "gestionnaire"}
@@ -22,7 +25,7 @@ def executer(coro):
 
 class TestPaie:
     def test_sans_mission(self):
-        assert paie.calculer_remuneration(800000, 50000, []) == {
+        assert paie.calculer_remuneration(800000, 50000, [], BAREME) == {
             "nb_missions": 0, "total_km": 0, "salaire_base": 800000, "total_primes": 0,
             "km_bonus": 0, "total_brut": 800000, "cnaps": 8000, "net_a_payer": 792000,
         }
@@ -35,14 +38,21 @@ class TestPaie:
         ([1500], 40000),
     ])
     def test_bonus_kilometrique(self, distances, bonus):
-        assert paie.calculer_remuneration(800000, 50000, distances)["km_bonus"] == bonus
+        assert paie.calculer_remuneration(800000, 50000, distances, BAREME)["km_bonus"] == bonus
 
     def test_valeurs_par_defaut_si_non_renseignees(self):
-        calcul = paie.calculer_remuneration(None, None, [100])
+        calcul = paie.calculer_remuneration(None, None, [100], BAREME)
         assert (calcul["salaire_base"], calcul["total_primes"]) == (800000, 50000)
 
+    def test_bareme_modifie(self):
+        bareme = Parametres(**{**BAREME.__dict__, "seuil_bonus_km": 1000, "tranche_bonus_km": 250,
+                               "bonus_par_tranche": 10000, "taux_cnaps": 2.5})
+        calcul = paie.calculer_remuneration(800000, 50000, [1600], bareme)
+        assert calcul["km_bonus"] == 20000            # 600 km au-delà de 1 000 : 2 tranches de 250
+        assert calcul["cnaps"] == round(870000 * 0.025)
+
     def test_cnaps_arrondi(self):
-        assert paie.calculer_remuneration(812345, 0, [])["cnaps"] == 8123
+        assert paie.calculer_remuneration(812345, 0, [], BAREME)["cnaps"] == 8123
 
     def test_masse_salariale_en_deux_requetes(self, monkeypatch):
         """Ancien comportement : 2 requêtes par chauffeur. Désormais 2 au total."""
@@ -57,8 +67,12 @@ class TestPaie:
             appels.append("missions")
             return {1: [700.0, 700.0], 2: [100.0]}
 
+        async def actuels():
+            return BAREME
+
         monkeypatch.setattr(paie.depot_chauffeurs, "tous_pour_paie", tous_pour_paie)
         monkeypatch.setattr(paie.depot_missions, "distances_terminees_du_mois", distances_terminees_du_mois)
+        monkeypatch.setattr(paie.parametres, "actuels", actuels)
 
         resume = executer(paie.masse_salariale(2026, 10))
         assert appels == ["chauffeurs", "missions"]
@@ -80,10 +94,14 @@ class TestMissions:
         (200, 0.3, 312000),      # 200 km × 0,3 L/km × 5 200 Ar
         (0, 0.3, 0),
         (None, 0.3, 0),
-        (100, None, 41600),      # consommation par défaut : 0,08 L/km
+        (100, None, 156000),     # consommation par défaut du paramètre : 0,30 L/km
     ])
     def test_cout_carburant(self, distance, conso, attendu):
-        assert missions.cout_carburant(distance, conso) == pytest.approx(attendu)
+        assert missions.cout_carburant(distance, conso, BAREME.prix_litre_gasoil,
+                                       BAREME.consommation_par_defaut) == pytest.approx(attendu)
+
+    def test_cout_carburant_suit_le_prix(self):
+        assert missions.cout_carburant(100, 0.3, 6000, 0.3) == pytest.approx(180000)
 
     def test_evenement_planning(self):
         evenement = missions.evenement_planning({
@@ -149,7 +167,8 @@ class TestDocuments:
         assert documents.cle_de_stockage(4, nom, 1000) == attendu
 
     def test_enrichir(self):
-        assert documents.enrichir({"jours_restants": -2})["statut"] == "expire"
+        assert documents.enrichir({"jours_restants": -2}, 30)["statut"] == "expire"
+        assert documents.enrichir({"jours_restants": 40}, 30)["statut"] == "valide"
 
 
 def test_maintenances_depassee_en_booleen():

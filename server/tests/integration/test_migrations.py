@@ -14,6 +14,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
 from app import migrations
+from app.config import config
 from app.sql_outils import instructions_sql
 from tests.conftest import _config_mysql
 
@@ -25,8 +26,8 @@ SCRIPTS_HISTORIQUES = ["schema.sql", "migrate_modules.sql", "migrate_maintenance
 @pytest.fixture
 def nouvelle_base(monkeypatch):
     """Fabrique de bases vides ; la dernière créée devient la base « de l'API » (variables DB_*)."""
-    config, creees = _config_mysql(), []
-    admin = pymysql.connect(**config, autocommit=True)
+    mysql, creees = _config_mysql(), []
+    admin = pymysql.connect(**mysql, autocommit=True)
 
     def creer() -> str:
         nom = f"flotte_migr_{uuid.uuid4().hex[:8]}"
@@ -34,12 +35,14 @@ def nouvelle_base(monkeypatch):
             cur.execute(f"CREATE DATABASE `{nom}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
         creees.append(nom)
         monkeypatch.delenv("MYSQL_URL", raising=False)
-        for cle, valeur in (("DB_HOST", config["host"]), ("DB_PORT", str(config["port"])),
-                            ("DB_USER", config["user"]), ("DB_PASSWORD", config["password"]), ("DB_NAME", nom)):
+        for cle, valeur in (("DB_HOST", mysql["host"]), ("DB_PORT", str(mysql["port"])),
+                            ("DB_USER", mysql["user"]), ("DB_PASSWORD", mysql["password"]), ("DB_NAME", nom)):
             monkeypatch.setenv(cle, valeur)
+        config.cache_clear()  # la configuration est mise en cache : relue avec cette base
         return nom
 
     yield creer
+    config.cache_clear()
     with admin.cursor() as cur:
         for nom in creees:
             cur.execute(f"DROP DATABASE IF EXISTS `{nom}`")

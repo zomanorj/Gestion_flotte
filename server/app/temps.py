@@ -3,11 +3,12 @@
 # Les dates métier (DATETIME) sont stockées en heure locale. La session MySQL est réglée
 # sur le même décalage (voir db.py), de sorte que CURDATE() / NOW() et Python soient d'accord,
 # quel que soit le fuseau du serveur (Railway et Docker tournent en UTC).
-import os
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-FUSEAU = ZoneInfo(os.getenv("APP_TIMEZONE", "Indian/Antananarivo"))
+from .config import config
+
+FUSEAU = ZoneInfo(config().app_timezone)
 
 
 def maintenant() -> datetime:

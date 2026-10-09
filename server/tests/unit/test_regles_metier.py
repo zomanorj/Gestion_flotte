@@ -47,7 +47,12 @@ class TestTransitionsMission:
     (31, "valide"),
 ])
 def test_statut_document(jours, attendu):
-    assert statut_depuis_jours(jours) == attendu
+    assert statut_depuis_jours(jours, jours_alerte=30) == attendu
+
+
+def test_statut_document_suit_le_seuil():
+    assert statut_depuis_jours(45, jours_alerte=60) == "expire_bientot"
+    assert statut_depuis_jours(45, jours_alerte=30) == "valide"
 
 
 class TestSimulation:

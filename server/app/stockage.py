@@ -8,8 +8,9 @@
 #
 # Les fichiers sont identifiés par une clé relative, ex. "documents/doc_3_1700000000_assurance.pdf".
 import asyncio
-import os
 from pathlib import Path
+
+from .config import config
 
 
 class FichierIntrouvable(Exception):
@@ -51,13 +52,14 @@ class StockageS3:
         import boto3
         from botocore.config import Config
 
-        self.bucket = os.environ["S3_BUCKET"]
+        c = config()
+        self.bucket = c.s3_bucket
         self.client = boto3.client(
             "s3",
-            endpoint_url=os.getenv("S3_ENDPOINT_URL") or None,
-            aws_access_key_id=os.getenv("S3_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("S3_SECRET_ACCESS_KEY"),
-            region_name=os.getenv("S3_REGION", "auto"),
+            endpoint_url=c.s3_endpoint_url,
+            aws_access_key_id=c.s3_access_key_id,
+            aws_secret_access_key=c.s3_secret_access_key.get_secret_value(),
+            region_name=c.s3_region,
             config=Config(signature_version="s3v4", retries={"max_attempts": 3}),
         )
 
@@ -82,10 +84,9 @@ class StockageS3:
 
 
 def _creer_stockage():
-    if os.getenv("STOCKAGE", "local").lower() == "s3":
+    if config().stockage == "s3":
         return StockageS3()
-    racine = Path(os.getenv("UPLOADS_DIR") or Path(__file__).resolve().parents[1] / "uploads")
-    return StockageLocal(racine)
+    return StockageLocal(config().dossier_uploads)
 
 
 stockage = _creer_stockage()

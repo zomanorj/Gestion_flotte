@@ -23,12 +23,12 @@ async def lister_documents(vehicule_id: int | None = None, type: str | None = No
                              "SELECT COUNT(*) AS total FROM documents d")
 
 
-async def documents_a_renouveler() -> list[dict]:
-    """Expirés ou expirant dans les 30 prochains jours, les plus urgents en premier."""
+async def documents_a_renouveler(jours: int) -> list[dict]:
+    """Expirés ou expirant dans les `jours` prochains jours, les plus urgents en premier."""
     return await db.query(_DOCUMENT + """
-        WHERE d.date_expiration <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+        WHERE d.date_expiration <= DATE_ADD(CURDATE(), INTERVAL %s DAY)
         ORDER BY d.date_expiration ASC
-    """)
+    """, [jours])
 
 
 async def obtenir_document(id: int) -> dict | None:
@@ -208,15 +208,15 @@ async def lister_maintenances(statut: str | None = None, priorite: str | None = 
                              "SELECT COUNT(*) AS total FROM maintenances_planifiees mp")
 
 
-async def maintenances_urgentes() -> list[dict]:
-    """Prévue sous 7 jours ou dépassée, priorité urgente, ou kilométrage déclencheur atteint."""
+async def maintenances_urgentes(jours: int) -> list[dict]:
+    """Prévue dans les `jours` prochains jours ou dépassée, priorité urgente, ou kilométrage atteint."""
     return await db.query(_MAINTENANCE + """
         WHERE mp.statut NOT IN ('terminee', 'annulee')
-          AND (mp.date_prevue <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+          AND (mp.date_prevue <= DATE_ADD(CURDATE(), INTERVAL %s DAY)
                OR mp.priorite = 'urgente'
                OR (mp.kilometrage_declencheur IS NOT NULL AND v.kilometrage >= mp.kilometrage_declencheur))
         ORDER BY mp.priorite DESC, mp.date_prevue ASC
-    """)
+    """, [jours])
 
 
 async def obtenir_maintenance(id: int) -> dict | None:

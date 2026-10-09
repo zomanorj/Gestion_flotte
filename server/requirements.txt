@@ -1,5 +1,6 @@
 fastapi==0.115.12
 pydantic==2.13.5
+pydantic-settings==2.9.1
 uvicorn[standard]==0.34.2
 python-socketio==5.13.0
 aiomysql==0.2.0

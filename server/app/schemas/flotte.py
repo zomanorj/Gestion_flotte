@@ -19,7 +19,7 @@ class VehiculeCreation(Entree):
     modele: Texte(80)
     annee: Annee
     kilometrage: EntierPositif = 0
-    consommation_litre_km: Consommation = 0.30
+    consommation_litre_km: Consommation | None = Field(default=None, description="Paramètre « consommation par défaut » si absent")
     statut: StatutVehicule = StatutVehicule.disponible
     date_derniere_vidange: DateOpt = None
     date_prochain_ct: DateOpt = None

@@ -1,9 +1,10 @@
 # Service de calcul de route via OSRM (OpenStreetMap Routing Machine)
 # Pas de clé API requise — serveur public OSRM basé sur OpenStreetMap
 import math
-import os
 
 import httpx
+
+from ..config import config
 
 # Coordonnées GPS des principales villes de Madagascar
 VILLES_MADAGASCAR = {
@@ -20,7 +21,7 @@ VILLES_MADAGASCAR = {
 }
 
 # Serveur OSRM — public par défaut (profil voiture), surchargeable (instance privée, tests)
-OSRM_URL = os.getenv("OSRM_URL", "http://router.project-osrm.org/route/v1/driving")
+OSRM_URL = config().osrm_url
 
 # Nombre cible de points après décimation — compromis précision/performance Socket.io
 POINTS_CIBLE = 300

@@ -5,6 +5,7 @@ from ..repositories import chauffeurs as depot
 from ..repositories import missions as depot_missions
 from ..repositories.base import Plage, Resultat
 from ..schemas.flotte import ChauffeurCreation, ChauffeurMiseAJour
+from . import parametres
 
 INTROUVABLE = "Chauffeur introuvable"
 CHAMPS_SALAIRE = ("salaire_base", "prime_mission")
@@ -45,7 +46,9 @@ async def _verifier_permis_libre(numero_permis: str, sauf_id: int | None = None)
 
 async def creer(donnees: ChauffeurCreation) -> dict:
     await _verifier_permis_libre(donnees.numero_permis)
-    return await depot.obtenir(await depot.creer(donnees.model_dump()))
+    p = await parametres.actuels()
+    remuneration = {"salaire_base": p.salaire_base_defaut, "prime_mission": p.prime_mission_defaut}
+    return await depot.obtenir(await depot.creer({**donnees.model_dump(), **remuneration}))
 
 
 async def modifier(id: int, donnees: ChauffeurMiseAJour) -> dict:

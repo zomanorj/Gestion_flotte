@@ -12,7 +12,8 @@ const TITRES = {
   '/carte':        'Carte Globale de la Flotte',
   '/rapports':     'Rapports & Exports',
   '/utilisateurs': 'Gestion des utilisateurs',
-  '/paie':         'Paie des chauffeurs'
+  '/paie':         'Paie des chauffeurs',
+  '/parametres':   'Paramètres métier'
 };
 
 const ICONE_NOTIF = {

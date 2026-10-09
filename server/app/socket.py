@@ -4,16 +4,15 @@
 # Chaque client rejoint des rooms qui permettent de cibler les émissions :
 #   user:<id>   — un utilisateur précis (notifications personnelles, déconnexion forcée)
 #   role:<role> — tous les utilisateurs d'un rôle (alertes réservées à la gestion)
-import os
-
 import socketio
 
 from .auth import utilisateur_depuis_token
+from .config import config
 from .exceptions import ErreurMetier
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins=os.getenv("CLIENT_URL", "http://localhost:5173"),
+    cors_allowed_origins=config().origines_client,
 )
 
 

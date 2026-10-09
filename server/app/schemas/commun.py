@@ -11,11 +11,12 @@
 # Sorties : en temps normal, une colonne SQL absente du modèle est ignorée. Avec
 # API_SCHEMAS_STRICTS=1 (tests et CI), elle provoque une erreur : un modèle de réponse
 # incomplet est détecté avant d'arriver en production.
-import os
 from datetime import date, datetime
 from typing import Annotated, Any, Generic, TypeVar
 
 from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
+
+from ..config import config
 
 
 def vide_vers_none(valeur: Any) -> Any:
@@ -66,7 +67,7 @@ class Entree(BaseModel):
         return self.model_dump(exclude_unset=True, mode="python")
 
 
-SCHEMAS_STRICTS = os.getenv("API_SCHEMAS_STRICTS") == "1"
+SCHEMAS_STRICTS = config().api_schemas_stricts
 
 
 class Sortie(BaseModel):

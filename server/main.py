@@ -2,19 +2,24 @@
 #
 # Lancement : uvicorn main:app --reload --port 5000
 import asyncio
-import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from dotenv import load_dotenv
+from pydantic import ValidationError
+
+from app.config import config, problemes_de_configuration
 
 # Logs visibles immédiatement même hors terminal (Railway, fichiers)
 sys.stdout.reconfigure(line_buffering=True)
-load_dotenv()
 
-if not os.getenv("JWT_SECRET"):
-    print("ERREUR : JWT_SECRET manquant dans .env")
+# Configuration validée avant tout le reste (plusieurs modules la lisent dès leur import)
+try:
+    config()
+except ValidationError as erreur:
+    print("ERREUR : configuration invalide (variables d'environnement ou server/.env) :")
+    for probleme in problemes_de_configuration(erreur):
+        print(f"  - {probleme}")
     sys.exit(1)
 
 import mimetypes
@@ -42,6 +47,7 @@ from app.routers import (
     missions,
     notifications,
     paie,
+    parametres,
     simulation,
     users,
     vehicules,
@@ -78,8 +84,8 @@ async def lifespan(_app: FastAPI):
     tache_alertes = asyncio.create_task(_alertes_periodiques())
 
     print("\nCamionApp — Serveur démarré (FastAPI)")
-    print(f"   API disponible sur : http://localhost:{os.getenv('PORT', '5000')}/api")
-    print(f"   Environnement      : {os.getenv('NODE_ENV', 'development')}\n")
+    print(f"   API disponible sur : http://localhost:{config().port}/api")
+    print(f"   Environnement      : {config().environnement}\n")
     yield
 
     tache_alertes.cancel()
@@ -118,6 +124,7 @@ MODULES = [
     (clients, "clients", "Clients", "Clients et leurs missions"),
     (paie, "paie", "Paie", "Calcul des salaires et bulletins"),
     (notifications, "notifications", "Notifications", "Alertes de l'utilisateur connecté"),
+    (parametres, "parametres", "Paramètres", "Paramètres métier modifiables par l'administrateur"),
 ]
 
 # Format d'erreur documenté sur toutes les routes
@@ -142,7 +149,7 @@ installer_gestionnaires(api)
 # CORS — autorise uniquement le client React
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("CLIENT_URL", "http://localhost:5173")],
+    allow_origins=config().origines_client,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -190,4 +197,4 @@ app = socketio.ASGIApp(sio, other_asgi_app=api)
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", "5000")), reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=config().port, reload=True)

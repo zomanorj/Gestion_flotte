@@ -2,6 +2,7 @@
 import asyncio
 
 from ..repositories import tableau_de_bord as depot
+from . import parametres
 
 
 def semaines_numerotees(lignes: list[dict]) -> list[dict]:
@@ -11,11 +12,12 @@ def semaines_numerotees(lignes: list[dict]) -> list[dict]:
 
 async def indicateurs() -> dict:
     """Toutes les métriques du tableau de bord ; les requêtes indépendantes partent en parallèle."""
+    jours_alerte_documents = (await parametres.actuels()).jours_alerte_documents
     vehicules, missions, alertes, documents, par_semaine, dernieres, en_mission = await asyncio.gather(
         depot.compteurs_vehicules(),
         depot.compteurs_missions(),
         depot.nombre_alertes_non_lues(),
-        depot.nombre_documents_a_renouveler(),
+        depot.nombre_documents_a_renouveler(jours_alerte_documents),
         depot.missions_par_semaine(),
         depot.dernieres_alertes(),
         depot.vehicules_en_mission(),

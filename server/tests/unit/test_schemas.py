@@ -25,7 +25,8 @@ class TestValeursDeFormulaire:
         v = VehiculeCreation(immatriculation=" mad-1 ", marque="Volvo", modele="FH", annee="2021",
                              kilometrage="", consommation_litre_km="", date_prochain_ct="", tonnage="12.5")
         assert v.immatriculation == "mad-1"
-        assert (v.annee, v.kilometrage, v.consommation_litre_km) == (2021, 0, 0.30)
+        # Consommation laissée vide : le service applique le paramètre « consommation par défaut »
+        assert (v.annee, v.kilometrage, v.consommation_litre_km) == (2021, 0, None)
         assert v.date_prochain_ct is None and v.tonnage == 12.5
 
     @pytest.mark.parametrize("valeur,attendu", [

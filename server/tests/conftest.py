@@ -28,6 +28,11 @@ RACINE_SERVEUR = Path(__file__).resolve().parents[1]
 MOT_DE_PASSE_DEMO = "password123"
 JWT_SECRET_TEST = "secret-de-test-uniquement"
 
+# Les modules de l'application lisent leur configuration dès l'import (app/config.py) : les tests
+# unitaires doivent pouvoir les importer sans environnement préparé (CI, poste de développement).
+if not os.environ.get("JWT_SECRET"):
+    os.environ["JWT_SECRET"] = JWT_SECRET_TEST
+
 
 def pytest_collection_modifyitems(items):
     for item in items:

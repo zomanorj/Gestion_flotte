@@ -8,10 +8,10 @@ from ..repositories import operations as depot
 from ..repositories.base import Plage, Resultat
 from ..schemas.operations import DocumentSaisie
 from ..stockage import PREFIXE_URL, stockage, supprimer_sans_erreur
+from . import parametres
 from .vehicules import verifier_existe as verifier_vehicule
 
 INTROUVABLE = "Document introuvable"
-JOURS_AVANT_ALERTE = 30
 TAILLE_MAX_OCTETS = 10 * 1024 * 1024  # 10 Mo
 TYPES_FICHIER = {
     ".pdf": "application/pdf",
@@ -23,18 +23,22 @@ TYPES_FICHIER = {
 }
 
 
-def statut_depuis_jours(jours: int) -> str:
+def statut_depuis_jours(jours: int, jours_alerte: int) -> str:
     if jours < 0:
         return "expire"
-    if jours <= JOURS_AVANT_ALERTE:
+    if jours <= jours_alerte:
         return "expire_bientot"
     return "valide"
 
 
-def enrichir(document: dict) -> dict:
+def enrichir(document: dict, jours_alerte: int) -> dict:
     """Ajoute le statut calculé à partir de jours_restants (DATEDIFF côté SQL)."""
     jours = int(document["jours_restants"])
-    return {**document, "jours_restants": jours, "statut": statut_depuis_jours(jours)}
+    return {**document, "jours_restants": jours, "statut": statut_depuis_jours(jours, jours_alerte)}
+
+
+async def _jours_alerte() -> int:
+    return (await parametres.actuels()).jours_alerte_documents
 
 
 def cle_de_stockage(document_id: int, nom_fichier: str, horodatage_ms: int) -> str:
@@ -46,18 +50,21 @@ def cle_de_stockage(document_id: int, nom_fichier: str, horodatage_ms: int) -> s
 
 async def lister(vehicule_id: int | None, type: str | None, plage: Plage | None) -> Resultat:
     resultat = await depot.lister_documents(vehicule_id, type, plage)
-    resultat.lignes = [enrichir(d) for d in resultat.lignes]
+    jours_alerte = await _jours_alerte()
+    resultat.lignes = [enrichir(d, jours_alerte) for d in resultat.lignes]
     return resultat
 
 
 async def a_renouveler() -> list[dict]:
-    return [enrichir(d) for d in await depot.documents_a_renouveler()]
+    jours_alerte = await _jours_alerte()
+    return [enrichir(d, jours_alerte) for d in await depot.documents_a_renouveler(jours_alerte)]
 
 
 async def creer(donnees: DocumentSaisie) -> dict:
     """Le fichier se joint ensuite avec joindre_fichier()."""
     await verifier_vehicule(donnees.vehicule_id)
-    return enrichir(await depot.obtenir_document(await depot.creer_document(donnees.model_dump())))
+    nouvel_id = await depot.creer_document(donnees.model_dump())
+    return enrichir(await depot.obtenir_document(nouvel_id), await _jours_alerte())
 
 
 async def modifier(id: int, donnees: DocumentSaisie) -> dict:
@@ -65,7 +72,7 @@ async def modifier(id: int, donnees: DocumentSaisie) -> dict:
     trouve(await depot.obtenir_document(id), INTROUVABLE)
     await verifier_vehicule(donnees.vehicule_id)
     await depot.modifier_document(id, donnees.model_dump())
-    return enrichir(await depot.obtenir_document(id))
+    return enrichir(await depot.obtenir_document(id), await _jours_alerte())
 
 
 async def joindre_fichier(id: int, nom_fichier: str | None, contenu: bytes) -> dict:

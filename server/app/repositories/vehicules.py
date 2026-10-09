@@ -22,17 +22,17 @@ async def lister(statut: str | None = None, recherche: str | None = None, plage:
                              "SELECT COUNT(*) AS total FROM vehicules")
 
 
-async def alertes() -> list[dict]:
-    """Contrôle technique sous 30 jours, ou plus de 10 000 km depuis la dernière vidange."""
+async def alertes(jours_controle_technique: int, km_vidange: int) -> list[dict]:
+    """Contrôle technique dans le délai donné, ou kilométrage depuis la dernière vidange dépassé."""
     return await db.query(f"""
         SELECT v.*,
           DATEDIFF(v.date_prochain_ct, CURDATE()) AS jours_avant_ct,
           (v.kilometrage - {_KM_DERNIERE_VIDANGE}) AS km_depuis_vidange
         FROM vehicules v
-        WHERE (v.date_prochain_ct IS NOT NULL AND v.date_prochain_ct <= DATE_ADD(CURDATE(), INTERVAL 30 DAY))
-           OR (v.kilometrage - {_KM_DERNIERE_VIDANGE}) > 10000
+        WHERE (v.date_prochain_ct IS NOT NULL AND v.date_prochain_ct <= DATE_ADD(CURDATE(), INTERVAL %s DAY))
+           OR (v.kilometrage - {_KM_DERNIERE_VIDANGE}) > %s
         ORDER BY v.date_prochain_ct ASC
-    """)
+    """, [jours_controle_technique, km_vidange])
 
 
 async def obtenir(id: int, cx: Executeur = db, *, verrou: bool = False) -> dict | None:

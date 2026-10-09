@@ -5,7 +5,6 @@
 #
 # Écritures sur plusieurs tables : toujours dans `async with db.transaction() as tx:`
 # (tx expose query / query_one / execute ; commit à la sortie, rollback sur exception).
-import os
 from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import Protocol
@@ -13,6 +12,7 @@ from urllib.parse import unquote, urlparse
 
 import aiomysql
 
+from .config import config
 from .temps import decalage_mysql
 
 _pool: aiomysql.Pool | None = None
@@ -20,7 +20,8 @@ _pool: aiomysql.Pool | None = None
 
 def _config_connexion() -> dict:
     """Accepte soit MYSQL_URL (Railway) soit les variables séparées (local/.env)."""
-    url = os.getenv("MYSQL_URL")
+    c = config()
+    url = c.mysql_url
     if url:
         u = urlparse(url)
         return {
@@ -31,11 +32,11 @@ def _config_connexion() -> dict:
             "db":       u.path.lstrip("/") or "flotte_db",
         }
     return {
-        "host":     os.getenv("DB_HOST", "localhost"),
-        "port":     int(os.getenv("DB_PORT", "3306")),
-        "user":     os.getenv("DB_USER", "root"),
-        "password": os.getenv("DB_PASSWORD", ""),
-        "db":       os.getenv("DB_NAME", "flotte_db"),
+        "host":     c.db_host,
+        "port":     c.db_port,
+        "user":     c.db_user,
+        "password": c.db_password.get_secret_value(),
+        "db":       c.db_name,
     }
 
 

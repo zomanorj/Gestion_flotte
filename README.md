@@ -73,6 +73,7 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 | Utilisateurs | CRUD des comptes (admin uniquement) — activation / désactivation, réinitialisation du mot de passe, liaison avec le profil chauffeur |
 | Maintenances | Planification (vidange, freins, pneus, révision…), quatre niveaux de priorité, modal de clôture avec coût réel et date effective |
 | Documents | Gestion des pièces administratives (carte grise, assurance, vignette, visite technique), upload de fichier, alertes d'expiration dans la Sidebar |
+| Paramètres | Prix du gasoil, barème de paie (salaire et prime par défaut, bonus kilométrique, taux CNAPS) et seuils d'alerte, modifiables par l'administrateur sans redéploiement, avec historique des modifications |
 | Planning | Calendrier FullCalendar — vues mois / semaine / jour, code couleur par statut, popup détail au clic |
 
 ### Sécurité
@@ -204,6 +205,8 @@ cd client && npm install && npm run dev
 
 ### Variables d'environnement (`server/.env`)
 
+La configuration est validée au démarrage : une valeur manquante ou invalide arrête l'API avec la liste des problèmes. Avec `ENVIRONNEMENT=production`, l'API refuse en plus un `JWT_SECRET` faible (32 caractères minimum), `SEED_DEMO` et un stockage de fichiers sur le disque éphémère du conteneur. La liste complète et commentée est dans `server/.env.example`.
+
 ```env
 DB_HOST=localhost
 DB_PORT=3306
@@ -244,6 +247,7 @@ cd server
 - **Fichiers uploadés** : le disque d'un conteneur est effacé à chaque redéploiement. Utiliser un volume Railway monté sur `UPLOADS_DIR`, ou un stockage S3 (Cloudflare R2, AWS S3) avec `STOCKAGE=s3`.
 - **Proxy** : définir `FORWARDED_ALLOW_IPS=*` pour que l'API voie l'adresse IP réelle des clients (nécessaire à la protection contre la force brute).
 - **Secrets** : `JWT_SECRET` long et aléatoire, propre à la production.
+- **Environnement** : définir `ENVIRONNEMENT=production`, qui active les contrôles de configuration propres à la production.
 
 La documentation interactive de l'API est disponible sur http://localhost:5000/docs (Swagger) et `/redoc` : chaque route y décrit ses paramètres, son corps de requête, sa réponse et ses erreurs, avec un bouton *Authorize* pour tester avec un token.
 

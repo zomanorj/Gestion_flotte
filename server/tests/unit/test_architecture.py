@@ -87,3 +87,15 @@ def test_l_analyse_des_imports_fonctionne():
     assert "app.repositories.missions" in imports
     assert "app.db" in imports
     assert _contient_du_sql(APP / "repositories" / "missions.py")
+
+
+def test_seule_la_configuration_lit_l_environnement():
+    """Toute variable d'environnement passe par app/config.py (validée au démarrage)."""
+    fichiers = [f for f in APP.rglob("*.py") if f.name != "config.py"] + [APP.parent / "main.py"]
+    lecteurs = []
+    for fichier in fichiers:
+        for noeud in ast.walk(ast.parse(fichier.read_text())):
+            if isinstance(noeud, ast.Attribute) and isinstance(noeud.value, ast.Name) and noeud.value.id == "os" \
+                    and noeud.attr in ("getenv", "environ"):
+                lecteurs.append(str(fichier.relative_to(APP.parent)))
+    assert lecteurs == []
