@@ -1,50 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ProtectedRoute } from './context/AuthContext';
 
-import Login        from './pages/Login';
-import Dashboard    from './pages/Dashboard';
-import Vehicules    from './pages/Vehicules';
-import Chauffeurs   from './pages/Chauffeurs';
-import Missions     from './pages/Missions';
-import Rapports     from './pages/Rapports';
-import CarteGlobale from './pages/CarteGlobale';
-import Documents    from './pages/Documents';
-import Carburant    from './pages/Carburant';
-import Depenses     from './pages/Depenses';
-import Maintenances from './pages/Maintenances';
-import Planning     from './pages/Planning';
-import Clients      from './pages/Clients';
-import Utilisateurs from './pages/Utilisateurs';
-import Paie         from './pages/Paie';
-import Parametres   from './pages/Parametres';
+// La page de connexion reste dans le fichier principal : c'est la première affichée
+import Login from './pages/Login';
+import { PAGES, PAGES_PLEIN_ECRAN } from './pages/registre';
 
-import Sidebar from './components/Sidebar';
-import Navbar  from './components/Navbar';
+import Sidebar    from './components/Sidebar';
+import Navbar     from './components/Navbar';
+import ErreurPage from './components/ErreurPage';
 
-const AppLayout = ({ children }) => (
-  <div className="d-flex vh-100 overflow-hidden bg-gray-100">
-    <Sidebar />
-    <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-      <Navbar />
-      <main className="flex-grow-1 overflow-y-auto p-4">
-        {children}
-      </main>
+const ChargementPage = () => (
+  <div className="d-flex justify-content-center align-items-center h-100" style={{ minHeight: '12rem' }}>
+    <div className="spinner-border text-primary" role="status">
+      <span className="visually-hidden">Chargement de la page…</span>
     </div>
   </div>
 );
 
-const AppLayoutPleinEcran = ({ children }) => (
-  <div className="d-flex vh-100 overflow-hidden">
-    <Sidebar />
-    <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-      <Navbar />
-      <main className="flex-grow-1 overflow-hidden">
-        {children}
-      </main>
+/**
+ * Cadre commun à toutes les pages connectées. Une seule instance pour toute la navigation :
+ * la barre latérale et la barre du haut (badges, notifications temps réel) ne sont pas
+ * recréées en changeant de page, y compris vers ou depuis la carte en plein écran.
+ */
+const AppLayout = () => {
+  const { pathname } = useLocation();
+  const pleinEcran = PAGES_PLEIN_ECRAN.has(pathname);
+  return (
+    <div className={`d-flex vh-100 overflow-hidden ${pleinEcran ? '' : 'bg-gray-100'}`}>
+      <Sidebar />
+      <div className="d-flex flex-column flex-grow-1 overflow-hidden">
+        <Navbar />
+        <main className={`flex-grow-1 ${pleinEcran ? 'overflow-hidden' : 'overflow-y-auto p-4'}`}>
+          <ErreurPage cle={pathname}>
+            <Suspense fallback={<ChargementPage />}>
+              <Outlet />
+            </Suspense>
+          </ErreurPage>
+        </main>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default function App() {
   const [bannerMsg, setBannerMsg] = useState('');
@@ -69,57 +66,16 @@ export default function App() {
         </div>
       )}
       <Routes>
-      <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Login />} />
 
-      <Route path="/" element={
-        <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/vehicules" element={
-        <ProtectedRoute><AppLayout><Vehicules /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/chauffeurs" element={
-        <ProtectedRoute><AppLayout><Chauffeurs /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/missions" element={
-        <ProtectedRoute><AppLayout><Missions /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/rapports" element={
-        <ProtectedRoute><AppLayout><Rapports /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/documents" element={
-        <ProtectedRoute><AppLayout><Documents /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/carburant" element={
-        <ProtectedRoute><AppLayout><Carburant /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/depenses" element={
-        <ProtectedRoute><AppLayout><Depenses /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/maintenances" element={
-        <ProtectedRoute><AppLayout><Maintenances /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/planning" element={
-        <ProtectedRoute><AppLayout><Planning /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/clients" element={
-        <ProtectedRoute><AppLayout><Clients /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/carte" element={
-        <ProtectedRoute><AppLayoutPleinEcran><CarteGlobale /></AppLayoutPleinEcran></ProtectedRoute>
-      } />
-      <Route path="/utilisateurs" element={
-        <ProtectedRoute><AppLayout><Utilisateurs /></AppLayout></ProtectedRoute>
-      } />
-      <Route path="/paie" element={
-        <ProtectedRoute><AppLayout><Paie /></AppLayout></ProtectedRoute>
-      } />
+        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          {PAGES.map(({ chemin, Composant }) => (
+            <Route key={chemin} path={chemin} element={<Composant />} />
+          ))}
+        </Route>
 
-      <Route path="/parametres" element={
-        <ProtectedRoute><AppLayout><Parametres /></AppLayout></ProtectedRoute>
-      } />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </>
   );
 }

@@ -29,7 +29,7 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 
 | Couche | Technologies |
 |--------|-------------|
-| Frontend | React 18, Vite, Bootstrap 5, Leaflet, FullCalendar, Chart.js, jsPDF, SheetJS |
+| Frontend | React 18, Vite, Bootstrap 5, Leaflet, FullCalendar, Chart.js, jsPDF, SheetJS — pages chargées à la demande (124 Ko compressés au premier chargement) |
 | Backend | Python 3.12, FastAPI, python-socketio, PyJWT, bcrypt, ReportLab |
 | Base de données | MySQL 5.7+ (pool de connexions async via aiomysql) |
 | Temps réel | Socket.io (python-socketio, compatible socket.io-client v4) — simulation GPS, notifications push |

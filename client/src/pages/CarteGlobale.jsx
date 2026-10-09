@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Truck, RefreshCw, ChevronLeft, ChevronRight, MapPin, AlertTriangle, Clock, Gauge } from 'lucide-react';
 import api, { creerSocket } from '../services/api';
 

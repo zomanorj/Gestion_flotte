@@ -82,6 +82,8 @@ jobs:
 
       - run: npm ci
       - run: npm run build
+      - name: Budget de taille du premier chargement
+        run: npm run verifier:taille
 
   docker:
     name: Stack Docker (build + démarrage)

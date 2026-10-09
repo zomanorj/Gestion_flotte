@@ -7,16 +7,20 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { precharger } from '../pages/registre';
 
 const initiales = (nom) =>
   nom ? nom.split(' ').map((p) => p[0]).join('').toUpperCase().slice(0, 2) : '?';
 
+// Survol ou focus clavier : la page est téléchargée avant le clic
 const NavItem = ({ to, Icon, label, badge }) => (
   <NavLink
     to={to}
     className={({ isActive }) =>
       `sidebar-link${isActive ? ' active' : ''}`
     }
+    onMouseEnter={() => precharger(to)}
+    onFocus={() => precharger(to)}
   >
     <Icon size={18} className="flex-shrink-0" />
     <span>{label}</span>

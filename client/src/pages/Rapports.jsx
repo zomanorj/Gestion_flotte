@@ -1,7 +1,4 @@
 import React, { useState } from 'react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
 import { Search, Loader2, FileDown, Table2 } from 'lucide-react';
 import api from '../services/api';
 
@@ -14,6 +11,19 @@ export default function Rapports() {
   const [missions,    setMissions]    = useState([]);
   const [chargement,  setChargement]  = useState(false);
   const [genere,      setGenere]      = useState(false);
+  // Bibliothèques d'export (jsPDF, xlsx : ~800 Ko) téléchargées seulement au premier export
+  const [exportEnCours, setExportEnCours] = useState(null); // 'pdf' | 'excel' | null
+
+  const exporter = async (format, fonction) => {
+    setExportEnCours(format);
+    try {
+      await fonction();
+    } catch {
+      alert("L'export n'a pas pu être généré. Vérifiez votre connexion et réessayez.");
+    } finally {
+      setExportEnCours(null);
+    }
+  };
 
   const genererRapport = async () => {
     setChargement(true);
@@ -34,7 +44,10 @@ export default function Rapports() {
   const totalKm   = missions.reduce((s, m) => s + parseFloat(m.distance_km   || 0), 0);
   const totalCout = missions.reduce((s, m) => s + parseFloat(m.cout_carburant || 0), 0);
 
-  const exporterPDF = () => {
+  const exporterPDF = async () => {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'), import('jspdf-autotable')
+    ]);
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(16);
     doc.setTextColor(30, 64, 175);
@@ -72,7 +85,8 @@ export default function Rapports() {
     doc.save(`rapport_missions_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
-  const exporterExcel = () => {
+  const exporterExcel = async () => {
+    const XLSX = await import('xlsx');
     const lignes = missions.map((m) => ({
       'Mission':             m.titre,
       'Véhicule':            m.immatriculation,
@@ -139,13 +153,15 @@ export default function Rapports() {
             <div className="flex-grow-1" />
             {missions.length > 0 && (
               <>
-                <button onClick={exporterPDF}
+                <button onClick={() => exporter('pdf', exporterPDF)} disabled={exportEnCours !== null}
                         className="btn btn-danger btn-sm d-flex align-items-center gap-2">
-                  <FileDown size={16} /> Exporter PDF
+                  {exportEnCours === 'pdf' ? <span className="spinner-border spinner-border-sm" role="status" aria-label="Préparation de l'export" /> : <FileDown size={16} />}
+                  Exporter PDF
                 </button>
-                <button onClick={exporterExcel}
+                <button onClick={() => exporter('excel', exporterExcel)} disabled={exportEnCours !== null}
                         className="btn btn-success btn-sm d-flex align-items-center gap-2">
-                  <Table2 size={16} /> Exporter Excel
+                  {exportEnCours === 'excel' ? <span className="spinner-border spinner-border-sm" role="status" aria-label="Préparation de l'export" /> : <Table2 size={16} />}
+                  Exporter Excel
                 </button>
               </>
             )}

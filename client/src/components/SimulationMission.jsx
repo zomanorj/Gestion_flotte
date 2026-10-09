@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import { creerSocket } from '../services/api';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Truck, AlertTriangle, CheckCircle2, Clock, MapPin, Zap, X, Gauge, Route, Timer, Flag } from 'lucide-react';
 
 const iconeCamion = L.divIcon({
