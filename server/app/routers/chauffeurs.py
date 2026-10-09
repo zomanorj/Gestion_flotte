@@ -1,12 +1,17 @@
 # Routes chauffeurs — CRUD et historique de missions
-from fastapi import APIRouter, Depends, Request
+from typing import Annotated
+
+from fastapi import Depends, Query
 
 from .. import db
 from ..auth import ROLES_GESTION, Admin, Connecte, Gestionnaire, verifier_token
 from ..erreurs import ErreurApi
-from ..utils import Pagination, corps, ou_none
+from ..schemas.commun import Message, Page, Vide
+from ..schemas.enums import StatutChauffeur
+from ..schemas.flotte import Chauffeur, ChauffeurCreation, ChauffeurDetail, ChauffeurMiseAJour, Mission
+from ..utils import Pagination, Routeur, clause_set, ligne_ou_404
 
-router = APIRouter()
+router = Routeur()
 
 CHAMPS_SALAIRE = ("salaire_base", "prime_mission")
 
@@ -18,14 +23,13 @@ def masquer_salaire(chauffeur: dict, user: dict) -> dict:
     return {k: v for k, v in chauffeur.items() if k not in CHAMPS_SALAIRE}
 
 
-@router.get("")
+@router.get("", response_model=list[Chauffeur] | Page[Chauffeur], summary="Liste des chauffeurs")
 async def get_all(
-    request: Request,
-    statut: str | None = None,
-    search: str | None = None,
+    statut: Annotated[StatutChauffeur | None, Vide] = None,
+    search: Annotated[str | None, Query(description="Nom, prénom ou numéro de permis")] = None,
+    pg: Pagination = Depends(),
     user: dict = Depends(verifier_token),
 ):
-    """Tous les chauffeurs, avec filtres optionnels ?statut=&search="""
     where, params = " WHERE 1=1", []
     if statut:
         where += " AND statut = %s"
@@ -35,23 +39,17 @@ async def get_all(
         params += [f"%{search}%"] * 3
 
     query = "SELECT * FROM chauffeurs" + where + " ORDER BY nom ASC, prenom ASC"
-
-    pg = Pagination(request)
     if pg.actif:
         count = await db.query_one("SELECT COUNT(*) AS total FROM chauffeurs" + where, params)
         rows = await db.query(query + " LIMIT %s OFFSET %s", params + [pg.limit, pg.offset])
         return pg.reponse([masquer_salaire(r, user) for r in rows], count["total"])
-
     return [masquer_salaire(r, user) for r in await db.query(query, params)]
 
 
-@router.get("/{id}")
+@router.get("/{id}", response_model=ChauffeurDetail, summary="Détail d'un chauffeur")
 async def get_by_id(id: int, user: dict = Depends(verifier_token)):
-    """Un chauffeur avec ses statistiques de missions."""
-    chauffeur = await db.query_one("SELECT * FROM chauffeurs WHERE id = %s", [id])
-    if not chauffeur:
-        raise ErreurApi(404, "Chauffeur introuvable")
-
+    chauffeur = ligne_ou_404(await db.query_one("SELECT * FROM chauffeurs WHERE id = %s", [id]),
+                             "Chauffeur introuvable")
     stats = await db.query_one("""
         SELECT
           COUNT(*) AS total_missions,
@@ -63,12 +61,10 @@ async def get_by_id(id: int, user: dict = Depends(verifier_token)):
     return {**masquer_salaire(chauffeur, user), "stats": stats}
 
 
-@router.get("/{id}/missions", dependencies=[Connecte])
+@router.get("/{id}/missions", dependencies=[Connecte], response_model=list[Mission],
+            summary="Historique des missions d'un chauffeur")
 async def get_missions(id: int):
-    """Historique complet des missions d'un chauffeur."""
-    if not await db.query("SELECT id FROM chauffeurs WHERE id = %s", [id]):
-        raise ErreurApi(404, "Chauffeur introuvable")
-
+    ligne_ou_404(await db.query_one("SELECT id FROM chauffeurs WHERE id = %s", [id]), "Chauffeur introuvable")
     return await db.query("""
         SELECT m.*, v.immatriculation, v.marque, v.modele
         FROM missions m
@@ -78,64 +74,43 @@ async def get_missions(id: int):
     """, [id])
 
 
-@router.post("", status_code=201, dependencies=[Gestionnaire])
-async def create(request: Request):
-    """Crée un nouveau chauffeur. Vérifie l'unicité du numéro de permis."""
-    b = await corps(request)
-    if not b.get("nom") or not b.get("prenom") or not b.get("telephone") or not b.get("numero_permis"):
-        raise ErreurApi(400, "Champs obligatoires manquants")
-
-    if await db.query("SELECT id FROM chauffeurs WHERE numero_permis = %s", [b["numero_permis"]]):
+@router.post("", status_code=201, dependencies=[Gestionnaire], response_model=Chauffeur,
+             summary="Ajouter un chauffeur")
+async def create(donnees: ChauffeurCreation):
+    if await db.query("SELECT id FROM chauffeurs WHERE numero_permis = %s", [donnees.numero_permis]):
         raise ErreurApi(409, "Ce numéro de permis est déjà enregistré")
 
+    champs = donnees.model_dump()
     new_id = await db.execute(
-        """INSERT INTO chauffeurs (user_id, nom, prenom, telephone, numero_permis, categorie_permis, statut)
-           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-        [
-            ou_none(b.get("user_id")), b["nom"], b["prenom"], b["telephone"], b["numero_permis"],
-            b.get("categorie_permis") or "B",
-            b.get("statut") or "disponible",
-        ],
+        f"INSERT INTO chauffeurs ({', '.join(champs)}) VALUES ({', '.join(['%s'] * len(champs))})",
+        list(champs.values()),
     )
     return await db.query_one("SELECT * FROM chauffeurs WHERE id = %s", [new_id])
 
 
-@router.put("/{id}", dependencies=[Gestionnaire])
-async def update(id: int, request: Request):
-    """Met à jour les informations d'un chauffeur."""
-    b = await corps(request)
-    if not await db.query("SELECT id FROM chauffeurs WHERE id = %s", [id]):
-        raise ErreurApi(404, "Chauffeur introuvable")
+@router.put("/{id}", dependencies=[Gestionnaire], response_model=Chauffeur, summary="Modifier un chauffeur")
+async def update(id: int, donnees: ChauffeurMiseAJour):
+    """Seuls les champs envoyés sont modifiés."""
+    ligne_ou_404(await db.query_one("SELECT id FROM chauffeurs WHERE id = %s", [id]), "Chauffeur introuvable")
 
-    await db.execute(
-        """UPDATE chauffeurs SET
-             nom              = COALESCE(%s, nom),
-             prenom           = COALESCE(%s, prenom),
-             telephone        = COALESCE(%s, telephone),
-             numero_permis    = COALESCE(%s, numero_permis),
-             categorie_permis = COALESCE(%s, categorie_permis),
-             statut           = COALESCE(%s, statut)
-           WHERE id = %s""",
-        [
-            *(ou_none(b.get(k)) for k in (
-                "nom", "prenom", "telephone", "numero_permis", "categorie_permis", "statut",
-            )),
-            id,
-        ],
-    )
+    champs = donnees.champs_fournis()
+    if "numero_permis" in champs and await db.query(
+        "SELECT id FROM chauffeurs WHERE numero_permis = %s AND id != %s", [champs["numero_permis"], id]
+    ):
+        raise ErreurApi(409, "Ce numéro de permis est déjà enregistré")
+
+    if champs:
+        colonnes, valeurs = clause_set(champs)
+        await db.execute(f"UPDATE chauffeurs SET {colonnes} WHERE id = %s", [*valeurs, id])
     return await db.query_one("SELECT * FROM chauffeurs WHERE id = %s", [id])
 
 
-@router.delete("/{id}", dependencies=[Admin])
+@router.delete("/{id}", dependencies=[Admin], response_model=Message, summary="Supprimer un chauffeur")
 async def remove(id: int):
-    """
-    Supprime un chauffeur uniquement s'il n'a aucune mission (active ou historique).
-    Un chauffeur avec un historique de missions doit être archivé, pas supprimé.
-    """
-    existant = await db.query_one("SELECT id, nom, prenom FROM chauffeurs WHERE id = %s", [id])
-    if not existant:
-        raise ErreurApi(404, "Chauffeur introuvable")
-
+    """Refusé si le chauffeur a des missions : le passer en congé à la place."""
+    existant = ligne_ou_404(
+        await db.query_one("SELECT id, nom, prenom FROM chauffeurs WHERE id = %s", [id]), "Chauffeur introuvable"
+    )
     nom = f"{existant['prenom']} {existant['nom']}"
     stats = await db.query_one(
         """SELECT COUNT(*) AS nb, SUM(statut IN ('planifiee','en_cours')) AS actives

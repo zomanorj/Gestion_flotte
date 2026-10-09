@@ -1,68 +1,31 @@
 """Utilitaires : dates, pagination, formatage, itinéraires, événements aléatoires, découpage SQL."""
 import random
-from datetime import datetime
 
 import pytest
 
-from app.erreurs import ErreurApi
 from app.services.evenement import generer_evenements
 from app.services.pdf import montant_fr, tronquer
 from app.services.route import VILLES_MADAGASCAR, calculer_distance, decimer_points, route_ligne_droite
 from app.temps import decalage_mysql
-from app.utils import Pagination, date_heure, nombre, ou_none
+from app.utils import Pagination, clause_set
 from tests.conftest import instructions_sql
 
 
-class TestDateHeure:
-    @pytest.mark.parametrize("valeur,attendu", [
-        ("2026-10-08", datetime(2026, 10, 8)),
-        ("2026-10-08T08:30", datetime(2026, 10, 8, 8, 30)),
-        ("2026-10-08 08:30:15", datetime(2026, 10, 8, 8, 30, 15)),
-        ("2026-10-08T08:30:00Z", datetime(2026, 10, 8, 8, 30)),
-    ])
-    def test_formats_acceptes(self, valeur, attendu):
-        assert date_heure(valeur, "d") == attendu
-
-    @pytest.mark.parametrize("valeur", ["", "demain", "08/10/2026", None, 20261008])
-    def test_formats_refuses(self, valeur):
-        with pytest.raises(ErreurApi) as exc:
-            date_heure(valeur, "date_depart")
-        assert exc.value.status == 400
-        assert "date_depart" in exc.value.message
-
-
-class _RequeteFactice:
-    def __init__(self, **query):
-        self.query_params = query
-
-
 class TestPagination:
-    def test_inactive_par_defaut(self):
-        assert not Pagination(_RequeteFactice()).actif
-
     def test_valeurs_et_reponse(self):
-        pg = Pagination(_RequeteFactice(paginate="true", page="3", limit="10"))
+        pg = Pagination(paginate=True, page=3, limit=10)
         assert (pg.actif, pg.page, pg.limit, pg.offset) == (True, 3, 10, 20)
         assert pg.reponse(["a"], 25) == {"data": ["a"], "total": 25, "page": 3, "pages": 3, "limit": 10}
 
-    @pytest.mark.parametrize("page,limit,attendu", [
-        ("0", "0", (1, 20)),       # valeurs nulles → défauts
-        ("-5", "999", (1, 200)),   # bornes
-        ("abc", "xyz", (1, 20)),   # non numériques → défauts
-    ])
-    def test_valeurs_invalides_corrigees(self, page, limit, attendu):
-        pg = Pagination(_RequeteFactice(paginate="true", page=page, limit=limit))
-        assert (pg.page, pg.limit) == attendu
+    def test_limite_plafonnee(self):
+        assert Pagination(paginate=True, page=1, limit=999).limit == 200
+
+    def test_page_vide(self):
+        assert Pagination(paginate=True, page=1, limit=20).reponse([], 0)["pages"] == 0
 
 
-def test_ou_none_reproduit_le_ou_logique_js():
-    assert [ou_none(v) for v in (0, "", None, [], "x", 3)] == [None, None, None, None, "x", 3]
-
-
-def test_nombre():
-    assert nombre("12.5") == 12.5
-    assert nombre("abc") is None
-    assert nombre(None) is None
+def test_clause_set():
+    assert clause_set({"nom": "a", "ville": None}) == ("nom = %s, ville = %s", ["a", None])
 
 
 @pytest.mark.parametrize("valeur,attendu", [(0, "0"), (1234, "1 234"), (841500.4, "841 500"), (-8500, "-8 500")])

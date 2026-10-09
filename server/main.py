@@ -44,6 +44,7 @@ from app.routers import (
     users,
     vehicules,
 )
+from app.schemas.commun import Erreur, Sante
 from app.services.notifications import verifier_alertes_periodiques
 from app.socket import sio
 from app.stockage import FichierIntrouvable, stockage
@@ -81,7 +82,57 @@ async def lifespan(_app: FastAPI):
     await db.fermer()
 
 
-api = FastAPI(title="FlotteApp API", lifespan=lifespan, redirect_slashes=False)
+DESCRIPTION = """
+API de gestion de flotte de camions (Madagascar).
+
+**Authentification** : obtenir un token avec `POST /api/auth/login`, puis l'envoyer dans l'en-tête
+`Authorization: Bearer <token>` (bouton *Authorize* ci-dessus).
+
+**Rôles** : `admin` (tout), `gestionnaire` (création et modification, sans suppression),
+`chauffeur` (lecture ; uniquement ses propres données de paie).
+
+**Erreurs** : toujours `{"message": "..."}` ; les erreurs de validation (400) ajoutent
+`erreurs: [{champ, message}]`.
+
+**Listes** : un tableau simple, ou `{data, total, page, pages, limit}` avec `?paginate=true`.
+
+**Temps réel** : Socket.io sur `/socket.io`, connexion avec `auth: { token }`.
+"""
+
+MODULES = [
+    (auth, "auth", "Authentification", "Connexion et profil"),
+    (users, "users", "Utilisateurs", "Comptes et mots de passe (administration)"),
+    (vehicules, "vehicules", "Véhicules", "Camions et alertes d'entretien"),
+    (chauffeurs, "chauffeurs", "Chauffeurs", "Chauffeurs et historique"),
+    (missions, "missions", "Missions", "Planification, cycle de vie, planning et bon de livraison"),
+    (simulation, "simulation", "Simulation", "Itinéraires et simulation GPS en temps réel"),
+    (dashboard, "dashboard", "Tableau de bord", "Indicateurs"),
+    (documents, "documents", "Documents", "Pièces administratives des véhicules et fichiers joints"),
+    (carburant, "carburant", "Carburant", "Pleins et consommation"),
+    (depenses, "depenses", "Dépenses", "Dépenses opérationnelles"),
+    (maintenances, "maintenances", "Maintenances", "Maintenances planifiées"),
+    (clients, "clients", "Clients", "Clients et leurs missions"),
+    (paie, "paie", "Paie", "Calcul des salaires et bulletins"),
+    (notifications, "notifications", "Notifications", "Alertes de l'utilisateur connecté"),
+]
+
+# Format d'erreur documenté sur toutes les routes
+REPONSES_ERREUR = {
+    400: {"model": Erreur, "description": "Données invalides"},
+    401: {"model": Erreur, "description": "Non authentifié ou session expirée"},
+    403: {"model": Erreur, "description": "Droits insuffisants"},
+    404: {"model": Erreur, "description": "Ressource introuvable"},
+    409: {"model": Erreur, "description": "Conflit avec l'état actuel (doublon, indisponibilité…)"},
+}
+
+api = FastAPI(
+    title="FlotteApp API",
+    version="2.0.0",
+    description=DESCRIPTION,
+    openapi_tags=[{"name": tag, "description": desc} for _, _, tag, desc in MODULES],
+    lifespan=lifespan,
+    redirect_slashes=False,
+)
 installer_gestionnaires(api)
 
 # CORS — autorise uniquement le client React
@@ -93,17 +144,14 @@ api.add_middleware(
 )
 
 # Montage des routes de l'API
-for module, prefixe in [
-    (auth, "auth"), (users, "users"), (vehicules, "vehicules"), (chauffeurs, "chauffeurs"),
-    (missions, "missions"), (dashboard, "dashboard"), (simulation, "simulation"),
-    (documents, "documents"), (carburant, "carburant"), (depenses, "depenses"),
-    (maintenances, "maintenances"), (clients, "clients"), (paie, "paie"),
-    (notifications, "notifications"),
-]:
-    api.include_router(module.router, prefix=f"/api/{prefixe}")
+for module, prefixe, tag, _ in MODULES:
+    api.include_router(module.router, prefix=f"/api/{prefixe}", tags=[tag], responses=REPONSES_ERREUR)
 
 
-@api.get("/api/uploads/{chemin:path}", dependencies=[Connecte])
+@api.get("/api/uploads/{chemin:path}", dependencies=[Connecte], tags=["Documents"], response_class=Response,
+         summary="Télécharger un fichier joint",
+         responses={**REPONSES_ERREUR,
+                    200: {"content": {"application/octet-stream": {}}, "description": "Contenu du fichier"}})
 async def fichier_uploade(chemin: str):
     """Sert les fichiers uploadés (documents…) — réservé aux utilisateurs connectés."""
     try:
@@ -121,7 +169,8 @@ async def fichier_uploade(chemin: str):
     )
 
 
-@api.get("/api/health")
+@api.get("/api/health", tags=["Système"], response_model=Sante, summary="État de l'API et de la base",
+         responses={503: {"model": Sante, "description": "Base de données injoignable"}})
 async def sante():
     """Route de santé : vérifie que l'API répond et que la base est joignable."""
     try:

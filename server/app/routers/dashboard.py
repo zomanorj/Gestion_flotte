@@ -1,13 +1,14 @@
 # Routes dashboard — agrège les statistiques globales de la flotte
-from fastapi import APIRouter
-
 from .. import db
 from ..auth import Connecte
+from ..schemas.pilotage import StatistiquesTableauDeBord
+from ..utils import Routeur
 
-router = APIRouter()
+router = Routeur()
 
 
-@router.get("/stats", dependencies=[Connecte])
+@router.get("/stats", dependencies=[Connecte], response_model=StatistiquesTableauDeBord,
+            summary="Indicateurs du tableau de bord")
 async def get_stats():
     """Toutes les métriques affichées sur le tableau de bord, en une seule passe."""
     vehicules = await db.query_one("""

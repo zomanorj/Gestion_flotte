@@ -246,7 +246,9 @@ La liste complète et commentée est dans `server/.env.example`.
 - **Proxy** : définir `FORWARDED_ALLOW_IPS=*` pour que l'API voie l'adresse IP réelle des clients (nécessaire à la protection contre la force brute).
 - **Secrets** : `JWT_SECRET` long et aléatoire, propre à la production.
 
-La documentation interactive de l'API est disponible sur http://localhost:5000/docs (Swagger, généré par FastAPI).
+La documentation interactive de l'API est disponible sur http://localhost:5000/docs (Swagger) et `/redoc` : chaque route y décrit ses paramètres, son corps de requête, sa réponse et ses erreurs, avec un bouton *Authorize* pour tester avec un token.
+
+Toutes les entrées sont validées (types, valeurs autorisées, longueurs, cohérence des dates). Les erreurs ont toujours le format `{"message": "..."}`, en français ; les erreurs de validation (400) détaillent chaque champ dans `erreurs: [{champ, message}]`.
 
 ---
 

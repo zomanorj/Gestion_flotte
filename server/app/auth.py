@@ -11,7 +11,8 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
-from fastapi import Depends, Request
+from fastapi import Depends, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from . import db
 from .erreurs import ErreurApi
@@ -57,12 +58,18 @@ async def utilisateur_depuis_token(token: str | None) -> dict:
     return {"id": user["id"], "nom": user["nom"], "email": user["email"], "role": user["role"]}
 
 
-async def verifier_token(request: Request) -> dict:
+# auto_error=False : les erreurs restent au format de l'API ; le schéma sert aussi au bouton
+# "Authorize" de la documentation /docs
+_bearer = HTTPBearer(auto_error=False, description="Token obtenu via POST /api/auth/login")
+
+
+async def verifier_token(
+    identifiants: HTTPAuthorizationCredentials | None = Security(_bearer),
+) -> dict:
     """Dépendance : utilisateur authentifié via le header Authorization ("Bearer <token>")."""
-    auth = request.headers.get("authorization") or ""
-    if not auth.startswith("Bearer "):
+    if identifiants is None or identifiants.scheme.lower() != "bearer":
         raise ErreurApi(401, "Token manquant ou mal formaté")
-    return await utilisateur_depuis_token(auth[len("Bearer "):])
+    return await utilisateur_depuis_token(identifiants.credentials)
 
 
 def verifier_role(*roles: str):

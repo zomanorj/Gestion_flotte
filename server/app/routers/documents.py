@@ -2,16 +2,20 @@
 import re
 import time
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import Depends, File, Query, UploadFile
 
 from .. import db
 from ..auth import Admin, Connecte, Gestionnaire
 from ..erreurs import ErreurApi
+from ..schemas.commun import IdOpt, Message, Page, Vide
+from ..schemas.enums import TypeDocument
+from ..schemas.operations import Document, DocumentSaisie, FichierEnvoye
 from ..stockage import PREFIXE_URL, stockage, supprimer_sans_erreur
-from ..utils import Pagination, corps, ou_none
+from ..utils import Pagination, Routeur, ligne_ou_404
 
-router = APIRouter()
+router = Routeur()
 
 EXTENSIONS_OK = {
     ".pdf": "application/pdf",
@@ -43,9 +47,9 @@ def enrichir(doc: dict) -> dict:
     return {**doc, "jours_restants": jours, "statut": statut_depuis_jours(jours)}
 
 
-@router.get("/alertes", dependencies=[Connecte])
+@router.get("/alertes", dependencies=[Connecte], response_model=list[Document],
+            summary="Documents expirés ou expirant sous 30 jours")
 async def get_alertes():
-    """Documents expirés ou expirant dans les 30 prochains jours, les plus urgents en premier."""
     rows = await db.query("""
         SELECT d.*, v.immatriculation, v.marque, v.modele,
           DATEDIFF(d.date_expiration, CURDATE()) AS jours_restants
@@ -57,9 +61,12 @@ async def get_alertes():
     return [enrichir(r) for r in rows]
 
 
-@router.get("", dependencies=[Connecte])
-async def get_all(request: Request, vehicule_id: str | None = None, type: str | None = None):
-    """Tous les documents avec filtres optionnels : ?vehicule_id=1&type=assurance"""
+@router.get("", dependencies=[Connecte], response_model=list[Document] | Page[Document], summary="Liste des documents")
+async def get_all(
+    vehicule_id: Annotated[IdOpt, Query()] = None,
+    type: Annotated[TypeDocument | None, Vide] = None,
+    pg: Pagination = Depends(),
+):
     where, params = " WHERE 1=1", []
     if vehicule_id:
         where += " AND d.vehicule_id = %s"
@@ -75,55 +82,48 @@ async def get_all(request: Request, vehicule_id: str | None = None, type: str | 
         JOIN vehicules v ON d.vehicule_id = v.id
     """ + where + " ORDER BY d.date_expiration ASC"
 
-    pg = Pagination(request)
     if pg.actif:
         count = await db.query_one("SELECT COUNT(*) AS total FROM documents d" + where, params)
         rows = await db.query(query + " LIMIT %s OFFSET %s", params + [pg.limit, pg.offset])
         return pg.reponse([enrichir(r) for r in rows], count["total"])
-
     return [enrichir(r) for r in await db.query(query, params)]
 
 
-@router.post("", status_code=201, dependencies=[Gestionnaire])
-async def create(request: Request):
-    """Crée un nouveau document pour un véhicule (le fichier se joint ensuite via /{id}/fichier)."""
-    b = await corps(request)
-    if not b.get("vehicule_id") or not b.get("type") or not b.get("date_emission") or not b.get("date_expiration"):
-        raise ErreurApi(400, "Champs obligatoires : vehicule_id, type, date_emission, date_expiration")
+async def _verifier_vehicule(vehicule_id: int) -> None:
+    ligne_ou_404(await db.query_one("SELECT id FROM vehicules WHERE id = %s", [vehicule_id]), "Véhicule introuvable")
 
+
+@router.post("", status_code=201, dependencies=[Gestionnaire], response_model=Document, summary="Ajouter un document")
+async def create(donnees: DocumentSaisie):
+    """Le fichier se joint ensuite via POST /documents/{id}/fichier."""
+    await _verifier_vehicule(donnees.vehicule_id)
+    champs = donnees.model_dump()
     new_id = await db.execute(
-        """INSERT INTO documents (vehicule_id, type, numero, date_emission, date_expiration, notes)
-           VALUES (%s, %s, %s, %s, %s, %s)""",
-        [
-            b["vehicule_id"], b["type"], ou_none(b.get("numero")), b["date_emission"], b["date_expiration"],
-            ou_none(b.get("notes")),
-        ],
+        f"INSERT INTO documents ({', '.join(champs)}) VALUES ({', '.join(['%s'] * len(champs))})",
+        list(champs.values()),
     )
     return enrichir(await db.query_one(SELECT_DOC, [new_id]))
 
 
-@router.put("/{id}", dependencies=[Gestionnaire])
-async def update(id: int, request: Request):
-    """Met à jour un document existant. Le fichier joint ne change que via /{id}/fichier."""
-    b = await corps(request)
-    if not await db.query("SELECT id FROM documents WHERE id = %s", [id]):
-        raise ErreurApi(404, "Document introuvable")
-
+@router.put("/{id}", dependencies=[Gestionnaire], response_model=Document, summary="Modifier un document")
+async def update(id: int, donnees: DocumentSaisie):
+    """Le fichier joint ne change que via POST /documents/{id}/fichier."""
+    ligne_ou_404(await db.query_one("SELECT id FROM documents WHERE id = %s", [id]), "Document introuvable")
+    await _verifier_vehicule(donnees.vehicule_id)
     await db.execute(
         """UPDATE documents
-           SET vehicule_id=%s, type=%s, numero=%s, date_emission=%s, date_expiration=%s, notes=%s
-           WHERE id=%s""",
-        [
-            b.get("vehicule_id"), b.get("type"), ou_none(b.get("numero")),
-            b.get("date_emission"), b.get("date_expiration"), ou_none(b.get("notes")), id,
-        ],
+           SET vehicule_id = %s, type = %s, numero = %s, date_emission = %s, date_expiration = %s, notes = %s
+           WHERE id = %s""",
+        [donnees.vehicule_id, donnees.type, donnees.numero, donnees.date_emission, donnees.date_expiration,
+         donnees.notes, id],
     )
     return enrichir(await db.query_one(SELECT_DOC, [id]))
 
 
-@router.post("/{id}/fichier", dependencies=[Gestionnaire])
-async def upload_fichier(id: int, fichier: UploadFile | None = File(None)):
-    """Upload d'un fichier pour un document existant ; remplace et supprime l'ancien fichier."""
+@router.post("/{id}/fichier", dependencies=[Gestionnaire], response_model=FichierEnvoye,
+             summary="Joindre un fichier à un document")
+async def upload_fichier(id: int, fichier: UploadFile | None = File(None, description="PDF, image ou Word, 10 Mo max")):
+    """Remplace le fichier existant (l'ancien est supprimé)."""
     if not fichier or not fichier.filename:
         raise ErreurApi(400, "Aucun fichier fourni")
 
@@ -135,9 +135,8 @@ async def upload_fichier(id: int, fichier: UploadFile | None = File(None)):
     if len(contenu) > TAILLE_MAX_OCTETS:
         raise ErreurApi(413, "Fichier trop volumineux (10 Mo max)")
 
-    doc = await db.query_one("SELECT id, fichier_url FROM documents WHERE id = %s", [id])
-    if not doc:
-        raise ErreurApi(404, "Document introuvable")
+    doc = ligne_ou_404(await db.query_one("SELECT id, fichier_url FROM documents WHERE id = %s", [id]),
+                       "Document introuvable")
 
     base = re.sub(r"[^a-zA-Z0-9]", "_", Path(fichier.filename).stem)[:80]
     cle = f"documents/doc_{id}_{int(time.time() * 1000)}_{base}{ext}"
@@ -146,7 +145,7 @@ async def upload_fichier(id: int, fichier: UploadFile | None = File(None)):
     fichier_url = PREFIXE_URL + cle
     try:
         await db.execute(
-            "UPDATE documents SET fichier_url=%s, fichier_nom=%s WHERE id=%s",
+            "UPDATE documents SET fichier_url = %s, fichier_nom = %s WHERE id = %s",
             [fichier_url, fichier.filename, id],
         )
     except Exception:
@@ -159,12 +158,11 @@ async def upload_fichier(id: int, fichier: UploadFile | None = File(None)):
     return {"message": "Fichier uploadé avec succès", "fichier_url": fichier_url, "fichier_nom": fichier.filename}
 
 
-@router.delete("/{id}", dependencies=[Admin])
+@router.delete("/{id}", dependencies=[Admin], response_model=Message, summary="Supprimer un document")
 async def remove(id: int):
-    doc = await db.query_one("SELECT id, fichier_url FROM documents WHERE id = %s", [id])
-    if not doc:
-        raise ErreurApi(404, "Document introuvable")
-
+    """Supprime aussi le fichier joint."""
+    doc = ligne_ou_404(await db.query_one("SELECT id, fichier_url FROM documents WHERE id = %s", [id]),
+                       "Document introuvable")
     await db.execute("DELETE FROM documents WHERE id = %s", [id])
     await supprimer_sans_erreur(doc["fichier_url"])
     return {"message": "Document supprimé"}

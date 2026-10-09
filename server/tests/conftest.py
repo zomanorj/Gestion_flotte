@@ -154,6 +154,8 @@ def serveur(base_de_test, tmp_path_factory):
         "UPLOADS_DIR": str(tmp_path_factory.mktemp("uploads")),
         # OSRM injoignable : l'API utilise immédiatement le tracé de secours (aucun accès réseau)
         "OSRM_URL": "http://127.0.0.1:9/route/v1/driving",
+        # Modèles de réponse stricts : une colonne SQL absente d'un schéma fait échouer le test
+        "API_SCHEMAS_STRICTS": "1",
         "ADMIN_EMAIL": "",
         "ADMIN_PASSWORD": "",
     }

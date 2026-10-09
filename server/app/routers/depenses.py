@@ -1,12 +1,17 @@
 # Routes dépenses — suivi des dépenses opérationnelles par catégorie
-from fastapi import APIRouter, Request
+from datetime import date
+from typing import Annotated
+
+from fastapi import Depends, Query
 
 from .. import db
 from ..auth import Admin, Connecte, Gestionnaire
-from ..erreurs import ErreurApi
-from ..utils import Pagination, corps, nombre, ou_none
+from ..schemas.commun import IdOpt, Message, Page, Vide
+from ..schemas.enums import CategorieDepense
+from ..schemas.operations import Depense, DepenseSaisie, StatistiquesDepenses
+from ..utils import Pagination, Routeur, ligne_ou_404
 
-router = APIRouter()
+router = Routeur()
 
 SELECT_DEPENSE = """
     SELECT d.*, v.immatriculation, v.marque
@@ -14,25 +19,13 @@ SELECT_DEPENSE = """
 """
 
 
-def valider_depense(b: dict) -> float:
-    if not b.get("vehicule_id") or not b.get("categorie") or not b.get("montant") or not b.get("date_depense"):
-        raise ErreurApi(400, "Champs obligatoires : vehicule_id, categorie, montant, date_depense", cle="erreur")
-    montant = nombre(b["montant"])
-    if montant is None or montant <= 0:
-        raise ErreurApi(400, "montant doit être un nombre positif", cle="erreur")
-    return montant
+async def _verifier_vehicule(vehicule_id: int) -> None:
+    ligne_ou_404(await db.query_one("SELECT id FROM vehicules WHERE id = %s", [vehicule_id]), "Véhicule introuvable")
 
 
-def valeurs_depense(b: dict, montant: float) -> list:
-    return [
-        b["vehicule_id"], ou_none(b.get("mission_id")), b["categorie"], montant, b["date_depense"],
-        ou_none(b.get("description")), ou_none(b.get("justificatif_url")),
-    ]
-
-
-@router.get("/stats", dependencies=[Connecte])
+@router.get("/stats", dependencies=[Connecte], response_model=StatistiquesDepenses, summary="Statistiques")
 async def get_stats():
-    """Totaux mois/année, répartition par catégorie et par véhicule, évolution sur 6 mois."""
+    """Totaux du mois et de l'année, répartitions et évolution sur 6 mois."""
     totaux = await db.query_one("""
         SELECT
           IFNULL(SUM(CASE WHEN YEAR(date_depense) = YEAR(CURDATE())
@@ -43,7 +36,6 @@ async def get_stats():
           COUNT(*) AS nbDepenses
         FROM depenses
     """)
-
     par_categorie = await db.query("""
         SELECT categorie, SUM(montant) AS total, COUNT(*) AS nb
         FROM depenses
@@ -51,7 +43,6 @@ async def get_stats():
         GROUP BY categorie
         ORDER BY total DESC
     """)
-
     par_vehicule = await db.query("""
         SELECT v.immatriculation, v.marque, SUM(d.montant) AS total
         FROM depenses d
@@ -60,7 +51,6 @@ async def get_stats():
         GROUP BY d.vehicule_id, v.immatriculation, v.marque
         ORDER BY total DESC
     """)
-
     evolution = await db.query("""
         SELECT
           DATE_FORMAT(date_depense, '%Y-%m')      AS mois,
@@ -71,35 +61,22 @@ async def get_stats():
         GROUP BY DATE_FORMAT(date_depense, '%Y-%m')
         ORDER BY mois ASC
     """)
-
-    return {
-        "totalMois":          totaux["totalMois"] or 0,
-        "totalAnnee":         totaux["totalAnnee"] or 0,
-        "nbDepenses":         totaux["nbDepenses"] or 0,
-        "parCategorie":       par_categorie,
-        "parVehicule":        par_vehicule,
-        "evolutionMensuelle": evolution,
-    }
+    return {**totaux, "parCategorie": par_categorie, "parVehicule": par_vehicule, "evolutionMensuelle": evolution}
 
 
-@router.get("", dependencies=[Connecte])
+@router.get("", dependencies=[Connecte], response_model=list[Depense] | Page[Depense], summary="Liste des dépenses")
 async def get_all(
-    request: Request,
-    vehicule_id: str | None = None,
-    categorie: str | None = None,
-    debut: str | None = None,
-    fin: str | None = None,
+    vehicule_id: Annotated[IdOpt, Query()] = None,
+    categorie: Annotated[CategorieDepense | None, Vide] = None,
+    debut: Annotated[date | None, Vide] = None,
+    fin: Annotated[date | None, Vide] = None,
+    pg: Pagination = Depends(),
 ):
-    """Toutes les dépenses avec filtres optionnels : ?vehicule_id=&categorie=&debut=&fin="""
     where, params = " WHERE 1=1", []
-    for colonne, op, valeur in (
-        ("d.vehicule_id", "=", vehicule_id),
-        ("d.categorie", "=", categorie),
-        ("d.date_depense", ">=", debut),
-        ("d.date_depense", "<=", fin),
-    ):
+    for condition, valeur in (("d.vehicule_id = %s", vehicule_id), ("d.categorie = %s", categorie),
+                              ("d.date_depense >= %s", debut), ("d.date_depense <= %s", fin)):
         if valeur:
-            where += f" AND {colonne} {op} %s"
+            where += f" AND {condition}"
             params.append(valeur)
 
     query = """
@@ -108,48 +85,36 @@ async def get_all(
         JOIN vehicules v ON d.vehicule_id = v.id
     """ + where + " ORDER BY d.date_depense DESC"
 
-    pg = Pagination(request)
     if pg.actif:
         count = await db.query_one("SELECT COUNT(*) AS total FROM depenses d" + where, params)
         rows = await db.query(query + " LIMIT %s OFFSET %s", params + [pg.limit, pg.offset])
         return pg.reponse(rows, count["total"])
-
     return await db.query(query, params)
 
 
-@router.post("", status_code=201, dependencies=[Gestionnaire])
-async def create(request: Request):
-    b = await corps(request)
-    montant = valider_depense(b)
+@router.post("", status_code=201, dependencies=[Gestionnaire], response_model=Depense, summary="Enregistrer une dépense")
+async def create(donnees: DepenseSaisie):
+    await _verifier_vehicule(donnees.vehicule_id)
+    champs = donnees.model_dump()
     new_id = await db.execute(
-        """INSERT INTO depenses (vehicule_id, mission_id, categorie, montant, date_depense, description, justificatif_url)
-           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-        valeurs_depense(b, montant),
+        f"INSERT INTO depenses ({', '.join(champs)}) VALUES ({', '.join(['%s'] * len(champs))})",
+        list(champs.values()),
     )
     return await db.query_one(SELECT_DEPENSE, [new_id])
 
 
-@router.put("/{id}", dependencies=[Gestionnaire])
-async def update(id: int, request: Request):
-    b = await corps(request)
-    if not await db.query("SELECT id FROM depenses WHERE id = %s", [id]):
-        raise ErreurApi(404, "Dépense introuvable")
-
-    montant = valider_depense(b)
-    await db.execute(
-        """UPDATE depenses
-           SET vehicule_id=%s, mission_id=%s, categorie=%s, montant=%s, date_depense=%s,
-               description=%s, justificatif_url=%s
-           WHERE id=%s""",
-        valeurs_depense(b, montant) + [id],
-    )
+@router.put("/{id}", dependencies=[Gestionnaire], response_model=Depense, summary="Modifier une dépense")
+async def update(id: int, donnees: DepenseSaisie):
+    ligne_ou_404(await db.query_one("SELECT id FROM depenses WHERE id = %s", [id]), "Dépense introuvable")
+    await _verifier_vehicule(donnees.vehicule_id)
+    champs = donnees.model_dump()
+    colonnes = ", ".join(f"{c} = %s" for c in champs)
+    await db.execute(f"UPDATE depenses SET {colonnes} WHERE id = %s", [*champs.values(), id])
     return await db.query_one(SELECT_DEPENSE, [id])
 
 
-@router.delete("/{id}", dependencies=[Admin])
+@router.delete("/{id}", dependencies=[Admin], response_model=Message, summary="Supprimer une dépense")
 async def remove(id: int):
-    if not await db.query("SELECT id FROM depenses WHERE id = %s", [id]):
-        raise ErreurApi(404, "Dépense introuvable")
-
+    ligne_ou_404(await db.query_one("SELECT id FROM depenses WHERE id = %s", [id]), "Dépense introuvable")
     await db.execute("DELETE FROM depenses WHERE id = %s", [id])
     return {"message": "Dépense supprimée"}

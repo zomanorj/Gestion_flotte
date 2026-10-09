@@ -1,17 +1,25 @@
 # Routes camions — CRUD et alertes de maintenance
-from fastapi import APIRouter, Request
+from typing import Annotated
+
+from fastapi import Depends, Query
 
 from .. import db
 from ..auth import Admin, Connecte, Gestionnaire
 from ..erreurs import ErreurApi
-from ..utils import Pagination, corps, ou_none
+from ..schemas.commun import Message, Page, Vide
+from ..schemas.enums import StatutVehicule
+from ..schemas.flotte import Vehicule, VehiculeAlerte, VehiculeCreation, VehiculeDetail, VehiculeMiseAJour
+from ..utils import Pagination, Routeur, clause_set, ligne_ou_404
 
-router = APIRouter()
+router = Routeur()
 
 
-@router.get("", dependencies=[Connecte])
-async def get_all(request: Request, statut: str | None = None, search: str | None = None):
-    """Tous les véhicules avec filtres optionnels : ?statut=disponible&search=toyota"""
+@router.get("", dependencies=[Connecte], response_model=list[Vehicule] | Page[Vehicule], summary="Liste des camions")
+async def get_all(
+    statut: Annotated[StatutVehicule | None, Vide] = None,
+    search: Annotated[str | None, Query(description="Immatriculation, marque ou modèle")] = None,
+    pg: Pagination = Depends(),
+):
     where, params = " WHERE 1=1", []
     if statut:
         where += " AND statut = %s"
@@ -21,23 +29,17 @@ async def get_all(request: Request, statut: str | None = None, search: str | Non
         params += [f"%{search}%"] * 3
 
     query = "SELECT * FROM vehicules" + where + " ORDER BY created_at DESC"
-
-    pg = Pagination(request)
     if pg.actif:
         count = await db.query_one("SELECT COUNT(*) AS total FROM vehicules" + where, params)
         rows = await db.query(query + " LIMIT %s OFFSET %s", params + [pg.limit, pg.offset])
         return pg.reponse(rows, count["total"])
-
     return await db.query(query, params)
 
 
-@router.get("/alertes", dependencies=[Connecte])
+@router.get("/alertes", dependencies=[Connecte], response_model=list[VehiculeAlerte],
+            summary="Camions nécessitant une attention")
 async def get_alertes():
-    """
-    Véhicules nécessitant une attention :
-    - CT à moins de 30 jours
-    - Kilométrage > 10 000 km depuis la dernière vidange
-    """
+    """Contrôle technique dans moins de 30 jours, ou plus de 10 000 km depuis la dernière vidange."""
     return await db.query("""
         SELECT
           v.*,
@@ -62,12 +64,10 @@ async def get_alertes():
     """)
 
 
-@router.get("/{id}", dependencies=[Connecte])
+@router.get("/{id}", dependencies=[Connecte], response_model=VehiculeDetail, summary="Détail d'un camion")
 async def get_by_id(id: int):
-    """Un véhicule avec ses 5 dernières missions et ses maintenances."""
-    vehicule = await db.query_one("SELECT * FROM vehicules WHERE id = %s", [id])
-    if not vehicule:
-        raise ErreurApi(404, "Véhicule introuvable")
+    """Camion avec ses 5 dernières missions et son historique de maintenance."""
+    vehicule = ligne_ou_404(await db.query_one("SELECT * FROM vehicules WHERE id = %s", [id]), "Véhicule introuvable")
 
     missions = await db.query("""
         SELECT m.*, c.nom AS chauffeur_nom, c.prenom AS chauffeur_prenom
@@ -77,89 +77,51 @@ async def get_by_id(id: int):
         ORDER BY m.date_depart DESC
         LIMIT 5
     """, [id])
-
     maintenances = await db.query(
         "SELECT * FROM maintenances WHERE vehicule_id = %s ORDER BY date_maintenance DESC", [id]
     )
     return {**vehicule, "missions": missions, "maintenances": maintenances}
 
 
-@router.post("", status_code=201, dependencies=[Gestionnaire])
-async def create(request: Request):
-    """Crée un nouveau camion. Vérifie l'unicité de l'immatriculation."""
-    b = await corps(request)
-    if not b.get("immatriculation") or not b.get("marque") or not b.get("modele") or not b.get("annee"):
-        raise ErreurApi(400, "Champs obligatoires manquants")
+@router.post("", status_code=201, dependencies=[Gestionnaire], response_model=Vehicule, summary="Ajouter un camion")
+async def create(donnees: VehiculeCreation):
+    champs = donnees.model_dump()
+    champs["immatriculation"] = champs["immatriculation"].upper()
 
-    if await db.query("SELECT id FROM vehicules WHERE immatriculation = %s", [b["immatriculation"]]):
+    if await db.query("SELECT id FROM vehicules WHERE immatriculation = %s", [champs["immatriculation"]]):
         raise ErreurApi(409, "Cette immatriculation existe déjà")
 
+    colonnes = ", ".join(champs)
     new_id = await db.execute(
-        """INSERT INTO vehicules
-             (immatriculation, marque, modele, annee, kilometrage, consommation_litre_km,
-              statut, date_derniere_vidange, date_prochain_ct,
-              tonnage, type_camion, numero_chassis)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-        [
-            b["immatriculation"].upper(), b["marque"], b["modele"], b["annee"],
-            b.get("kilometrage") or 0,
-            b.get("consommation_litre_km") or 0.30,
-            b.get("statut") or "disponible",
-            ou_none(b.get("date_derniere_vidange")),
-            ou_none(b.get("date_prochain_ct")),
-            ou_none(b.get("tonnage")),
-            b.get("type_camion") or "porteur",
-            ou_none(b.get("numero_chassis")),
-        ],
+        f"INSERT INTO vehicules ({colonnes}) VALUES ({', '.join(['%s'] * len(champs))})", list(champs.values())
     )
     return await db.query_one("SELECT * FROM vehicules WHERE id = %s", [new_id])
 
 
-@router.put("/{id}", dependencies=[Gestionnaire])
-async def update(id: int, request: Request):
-    """Met à jour les champs fournis d'un camion (inclut tonnage, type et châssis)."""
-    b = await corps(request)
-    if not await db.query("SELECT id FROM vehicules WHERE id = %s", [id]):
-        raise ErreurApi(404, "Camion introuvable")
+@router.put("/{id}", dependencies=[Gestionnaire], response_model=Vehicule, summary="Modifier un camion")
+async def update(id: int, donnees: VehiculeMiseAJour):
+    """Seuls les champs envoyés sont modifiés ; un champ facultatif envoyé vide est effacé."""
+    ligne_ou_404(await db.query_one("SELECT id FROM vehicules WHERE id = %s", [id]), "Camion introuvable")
 
-    immat = b.get("immatriculation")
-    await db.execute(
-        """UPDATE vehicules SET
-             immatriculation       = COALESCE(%s, immatriculation),
-             marque                = COALESCE(%s, marque),
-             modele                = COALESCE(%s, modele),
-             annee                 = COALESCE(%s, annee),
-             kilometrage           = COALESCE(%s, kilometrage),
-             consommation_litre_km = COALESCE(%s, consommation_litre_km),
-             statut                = COALESCE(%s, statut),
-             date_derniere_vidange = COALESCE(%s, date_derniere_vidange),
-             date_prochain_ct      = COALESCE(%s, date_prochain_ct),
-             tonnage               = COALESCE(%s, tonnage),
-             type_camion           = COALESCE(%s, type_camion),
-             numero_chassis        = COALESCE(%s, numero_chassis)
-           WHERE id = %s""",
-        [
-            immat.upper() if immat else None,
-            *(ou_none(b.get(k)) for k in (
-                "marque", "modele", "annee", "kilometrage", "consommation_litre_km", "statut",
-                "date_derniere_vidange", "date_prochain_ct", "tonnage", "type_camion", "numero_chassis",
-            )),
-            id,
-        ],
-    )
+    champs = donnees.champs_fournis()
+    if "immatriculation" in champs:
+        champs["immatriculation"] = champs["immatriculation"].upper()
+        if await db.query("SELECT id FROM vehicules WHERE immatriculation = %s AND id != %s",
+                          [champs["immatriculation"], id]):
+            raise ErreurApi(409, "Cette immatriculation existe déjà")
+
+    if champs:
+        colonnes, valeurs = clause_set(champs)
+        await db.execute(f"UPDATE vehicules SET {colonnes} WHERE id = %s", [*valeurs, id])
     return await db.query_one("SELECT * FROM vehicules WHERE id = %s", [id])
 
 
-@router.delete("/{id}", dependencies=[Admin])
+@router.delete("/{id}", dependencies=[Admin], response_model=Message, summary="Supprimer un camion")
 async def remove(id: int):
-    """
-    Supprime un camion uniquement s'il n'a aucune mission (active ou historique) :
-    l'historique de transport doit être conservé.
-    """
-    existant = await db.query_one("SELECT id, immatriculation FROM vehicules WHERE id = %s", [id])
-    if not existant:
-        raise ErreurApi(404, "Camion introuvable")
-
+    """Refusé si le camion a des missions, même terminées : l'historique doit être conservé."""
+    existant = ligne_ou_404(
+        await db.query_one("SELECT id, immatriculation FROM vehicules WHERE id = %s", [id]), "Camion introuvable"
+    )
     stats = await db.query_one(
         """SELECT COUNT(*) AS nb, SUM(statut IN ('planifiee','en_cours')) AS actives
            FROM missions WHERE vehicule_id = %s""",

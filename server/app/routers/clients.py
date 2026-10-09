@@ -1,48 +1,38 @@
 # Routes clients — CRUD et historique des missions par client
-from fastapi import APIRouter, Request
+from fastapi import Depends
 
 from .. import db
 from ..auth import Admin, Connecte, Gestionnaire
-from ..erreurs import ErreurApi
-from ..utils import Pagination, corps, ou_none
+from ..schemas.commun import Message, Page
+from ..schemas.operations import Client, ClientSaisie, MissionsClient
+from ..utils import Pagination, Routeur, ligne_ou_404
 
-router = APIRouter()
+router = Routeur()
+
+AGREGATS = """
+    SELECT c.*,
+      COUNT(m.id) AS nb_missions,
+      IFNULL(SUM(m.cout_carburant), 0) AS chiffre_affaires
+    FROM clients c
+    LEFT JOIN missions m ON m.client_id = c.id
+"""
 
 
-def valeurs_client(b: dict) -> list:
-    return [
-        b.get("nom"), b.get("type") or "entreprise", ou_none(b.get("contact_nom")), ou_none(b.get("telephone")),
-        ou_none(b.get("email")), ou_none(b.get("adresse")), ou_none(b.get("ville")), ou_none(b.get("notes")),
-    ]
-
-
-@router.get("", dependencies=[Connecte])
-async def get_all(request: Request):
-    """Tous les clients avec le nombre de missions associées."""
-    rows = await db.query("""
-        SELECT c.*,
-          COUNT(m.id) AS nb_missions,
-          IFNULL(SUM(m.cout_carburant), 0) AS chiffre_affaires
-        FROM clients c
-        LEFT JOIN missions m ON m.client_id = c.id
-        GROUP BY c.id
-        ORDER BY c.nom ASC
-    """)
-
-    pg = Pagination(request)
+@router.get("", dependencies=[Connecte], response_model=list[Client] | Page[Client], summary="Liste des clients")
+async def get_all(pg: Pagination = Depends()):
+    """Avec le nombre de missions de chaque client."""
+    query = AGREGATS + " GROUP BY c.id ORDER BY c.nom ASC"
     if pg.actif:
-        return pg.reponse(rows[pg.offset:pg.offset + pg.limit], len(rows))
+        count = await db.query_one("SELECT COUNT(*) AS total FROM clients")
+        rows = await db.query(query + " LIMIT %s OFFSET %s", [pg.limit, pg.offset])
+        return pg.reponse(rows, count["total"])
+    return await db.query(query)
 
-    return rows
 
-
-@router.get("/{id}/missions", dependencies=[Connecte])
+@router.get("/{id}/missions", dependencies=[Connecte], response_model=MissionsClient,
+            summary="Historique des missions d'un client")
 async def get_missions(id: int):
-    """Historique des missions d'un client donné."""
-    client = await db.query_one("SELECT id, nom FROM clients WHERE id = %s", [id])
-    if not client:
-        raise ErreurApi(404, "Client introuvable")
-
+    client = ligne_ou_404(await db.query_one("SELECT id, nom FROM clients WHERE id = %s", [id]), "Client introuvable")
     missions = await db.query("""
         SELECT m.*, v.immatriculation, v.marque,
           c.nom AS chauffeur_nom, c.prenom AS chauffeur_prenom
@@ -55,40 +45,31 @@ async def get_missions(id: int):
     return {"client": client, "missions": missions}
 
 
-@router.post("", status_code=201, dependencies=[Gestionnaire])
-async def create(request: Request):
-    b = await corps(request)
-    if not b.get("nom"):
-        raise ErreurApi(400, "Le nom du client est obligatoire")
-
+@router.post("", status_code=201, dependencies=[Gestionnaire], response_model=Client, summary="Ajouter un client")
+async def create(donnees: ClientSaisie):
+    champs = donnees.model_dump()
     new_id = await db.execute(
-        """INSERT INTO clients (nom, type, contact_nom, telephone, email, adresse, ville, notes)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-        valeurs_client(b),
+        f"INSERT INTO clients ({', '.join(champs)}) VALUES ({', '.join(['%s'] * len(champs))})",
+        list(champs.values()),
     )
     return await db.query_one("SELECT * FROM clients WHERE id = %s", [new_id])
 
 
-@router.put("/{id}", dependencies=[Gestionnaire])
-async def update(id: int, request: Request):
-    b = await corps(request)
-    if not await db.query("SELECT id FROM clients WHERE id = %s", [id]):
-        raise ErreurApi(404, "Client introuvable")
-
-    await db.execute(
-        """UPDATE clients SET nom=%s, type=%s, contact_nom=%s, telephone=%s,
-             email=%s, adresse=%s, ville=%s, notes=%s WHERE id=%s""",
-        valeurs_client(b) + [id],
-    )
+@router.put("/{id}", dependencies=[Gestionnaire], response_model=Client, summary="Modifier un client")
+async def update(id: int, donnees: ClientSaisie):
+    """Les champs de fiche non envoyés (NIF, STAT, site web…) sont conservés."""
+    ligne_ou_404(await db.query_one("SELECT id FROM clients WHERE id = %s", [id]), "Client introuvable")
+    champs = donnees.champs_fournis()
+    colonnes = ", ".join(f"{c} = %s" for c in champs)
+    await db.execute(f"UPDATE clients SET {colonnes} WHERE id = %s", [*champs.values(), id])
     return await db.query_one("SELECT * FROM clients WHERE id = %s", [id])
 
 
-@router.delete("/{id}", dependencies=[Admin])
+@router.delete("/{id}", dependencies=[Admin], response_model=Message, summary="Supprimer un client")
 async def remove(id: int):
-    """Supprime un client (les missions liées gardent client_id = NULL)."""
+    """Les missions du client sont conservées, sans client associé."""
     async with db.transaction() as tx:
-        if not await tx.query("SELECT id FROM clients WHERE id = %s FOR UPDATE", [id]):
-            raise ErreurApi(404, "Client introuvable")
+        ligne_ou_404(await tx.query_one("SELECT id FROM clients WHERE id = %s FOR UPDATE", [id]), "Client introuvable")
         await tx.execute("UPDATE missions SET client_id = NULL WHERE client_id = %s", [id])
         await tx.execute("DELETE FROM clients WHERE id = %s", [id])
     return {"message": "Client supprimé"}

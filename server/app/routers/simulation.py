@@ -1,29 +1,36 @@
 # Routes de simulation de mission en temps réel
-from fastapi import APIRouter, Request
-
 from .. import db
 from ..auth import Connecte, Gestionnaire
 from ..erreurs import ErreurApi
+from ..schemas.commun import Message
+from ..schemas.pilotage import (
+    ChangementVitesse,
+    DemandeItineraire,
+    EtatSimulation,
+    Itineraire,
+    SimulationDemarree,
+    Villes,
+    VitesseModifiee,
+)
 from ..services.missions import occuper_ressources, verifier_transition
 from ..services.route import VILLES_MADAGASCAR, VilleInconnue, get_route
 from ..services.simulation import arreter_simulation, changer_vitesse, demarrer_simulation, etats_actifs
-from ..utils import corps
+from ..utils import Routeur, ligne_ou_404
 
-router = APIRouter()
+router = Routeur()
 
 
-@router.get("/villes", dependencies=[Connecte])
+@router.get("/villes", dependencies=[Connecte], response_model=Villes, summary="Villes disponibles")
 async def villes():
     """Liste des villes disponibles pour les selects du formulaire."""
     return {"villes": list(VILLES_MADAGASCAR)}
 
 
-@router.post("/route", dependencies=[Connecte])
-async def calculer_route(request: Request):
-    """Distance et durée réelles entre deux villes. Body : { villeDepart, villeArrivee }"""
-    b = await corps(request)
+@router.post("/route", dependencies=[Connecte], response_model=Itineraire, summary="Calculer un itinéraire")
+async def calculer_route(donnees: DemandeItineraire):
+    """Distance et durée par la route entre deux villes (ligne droite si le calcul est indisponible)."""
     try:
-        route = await get_route(b.get("villeDepart"), b.get("villeArrivee"))
+        route = await get_route(donnees.villeDepart, donnees.villeArrivee)
     except VilleInconnue as err:
         raise ErreurApi(400, str(err)) from None
     return {
@@ -33,7 +40,8 @@ async def calculer_route(request: Request):
     }
 
 
-@router.post("/demarrer/{mission_id}", dependencies=[Gestionnaire])
+@router.post("/demarrer/{mission_id}", dependencies=[Gestionnaire], response_model=SimulationDemarree,
+             summary="Démarrer la simulation d'une mission")
 async def demarrer(mission_id: int):
     """Passe une mission planifiée en "en_cours" puis lance la boucle de simulation."""
     async with db.transaction() as tx:
@@ -47,8 +55,7 @@ async def demarrer(mission_id: int):
                FOR UPDATE""",
             [mission_id],
         )
-        if not mission:
-            raise ErreurApi(404, "Mission introuvable")
+        ligne_ou_404(mission, "Mission introuvable")
         verifier_transition(mission["statut"], "en_cours")
 
         await tx.execute("UPDATE missions SET statut = 'en_cours' WHERE id = %s", [mission_id])
@@ -69,23 +76,25 @@ async def demarrer(mission_id: int):
     }
 
 
-@router.post("/arreter/{mission_id}", dependencies=[Gestionnaire])
+@router.post("/arreter/{mission_id}", dependencies=[Gestionnaire], response_model=Message,
+             summary="Arrêter une simulation")
 async def arreter(mission_id: str):
     """Stoppe une simulation en cours sans modifier le statut en base."""
     arreter_simulation(mission_id)
     return {"message": "Simulation arrêtée"}
 
 
-@router.post("/vitesse/{mission_id}", dependencies=[Gestionnaire])
-async def vitesse(mission_id: str, request: Request):
-    """Change le multiplicateur d'une simulation en cours. Body : { multiplicateur: 1 | 5 | 10 | 30 | 60 }"""
-    mult = await changer_vitesse(mission_id, (await corps(request)).get("multiplicateur"))
+@router.post("/vitesse/{mission_id}", dependencies=[Gestionnaire], response_model=VitesseModifiee,
+             summary="Changer la vitesse d'une simulation")
+async def vitesse(mission_id: str, donnees: ChangementVitesse):
+    mult = await changer_vitesse(mission_id, donnees.multiplicateur)
     if mult is None:
         raise ErreurApi(404, f"Simulation {mission_id} introuvable")
     return {"message": "Vitesse mise à jour", "multiplicateur": mult}
 
 
-@router.get("/actives", dependencies=[Connecte])
+@router.get("/actives", dependencies=[Connecte], response_model=list[EtatSimulation],
+            summary="Simulations en cours")
 async def actives():
     """État actuel de toutes les simulations en cours (initialisation de CarteGlobale)."""
     return etats_actifs()

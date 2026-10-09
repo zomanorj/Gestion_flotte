@@ -1,17 +1,23 @@
 # Routes missions — création, suivi, workflow de statuts, planning et bon de livraison
-from fastapi import APIRouter, Request
+from datetime import date
+from typing import Annotated
+
+from fastapi import Depends, Query
 from fastapi.responses import Response
 
 from .. import db
 from ..auth import Admin, Connecte, Gestionnaire
 from ..erreurs import ErreurApi
+from ..schemas.commun import Message, Page, Vide
+from ..schemas.enums import StatutMission
+from ..schemas.flotte import ChangementStatutMission, EvenementPlanning, Mission, MissionCreation
 from ..services.bon_livraison import generer_bon_livraison
 from ..services.missions import liberer_ressources, occuper_ressources, verifier_disponibilite, verifier_transition
 from ..services.simulation import arreter_simulation
 from ..socket import sio
-from ..utils import Pagination, corps, date_heure, ou_none
+from ..utils import Pagination, Routeur, ligne_ou_404
 
-router = APIRouter()
+router = Routeur()
 
 # Prix du carburant en Ariary par litre (données marché Madagascar 2024)
 PRIX_LITRE_ARIARY = 5200
@@ -32,12 +38,10 @@ SELECT_MISSION_RESUME = """
 """
 
 
-@router.get("/planning", dependencies=[Connecte])
+@router.get("/planning", dependencies=[Connecte], response_model=list[EvenementPlanning],
+            summary="Missions au format calendrier")
 async def get_planning():
-    """
-    Missions formatées pour FullCalendar.
-    Couleur selon le statut : planifiée=jaune, en_cours=bleu, terminée=vert, annulée=gris.
-    """
+    """Format FullCalendar ; couleur selon le statut (planifiée, en cours, terminée, annulée)."""
     rows = await db.query("""
         SELECT m.*, v.immatriculation, v.marque,
           c.nom AS chauffeur_nom, c.prenom AS chauffeur_prenom
@@ -46,7 +50,6 @@ async def get_planning():
         JOIN chauffeurs c ON m.chauffeur_id = c.id
         ORDER BY m.date_depart ASC
     """)
-
     return [
         {
             "id":    m["id"],
@@ -68,9 +71,13 @@ async def get_planning():
     ]
 
 
-@router.get("", dependencies=[Connecte])
-async def get_all(request: Request, statut: str | None = None, debut: str | None = None, fin: str | None = None):
-    """Toutes les missions avec infos véhicule et chauffeur. ?statut=&debut=&fin="""
+@router.get("", dependencies=[Connecte], response_model=list[Mission] | Page[Mission], summary="Liste des missions")
+async def get_all(
+    statut: Annotated[StatutMission | None, Vide] = None,
+    debut: Annotated[date | None, Vide, Query(description="Départ à partir de cette date")] = None,
+    fin: Annotated[date | None, Vide, Query(description="Départ jusqu'à cette date incluse")] = None,
+    pg: Pagination = Depends(),
+):
     where, params = " WHERE 1=1", []
     if statut:
         where += " AND m.statut = %s"
@@ -79,8 +86,8 @@ async def get_all(request: Request, statut: str | None = None, debut: str | None
         where += " AND m.date_depart >= %s"
         params.append(debut)
     if fin:
-        where += " AND m.date_depart <= %s"
-        params.append(fin + " 23:59:59")
+        where += " AND m.date_depart < DATE_ADD(%s, INTERVAL 1 DAY)"
+        params.append(fin)
 
     query = """
         SELECT
@@ -92,19 +99,17 @@ async def get_all(request: Request, statut: str | None = None, debut: str | None
         JOIN chauffeurs c ON m.chauffeur_id = c.id
     """ + where + " ORDER BY m.date_depart DESC"
 
-    pg = Pagination(request)
     if pg.actif:
         count = await db.query_one("SELECT COUNT(*) AS total FROM missions m" + where, params)
         rows = await db.query(query + " LIMIT %s OFFSET %s", params + [pg.limit, pg.offset])
         return pg.reponse(rows, count["total"])
-
     return await db.query(query, params)
 
 
-@router.get("/{id}/bon-livraison", dependencies=[Connecte])
+@router.get("/{id}/bon-livraison", dependencies=[Connecte], response_class=Response, summary="Bon de livraison PDF",
+            responses={200: {"content": {"application/pdf": {}}, "description": "Fichier PDF"}})
 async def bon_livraison(id: int):
-    """Génère et télécharge le bon de livraison PDF de la mission."""
-    mission = await db.query_one("""
+    mission = ligne_ou_404(await db.query_one("""
         SELECT m.*,
           v.immatriculation, v.marque, v.modele,
           ch.nom AS chauffeur_nom, ch.prenom AS chauffeur_prenom, ch.numero_permis,
@@ -114,9 +119,7 @@ async def bon_livraison(id: int):
         JOIN chauffeurs ch ON m.chauffeur_id = ch.id
         LEFT JOIN clients cl ON m.client_id  = cl.id
         WHERE m.id = %s
-    """, [id])
-    if not mission:
-        raise ErreurApi(404, "Mission introuvable")
+    """, [id]), "Mission introuvable")
 
     return Response(
         content=generer_bon_livraison(mission),
@@ -125,55 +128,45 @@ async def bon_livraison(id: int):
     )
 
 
-@router.post("", status_code=201, dependencies=[Gestionnaire])
-async def create(request: Request):
+@router.post("", status_code=201, dependencies=[Gestionnaire], response_model=Mission, summary="Planifier une mission")
+async def create(donnees: MissionCreation):
     """
-    Crée une mission planifiée. Le camion et le chauffeur ne doivent avoir aucune autre
-    mission active sur la même période (vérifié en transaction, ressources verrouillées).
+    Le camion et le chauffeur ne doivent avoir aucune autre mission active sur la même période
+    (vérifié en transaction, ressources verrouillées).
     """
-    b = await corps(request)
-    requis = ("titre", "vehicule_id", "chauffeur_id", "lieu_depart", "lieu_destination",
-              "date_depart", "date_retour_prevue")
-    if not all(b.get(k) for k in requis):
-        raise ErreurApi(400, "Champs obligatoires manquants")
-
-    debut = date_heure(b["date_depart"], "date_depart")
-    fin = date_heure(b["date_retour_prevue"], "date_retour_prevue")
-
     async with db.transaction() as tx:
-        await verifier_disponibilite(tx, b["vehicule_id"], b["chauffeur_id"], debut, fin)
+        await verifier_disponibilite(tx, donnees.vehicule_id, donnees.chauffeur_id,
+                                     donnees.date_depart, donnees.date_retour_prevue)
+        if donnees.client_id and not await tx.query_one("SELECT id FROM clients WHERE id = %s", [donnees.client_id]):
+            raise ErreurApi(404, "Client introuvable")
+
         new_id = await tx.execute(
             """INSERT INTO missions
-                 (titre, vehicule_id, chauffeur_id, lieu_depart, lieu_destination,
+                 (titre, vehicule_id, chauffeur_id, client_id, lieu_depart, lieu_destination,
                   distance_km, date_depart, date_retour_prevue, notes, poids_charge, statut)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'planifiee')""",
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'planifiee')""",
             [
-                b["titre"], b["vehicule_id"], b["chauffeur_id"], b["lieu_depart"], b["lieu_destination"],
-                b.get("distance_km") or 0, debut, fin,
-                ou_none(b.get("notes")), ou_none(b.get("poids_charge")),
+                donnees.titre, donnees.vehicule_id, donnees.chauffeur_id, donnees.client_id,
+                donnees.lieu_depart, donnees.lieu_destination, donnees.distance_km or 0,
+                donnees.date_depart, donnees.date_retour_prevue, donnees.notes, donnees.poids_charge,
             ],
         )
 
     # Émis après le commit : les autres clients rechargent des données déjà visibles
-    await sio.emit("mission:nouvelle", {"id": new_id, "titre": b["titre"]})
+    await sio.emit("mission:nouvelle", {"id": new_id, "titre": donnees.titre})
     return await db.query_one(SELECT_MISSION_RESUME, [new_id])
 
 
-@router.put("/{id}/statut", dependencies=[Gestionnaire])
-async def update_statut(id: int, request: Request):
+@router.put("/{id}/statut", dependencies=[Gestionnaire], response_model=Mission, summary="Changer le statut")
+async def update_statut(id: int, donnees: ChangementStatutMission):
     """
-    Fait avancer le cycle de vie : planifiee → en_cours | annulee, en_cours → terminee | annulee.
+    Cycle de vie : planifiee → en_cours | annulee, en_cours → terminee | annulee.
     Synchronise camion + chauffeur et calcule le coût carburant à la clôture.
     """
-    statut = (await corps(request)).get("statut")
-    statuts_valides = ["en_cours", "terminee", "annulee"]
-    if not statut or statut not in statuts_valides:
-        raise ErreurApi(400, f"Statut invalide. Valeurs acceptées : {', '.join(statuts_valides)}")
-
+    statut = donnees.statut
     async with db.transaction() as tx:
-        mission = await tx.query_one("SELECT * FROM missions WHERE id = %s FOR UPDATE", [id])
-        if not mission:
-            raise ErreurApi(404, "Mission introuvable")
+        mission = ligne_ou_404(await tx.query_one("SELECT * FROM missions WHERE id = %s FOR UPDATE", [id]),
+                               "Mission introuvable")
         verifier_transition(mission["statut"], statut)
 
         update_mission, params_mission = "UPDATE missions SET statut = %s", [statut]
@@ -199,22 +192,16 @@ async def update_statut(id: int, request: Request):
     if statut != "en_cours":
         arreter_simulation(str(id))
 
-    # Événement temps réel
     await sio.emit("mission:statut", {"id": id, "statut": statut})
     return await db.query_one(SELECT_MISSION_RESUME, [id])
 
 
-@router.delete("/{id}", dependencies=[Admin])
+@router.delete("/{id}", dependencies=[Admin], response_model=Message, summary="Supprimer une mission")
 async def remove(id: int):
-    """
-    Supprime une mission quel que soit son statut.
-    Si la mission est en cours : remet camion + chauffeur à "disponible"
-    et arrête la simulation si elle est active.
-    """
+    """Une mission en cours libère son camion et son chauffeur, et sa simulation est arrêtée."""
     async with db.transaction() as tx:
-        mission = await tx.query_one("SELECT * FROM missions WHERE id = %s FOR UPDATE", [id])
-        if not mission:
-            raise ErreurApi(404, "Mission introuvable")
+        mission = ligne_ou_404(await tx.query_one("SELECT * FROM missions WHERE id = %s FOR UPDATE", [id]),
+                               "Mission introuvable")
         if mission["statut"] == "en_cours":
             await liberer_ressources(tx, mission)
         await tx.execute("DELETE FROM missions WHERE id = %s", [id])

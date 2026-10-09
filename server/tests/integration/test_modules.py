@@ -101,7 +101,8 @@ class TestCarburant:
         r = api.post("/carburant", headers=admin, json={"vehicule_id": vehicule["id"], "date_plein": "2026-10-01",
                                                          "litres": litres, "prix_litre": prix})
         assert r.status_code == 400
-        assert "erreur" in r.json()
+        # Même format que toutes les erreurs : le frontend affiche "message"
+        assert r.json()["message"].startswith("litres") or r.json()["message"].startswith("prix_litre")
 
     def test_statistiques(self, api, admin):
         stats = api.get("/carburant/stats", headers=admin).json()

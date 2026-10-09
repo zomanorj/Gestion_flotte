@@ -1,52 +1,27 @@
-# Utilitaires partagés : lecture du corps JSON, pagination, conversions
-from datetime import datetime
-
-from fastapi import Request
+# Utilitaires des routers : pagination, routeur, petites aides SQL
+from fastapi import APIRouter, Query
 
 from .erreurs import ErreurApi
 
 
-async def corps(request: Request) -> dict:
-    """Corps JSON de la requête sous forme de dict (vide si absent ou invalide)."""
-    try:
-        data = await request.json()
-    except Exception:
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
-def ou_none(v):
-    """Équivalent de `v || null` en JS : None pour les valeurs fausses (0, '', None…)."""
-    return v or None
-
-
-def nombre(v) -> float | None:
-    """parseFloat tolérant : None si la valeur n'est pas un nombre."""
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return None
-
-
-def entier(v, defaut: int) -> int:
-    try:
-        return int(v)
-    except (TypeError, ValueError):
-        return defaut
-
-
 class Pagination:
     """
-    Pagination optionnelle : active seulement si ?paginate=true.
-    Sans ce flag, les endpoints renvoient un tableau simple (compatibilité).
+    Dépendance de pagination, optionnelle : active seulement avec ?paginate=true.
+    Sans ce paramètre, les listes renvoient un tableau simple (compatibilité).
     """
 
-    def __init__(self, request: Request):
-        q = request.query_params
-        self.actif  = q.get("paginate") == "true"
-        self.page   = max(1, entier(q.get("page"), 1) or 1)
-        self.limit  = min(200, max(1, entier(q.get("limit"), 20) or 20))
-        self.offset = (self.page - 1) * self.limit
+    LIMITE_MAX = 200
+
+    def __init__(
+        self,
+        paginate: bool = Query(False, description="true pour une réponse paginée {data, total, page, pages, limit}"),
+        page: int = Query(1, ge=1, description="Numéro de page (à partir de 1)"),
+        limit: int = Query(20, ge=1, description=f"Éléments par page (plafonné à {LIMITE_MAX})"),
+    ):
+        self.actif = paginate
+        self.page = page
+        self.limit = min(limit, self.LIMITE_MAX)
+        self.offset = (page - 1) * self.limit
 
     def reponse(self, rows: list, total) -> dict:
         total = int(total)
@@ -59,18 +34,29 @@ class Pagination:
         }
 
 
-def introuvable(message: str) -> ErreurApi:
-    return ErreurApi(404, message)
+class Routeur(APIRouter):
+    """
+    APIRouter dont les réponses n'incluent que les champs réellement fournis par l'endpoint
+    (response_model_exclude_unset) : un même modèle sert aux variantes d'une ressource
+    (liste avec jointures, détail, résumé) sans ajouter de champs null qui n'existent pas.
+    """
+
+    def add_api_route(self, path, endpoint, **kwargs):
+        # Forcé : les décorateurs @get/@post transmettent toujours la valeur par défaut (False)
+        kwargs["response_model_exclude_unset"] = True
+        return super().add_api_route(path, endpoint, **kwargs)
 
 
-def date_heure(valeur, champ: str) -> datetime:
+def ligne_ou_404(ligne: dict | None, message: str) -> dict:
+    if not ligne:
+        raise ErreurApi(404, message)
+    return ligne
+
+
+def clause_set(champs: dict) -> tuple[str, list]:
     """
-    Parse une date ou date-heure ISO venant du client ('2026-10-08', '2026-10-08T08:00',
-    '2026-10-08 08:00:00'). Lève 400 avec le nom du champ si le format est invalide.
+    "col1 = %s, col2 = %s" et ses valeurs, pour un UPDATE partiel.
+    Les clés doivent venir des champs d'un schéma Pydantic (jamais directement de la requête) :
+    ce sont des noms de colonnes insérés dans le SQL.
     """
-    if isinstance(valeur, str):
-        try:
-            return datetime.fromisoformat(valeur.strip().replace("Z", "")).replace(tzinfo=None)
-        except ValueError:
-            pass
-    raise ErreurApi(400, f"Date invalide pour {champ}")
+    return ", ".join(f"{colonne} = %s" for colonne in champs), list(champs.values())
