@@ -1,104 +1,66 @@
 import { useState, useRef } from 'react';
+import Modal from './Modal';
 import { AlertTriangle, Trash2, Edit, CheckCircle } from 'lucide-react';
 
 const TYPES = {
   supprimer: {
     Icone:         Trash2,
-    couleurIcone:  'text-danger',
-    couleurBg:     'bg-red-50',
+    ton:           'ton-danger',
     couleurBouton: 'btn-danger',
     titre:         'Confirmer la suppression',
     texteBtn:      'Supprimer définitivement'
   },
   modifier: {
     Icone:         Edit,
-    couleurIcone:  'text-primary',
-    couleurBg:     'bg-gray-100',
+    ton:           'icone-page',
     couleurBouton: 'btn-primary',
     titre:         'Confirmer la modification',
     texteBtn:      'Enregistrer'
   },
   attention: {
     Icone:         AlertTriangle,
-    couleurIcone:  'text-orange-500',
-    couleurBg:     'bg-orange-50',
-    couleurBouton: 'btn-warning',
+    ton:           'ton-attention',
+    couleurBouton: 'btn-primary',
     titre:         'Attention',
     texteBtn:      'Confirmer'
   },
   regler: {
     Icone:         CheckCircle,
-    couleurIcone:  'text-primary',
-    couleurBg:     'bg-gray-100',
+    ton:           'ton-succes',
     couleurBouton: 'btn-primary',
     titre:         'Marquer comme réglé',
     texteBtn:      'Marquer réglé'
   }
 };
 
+/**
+ * Confirmation d'une action (suppression, désactivation…) : titre, élément concerné, conséquences
+ * listées, puis Annuler / confirmer. S'appuie sur la fenêtre modale commune (focus, Échap, animation).
+ */
 export default function ConfirmModal({
   isOpen, onClose, onConfirm,
   type = 'supprimer', titre, element, consequences, loading = false
 }) {
-  if (!isOpen) return null;
   const cfg = TYPES[type] || TYPES.supprimer;
   const { Icone } = cfg;
 
   return (
-    <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-         style={{ zIndex: 1060, backgroundColor: 'rgba(0,0,0,0.6)' }}
-         onClick={onClose}>
-      <div className="bg-white rounded-3 shadow-lg overflow-hidden"
-           style={{ maxWidth: '28rem', width: '100%' }}
-           onClick={e => e.stopPropagation()}>
-
-        {/* Header coloré */}
-        <div className={`${cfg.couleurBg} p-4 d-flex align-items-start gap-3`}>
-          <div className={`${cfg.couleurIcone} flex-shrink-0 mt-1`}>
-            <Icone size={28} />
-          </div>
-          <div className="flex-grow-1">
-            <h3 className="fw-bold text-dark fs-6 mb-0">{titre || cfg.titre}</h3>
-            {element && (
-              <p className="text-gray-600 mt-1 mb-0">
-                <span className="fw-semibold text-dark">"{element}"</span>
-              </p>
-            )}
-          </div>
-          <button onClick={onClose} className="btn-close" />
-        </div>
-
-        {/* Conséquences */}
-        {consequences?.length > 0 && (
-          <div className="px-4 py-3 bg-light border-top border-bottom">
-            <p className="text-xs fw-semibold text-gray-400 text-uppercase mb-2">Conséquences</p>
-            <ul className="list-unstyled mb-0 d-flex flex-column gap-1">
-              {consequences.map((c, i) => (
-                <li key={i} className="small text-gray-600 d-flex align-items-start gap-2">
-                  <span className="text-gray-400 flex-shrink-0">•</span>
-                  {c}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Boutons */}
-        <div className="p-4 d-flex gap-3 justify-content-end">
-          <button onClick={onClose} disabled={loading}
-                  className="btn btn-outline-secondary px-4">
-            Annuler
-          </button>
-          <button onClick={onConfirm} disabled={loading}
-                  className={`btn ${cfg.couleurBouton} px-4 d-flex align-items-center gap-2`}>
-            {loading && (
-              <span className="spinner-border spinner-border-sm" role="status" />
-            )}
-            {cfg.texteBtn}
-          </button>
-        </div>
-      </div>
-    </div>
+    <Modal isOpen={isOpen} onClose={onClose} taille="sm"
+           titre={<span className="d-flex align-items-center gap-2"><span className={`stat-icone ${cfg.ton}`}><Icone size={15} /></span>{titre || cfg.titre}</span>}
+           pied={<>
+             <button onClick={onClose} disabled={loading} className="btn btn-outline-secondary">Annuler</button>
+             <button onClick={onConfirm} disabled={loading} className={`btn ${cfg.couleurBouton}`}>
+               {loading && <span className="spinner-border spinner-border-sm" role="status" />}
+               {cfg.texteBtn}
+             </button>
+           </>}>
+      {element && <p className="fw-medium text-dark mb-2">{element}</p>}
+      {consequences?.length > 0 && (
+        <ul className="liste-consequences mb-0">
+          {consequences.map((c, i) => <li key={i}>{c}</li>)}
+        </ul>
+      )}
+    </Modal>
   );
 }
 
@@ -122,10 +84,14 @@ export function useConfirm() {
     setConfig(null);
   };
 
-  const ConfirmModalComponent = () =>
-    config ? (
-      <ConfirmModal {...config} onConfirm={handleConfirm} onClose={handleClose} />
-    ) : null;
+  // Composant de même identité d'un rendu à l'autre (comme useToast) : un nouveau rendu de la page
+  // pendant la confirmation ne recrée pas la fenêtre (qui reprendrait sinon le focus)
+  const actuel = useRef();
+  actuel.current = { config, handleConfirm, handleClose };
+  const [ConfirmModalComponent] = useState(() => function ConfirmModalComponent() {
+    const { config: c, handleConfirm: confirmer, handleClose: fermer } = actuel.current;
+    return c ? <ConfirmModal {...c} onConfirm={confirmer} onClose={fermer} /> : null;
+  });
 
   return { confirmer, ConfirmModalComponent };
 }

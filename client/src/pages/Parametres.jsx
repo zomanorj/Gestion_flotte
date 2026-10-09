@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { SlidersHorizontal, Save, RotateCcw, History, AlertTriangle, Lock } from 'lucide-react';
+import { Save, RotateCcw, History, AlertTriangle, Lock } from 'lucide-react';
 import api from '../services/api';
 import { messageErreur } from '../requetes/client';
 import { useEcriture, useHistoriqueParametres, useParametres } from '../requetes';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { formaterDateHeure, formaterNombre } from '../utils/format';
+import { LignesSquelette } from '../components/ui/Squelette';
+import EnTetePage from '../components/ui/EnTetePage';
 
 // Ordre d'affichage des catégories renvoyées par l'API
 const CATEGORIES = ['Missions', 'Paie', 'Alertes'];
@@ -67,23 +69,7 @@ export default function Parametres() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* En-tête */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <div className="icone-page rounded-3 p-2"><SlidersHorizontal size={24} /></div>
-          <div>
-            <h1 className="fs-4 fw-bold text-dark mb-0">Paramètres métier</h1>
-            <p className="text-muted small mb-0">Prix, barème de paie et seuils d'alerte utilisés par les calculs</p>
-          </div>
-        </div>
-        {estAdmin && (
-          <button onClick={enregistrer} disabled={!nbModifications || sauvegarde}
-                  className="btn btn-primary d-flex align-items-center gap-2">
-            <Save size={16} />
-            {sauvegarde ? 'Enregistrement…' : `Enregistrer${nbModifications ? ` (${nbModifications})` : ''}`}
-          </button>
-        )}
-      </div>
+      <EnTetePage titre="Paramètres métier" description="Prix du carburant, barème de paie et seuils d'alerte utilisés par les calculs" />
 
       {!estAdmin && (
         <div className="alert alert-info d-flex align-items-center gap-2 py-2 small mb-0">
@@ -99,23 +85,22 @@ export default function Parametres() {
       {erreur && <div className="alert alert-danger">{erreur}</div>}
 
       {chargement ? (
-        <div className="d-flex justify-content-center align-items-center" style={{ height: '8rem' }}>
-          <div className="spinner-border text-primary" role="status" />
-        </div>
+        <LignesSquelette />
       ) : CATEGORIES.map(categorie => (
-        <div key={categorie} className="card border rounded-3 overflow-hidden">
-          <div className="card-header bg-light fw-semibold">{categorie}</div>
+        <div key={categorie} className="card carte-tableau">
+          <div className="card-header">{categorie}</div>
           <ul className="list-group list-group-flush">
             {parametres.filter(p => p.categorie === categorie).map(p => {
               const saisie = saisies[p.cle] ?? String(p.valeur);
               const modifie = p.cle in modifications;
               return (
-                <li key={p.cle} className={`list-group-item py-3 ${modifie ? 'bg-light' : ''}`}>
+                <li key={p.cle} className={`list-group-item py-3 parametre${modifie ? ' parametre-modifie' : ''}`}>
                   <div className="row g-3 align-items-center">
                     <div className="col-md-6">
                       <div className="fw-medium text-dark d-flex align-items-center gap-2 flex-wrap">
                         {p.libelle}
-                        {p.personnalise && <span className="badge etat-neutre fw-normal">Personnalisé</span>}
+                        {p.personnalise && <span className="badge etat-neutre">Personnalisé</span>}
+                        {modifie && <span className="badge etat-actif">Modifié</span>}
                       </div>
                       <div className="text-muted small">{p.description}</div>
                       {p.personnalise && (
@@ -139,9 +124,9 @@ export default function Parametres() {
                     </div>
                     <div className="col-md-2 text-md-end">
                       {estAdmin && p.personnalise && (
-                        <button onClick={() => reinitialiser(p)} className="btn btn-sm btn-outline-secondary"
+                        <button onClick={() => reinitialiser(p)} className="btn btn-sm btn-link text-muted"
                                 title={`Revenir à ${formaterNombre(p.defaut, 3)} ${p.unite}`}>
-                          <RotateCcw size={14} className="me-1" /> Défaut
+                          <RotateCcw size={14} /> Valeur par défaut
                         </button>
                       )}
                     </div>
@@ -155,11 +140,11 @@ export default function Parametres() {
 
       {/* Historique des modifications (admin) */}
       {estAdmin && !chargement && (
-        <div className="card border rounded-3 overflow-hidden">
-          <div className="card-header bg-light d-flex align-items-center justify-content-between">
-            <span className="fw-semibold d-flex align-items-center gap-2"><History size={16} /> Historique</span>
+        <div className="card carte-tableau">
+          <div className="card-header d-flex align-items-center justify-content-between">
+            <span className="d-flex align-items-center gap-2"><History size={16} /> Historique des modifications</span>
             {!voirHistorique && (
-              <button onClick={() => setVoirHistorique(true)} className="btn btn-sm btn-outline-primary">Afficher</button>
+              <button onClick={() => setVoirHistorique(true)} className="btn btn-sm btn-outline-secondary">Afficher</button>
             )}
           </div>
           {historique !== null && (
@@ -167,21 +152,17 @@ export default function Parametres() {
               <p className="text-muted small p-3 mb-0">Aucune modification pour le moment.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="table table-sm mb-0">
-                  <thead className="table-light">
-                    <tr>
-                      {['Date', 'Paramètre', 'Ancienne valeur', 'Nouvelle valeur', 'Par'].map(h => (
-                        <th key={h} className="fw-semibold text-muted small px-3 py-2 text-nowrap">{h}</th>
-                      ))}
-                    </tr>
+                <table className="table align-middle">
+                  <thead>
+                    <tr><th>Date</th><th>Paramètre</th><th className="text-end">Avant</th><th className="text-end">Après</th><th>Par</th></tr>
                   </thead>
                   <tbody>
                     {historique.map(h => (
                       <tr key={h.id}>
                         <td className="px-3 py-2 text-nowrap small">{formaterDateHeure(h.modifie_le)}</td>
                         <td className="px-3 py-2 small">{h.libelle || libelle(h.cle)}</td>
-                        <td className="px-3 py-2 small">{h.ancienne_valeur ?? <span className="text-muted">défaut</span>}</td>
-                        <td className="px-3 py-2 small">{h.nouvelle_valeur ?? <span className="text-muted">défaut</span>}</td>
+                        <td className="px-3 py-2 small text-end">{h.ancienne_valeur ?? <span className="text-muted">défaut</span>}</td>
+                        <td className="px-3 py-2 small text-end">{h.nouvelle_valeur ?? <span className="text-muted">défaut</span>}</td>
                         <td className="px-3 py-2 small">{h.modifie_par_nom || '—'}</td>
                       </tr>
                     ))}
@@ -190,6 +171,20 @@ export default function Parametres() {
               </div>
             )
           )}
+        </div>
+      )}
+
+      {/* Barre d'enregistrement : visible tant qu'une valeur saisie diffère de la valeur en vigueur */}
+      {estAdmin && nbModifications > 0 && (
+        <div className="barre-enregistrement" role="region" aria-label="Modifications non enregistrées">
+          <span>{nbModifications} modification(s) non enregistrée(s)</span>
+          <div className="d-flex gap-2">
+            <button onClick={() => setSaisies({})} className="btn btn-sm btn-outline-light">Annuler les modifications</button>
+            <button onClick={enregistrer} disabled={sauvegarde} className="btn btn-sm btn-light">
+              {sauvegarde ? <span className="spinner-border spinner-border-sm" role="status" /> : <Save size={14} />}
+              Enregistrer
+            </button>
+          </div>
         </div>
       )}
 

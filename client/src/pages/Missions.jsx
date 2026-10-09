@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, FileDown } from 'lucide-react';
+import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, FileDown, MapPin } from 'lucide-react';
 import api, { telechargerFichier } from '../services/api';
 import { messageErreur } from '../requetes/client';
 import { useChauffeurs, useClients, useEcriture, useMissions, useParametres, useVehicules } from '../requetes';
@@ -9,6 +9,10 @@ import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
 import { formaterDate, formaterKm, formaterMontant } from '../utils/format';
+import { LignesSquelette } from '../components/ui/Squelette';
+import Trajet from '../components/ui/Trajet';
+import EnTetePage from '../components/ui/EnTetePage';
+import EtatVide from '../components/ui/EtatVide';
 
 const BADGES = {
   planifiee: 'etat-neutre',
@@ -165,36 +169,38 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
         </div>
       )}
 
-      <div className="d-flex gap-3 pt-1">
-        <button type="button" onClick={onAnnuler} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-        <button type="submit" disabled={loading} className="btn btn-primary btn-sm flex-grow-1">
-          {loading ? '…' : 'Créer la mission'}
+      <div className="modale-actions">
+        <button type="button" onClick={onAnnuler} className="btn btn-outline-secondary">Annuler</button>
+        <button type="submit" disabled={loading} className="btn btn-primary">
+          {loading && <span className="spinner-border spinner-border-sm" role="status" />}
+          Créer la mission
         </button>
       </div>
     </form>
   );
 };
 
-const DetailMission = ({ mission }) => (
-  <div className="d-flex flex-column gap-3 small text-gray-700">
-    <div className="row g-2">
-      <div className="col-6"><strong>Camion :</strong> {mission.immatriculation}</div>
-      <div className="col-6"><strong>Chauffeur :</strong> {mission.chauffeur_prenom} {mission.chauffeur_nom}</div>
-      <div className="col-6"><strong>Départ :</strong> {mission.lieu_depart}</div>
-      <div className="col-6"><strong>Destination :</strong> {mission.lieu_destination}</div>
-      <div className="col-6"><strong>Distance :</strong> {formaterKm(mission.distance_km, 1)}</div>
-      <div className="col-6"><strong>Poids :</strong> {mission.poids_charge ? `${mission.poids_charge} T` : '—'}</div>
-      <div className="col-6"><strong>Coût carburant :</strong> {formaterMontant(mission.cout_carburant)}</div>
-      <div className="col-6"><strong>Date départ :</strong> {formaterDate(mission.date_depart)}</div>
-      <div className="col-6"><strong>Retour réel :</strong> {formaterDate(mission.date_retour_reelle)}</div>
+const DetailMission = ({ mission }) => {
+  const champs = [
+    ['Camion', <span key="c" className="immatriculation">{mission.immatriculation}</span>],
+    ['Chauffeur', `${mission.chauffeur_prenom} ${mission.chauffeur_nom}`],
+    ['Statut', <span key="s" className={`badge ${BADGES[mission.statut]}`}>{LABELS[mission.statut]}</span>],
+    ['Départ', formaterDate(mission.date_depart)],
+    ['Retour', formaterDate(mission.date_retour_reelle || mission.date_retour_prevue)],
+    ['Distance', formaterKm(mission.distance_km, 1)],
+    ['Charge', mission.poids_charge ? `${mission.poids_charge} T` : '—'],
+    ['Coût carburant', formaterMontant(mission.cout_carburant)],
+  ];
+  return (
+    <div>
+      <p className="fw-medium mb-3"><Trajet depart={mission.lieu_depart} destination={mission.lieu_destination} /></p>
+      <dl className="grille-details">
+        {champs.map(([libelle, valeur]) => <div key={libelle}><dt>{libelle}</dt><dd>{valeur}</dd></div>)}
+      </dl>
+      {mission.notes && (<><p className="titre-bloc">Marchandises</p><p className="mb-0 text-gray-700">{mission.notes}</p></>)}
     </div>
-    {mission.notes && (
-      <div className="bg-light rounded-2 p-2">
-        <strong>Marchandises :</strong> {mission.notes}
-      </div>
-    )}
-  </div>
-);
+  );
+};
 
 export default function Missions() {
   const { user }       = useAuth();
@@ -263,95 +269,86 @@ export default function Missions() {
   const fermerModal   = () => setModal({ ouvert: false, mission: null, mode: 'new' });
   const apresCreation = () => fermerModal();
 
-  return (
-    <div className="d-flex flex-column gap-3">
+  const filtre = Boolean(filtreStatut || dateDebut || dateFin);
 
-      {/* Filtres */}
-      <div className="d-flex flex-wrap gap-2 align-items-center">
-        <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)} className="form-select" style={{ width: 'auto' }}>
+  return (
+    <div className="d-flex flex-column gap-4">
+      <EnTetePage
+        titre="Missions"
+        description={chargement ? 'Chargement…' : `${paginInfo.total} mission(s)${filtre ? ' correspondant aux filtres' : ''}`}
+        actions={isGestionnaire && (
+          <button onClick={() => setModal({ ouvert: true, mission: null, mode: 'new' })} className="btn btn-primary">
+            <Plus size={16} /> Nouvelle mission
+          </button>
+        )}
+      />
+
+      <div className="barre-filtres">
+        <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)} className="form-select" aria-label="Statut">
           <option value="">Tous les statuts</option>
           {Object.entries(LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)}
-               className="form-control" style={{ width: 'auto' }} title="Date de début" />
-        <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)}
-               className="form-control" style={{ width: 'auto' }} title="Date de fin" />
-        <div className="flex-grow-1" />
-        {isGestionnaire && (
-          <button onClick={() => setModal({ ouvert: true, mission: null, mode: 'new' })}
-                  className="btn btn-primary d-flex align-items-center gap-2">
-            <Plus size={16} /> Nouvelle mission
+        <div className="plage-dates">
+          <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="form-control" aria-label="Départ à partir du" />
+          <span className="text-muted small">au</span>
+          <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="form-control" aria-label="Départ jusqu'au" />
+        </div>
+        {filtre && (
+          <button className="btn btn-link btn-sm text-muted" onClick={() => { setFiltreStatut(''); setDateDebut(''); setDateFin(''); }}>
+            <X size={14} /> Effacer les filtres
           </button>
         )}
       </div>
 
-      {/* Tableau */}
-      <div className="card border rounded-3 overflow-hidden">
+      <div className="card carte-tableau">
         {chargement ? (
-          <div className="d-flex align-items-center justify-content-center" style={{ height: '8rem' }}>
-            <div className="spinner-border text-primary" role="status" />
-          </div>
+          <LignesSquelette colonnes={6} />
         ) : missions.length === 0 ? (
-          <p className="text-center text-muted py-5">Aucune mission trouvée</p>
+          <EtatVide Icone={MapPin} titre={filtre ? 'Aucune mission trouvée' : 'Aucune mission'}
+                    description={filtre ? 'Modifiez ou effacez les filtres.' : 'Planifiez une première mission pour un camion et un chauffeur.'} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-sm table-hover mb-0">
-              <thead className="table-light">
-                <tr>
-                  {['Titre', 'Camion', 'Chauffeur', 'Trajet', 'Départ', 'Statut', 'Actions'].map(h => (
-                    <th key={h} className="text-uppercase small fw-semibold text-muted px-3 py-2 text-nowrap">{h}</th>
-                  ))}
-                </tr>
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr><th>Mission</th><th>Camion et chauffeur</th><th>Départ</th><th className="text-end">Distance</th><th>Statut</th><th className="col-actions"><span className="visually-hidden">Actions</span></th></tr>
               </thead>
               <tbody>
                 {missions.map(m => (
                   <tr key={m.id}>
-                    <td className="px-3 py-2 fw-medium text-dark text-truncate" style={{ maxWidth: '160px' }}>{m.titre}</td>
-                    <td className="px-3 py-2 text-gray-600 font-monospace small">{m.immatriculation}</td>
-                    <td className="px-3 py-2 text-gray-600">{m.chauffeur_prenom} {m.chauffeur_nom}</td>
-                    <td className="px-3 py-2 text-gray-600 small">
-                      {m.lieu_depart} → {m.lieu_destination}
-                      <br /><span className="text-muted">{formaterKm(m.distance_km, 1)}</span>
+                    <td style={{ maxWidth: '18rem' }}>
+                      <p className="fw-medium mb-0 text-truncate">{m.titre}</p>
+                      <p className="small text-muted mb-0"><Trajet depart={m.lieu_depart} destination={m.lieu_destination} /></p>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 small text-nowrap">{formaterDate(m.date_depart)}</td>
-                    <td className="px-3 py-2">
-                      <span className={`badge rounded-pill fw-medium ${BADGES[m.statut]}`}>{LABELS[m.statut]}</span>
+                    <td>
+                      <p className="mb-0 immatriculation">{m.immatriculation}</p>
+                      <p className="small text-muted mb-0">{m.chauffeur_prenom} {m.chauffeur_nom}</p>
                     </td>
-                    <td className="px-3 py-2">
-                      <div className="d-flex gap-1 flex-wrap align-items-center">
+                    <td className="text-nowrap text-gray-700">{formaterDate(m.date_depart)}</td>
+                    <td className="text-end text-nowrap">{formaterKm(m.distance_km, 1)}</td>
+                    <td><span className={`badge ${BADGES[m.statut]}`}>{LABELS[m.statut]}</span></td>
+                    <td className="col-actions">
+                      <div className="d-flex gap-1 align-items-center">
                         {isGestionnaire && m.statut === 'planifiee' && (
-                          <button onClick={() => demarrerMission(m)}
-                                  className="btn btn-primary btn-sm d-flex align-items-center gap-1">
-                            <Play size={12} /> Démarrer
-                          </button>
-                        )}
-                        {isGestionnaire && m.statut === 'planifiee' && (
-                          <button onClick={() => changerStatut(m.id, 'annulee')}
-                                  className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
-                            <X size={12} /> Annuler
+                          <button onClick={() => demarrerMission(m)} className="btn btn-outline-secondary btn-sm">
+                            <Play size={13} /> Démarrer
                           </button>
                         )}
                         {isGestionnaire && m.statut === 'en_cours' && (
-                          <button onClick={() => changerStatut(m.id, 'terminee')}
-                                  className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
-                            <Check size={12} /> Terminer
+                          <button onClick={() => changerStatut(m.id, 'terminee')} className="btn btn-outline-secondary btn-sm">
+                            <Check size={13} /> Terminer
                           </button>
                         )}
-                        {m.statut === 'terminee' && (
-                          <button onClick={() => setModal({ ouvert: true, mission: m, mode: 'detail' })}
-                                  className="btn btn-light btn-sm d-flex align-items-center gap-1">
-                            <Eye size={12} /> Détail
-                          </button>
-                        )}
+                        <button onClick={() => setModal({ ouvert: true, mission: m, mode: 'detail' })}
+                                className="btn btn-icone" title="Détail" aria-label="Détail"><Eye size={16} /></button>
                         <button onClick={() => telechargerBonLivraison(m)}
-                                className="btn btn-sm btn-outline-primary" title="Bon de livraison PDF">
-                          <FileDown size={14} />
-                        </button>
+                                className="btn btn-icone" title="Bon de livraison PDF" aria-label="Bon de livraison PDF"><FileDown size={16} /></button>
+                        {isGestionnaire && m.statut === 'planifiee' && (
+                          <button onClick={() => changerStatut(m.id, 'annulee')}
+                                  className="btn btn-icone" title="Annuler la mission" aria-label="Annuler la mission"><X size={16} /></button>
+                        )}
                         {user?.role === 'admin' && (
                           <button onClick={() => supprimerMission(m)}
-                                  className="btn btn-sm btn-outline-danger" title="Supprimer">
-                            <Trash2 size={14} />
-                          </button>
+                                  className="btn btn-icone btn-icone-danger" title="Supprimer" aria-label="Supprimer"><Trash2 size={16} /></button>
                         )}
                       </div>
                     </td>
@@ -361,16 +358,17 @@ export default function Missions() {
             </table>
           </div>
         )}
-      </div>
-
-      <div className="border-top">
-        <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
-                    limit={LIMIT} onChange={setPage} />
+        {paginInfo.pages > 1 && (
+          <div className="pied-tableau">
+            <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total} limit={LIMIT} onChange={setPage} />
+          </div>
+        )}
       </div>
 
       <Modal isOpen={modal.ouvert} onClose={fermerModal}
-             titre={modal.mode === 'detail' ? `Détail — ${modal.mission?.titre}` : 'Nouvelle mission de transport'}
-             taille="max-w-2xl">
+             titre={modal.mode === 'detail' ? modal.mission?.titre : 'Nouvelle mission'}
+             description={modal.mode === 'detail' ? undefined : 'Le camion et le chauffeur ne doivent pas avoir d\'autre mission sur la période.'}
+             taille="lg">
         {modal.mode === 'detail'
           ? <DetailMission mission={modal.mission} />
           : <FormulaireMission onSauvegarder={apresCreation} onAnnuler={fermerModal} />

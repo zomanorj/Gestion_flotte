@@ -1,69 +1,54 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, CheckCheck, AlertTriangle, Wrench, FileText, MapPin, X, Menu } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { Bell, CheckCheck, AlertTriangle, Wrench, FileText, MapPin, X, Menu, ChevronRight } from 'lucide-react';
 import api from '../services/api';
 import { useEvenement } from '../hooks/useEvenement';
 import { formaterDate } from '../utils/format';
+import { emplacement } from '../navigation';
 import { useEcriture, useNotifications, useRafraichir } from '../requetes';
-
-const TITRES = {
-  '/':             'Tableau de bord — Flotte de Camions',
-  '/vehicules':    'Gestion des Camions',
-  '/chauffeurs':   'Gestion des Chauffeurs',
-  '/missions':     'Missions de Transport',
-  '/documents':    'Documents des véhicules',
-  '/carburant':    'Suivi du carburant',
-  '/depenses':     'Dépenses',
-  '/maintenances': 'Maintenances',
-  '/planning':     'Planning des missions',
-  '/clients':      'Clients',
-  '/rapports':     'Rapports & Exports',
-  '/utilisateurs': 'Gestion des utilisateurs',
-  '/paie':         'Paie des chauffeurs',
-  '/parametres':   'Paramètres métier',
-  '/mes-missions': 'Mes missions'
-};
 
 const ICONE_NOTIF = {
   document_expiration: FileText,
   maintenance_urgente: Wrench,
   mission_demarree:    MapPin,
   mission_terminee:    MapPin,
-  default:             AlertTriangle
+  default:             AlertTriangle,
 };
 
-const COULEUR_NOTIF = {
-  document_expiration: 'text-orange-500',
-  maintenance_urgente: 'text-red-500',
-  mission_demarree:    'text-gray-600',
-  mission_terminee:    'text-green-500',
-  default:             'text-gray-500'
+// Couleur d'état seulement pour ce qui demande une action (document, maintenance)
+const TON_NOTIF = {
+  document_expiration: 'ton-attention',
+  maintenance_urgente: 'ton-danger',
+  mission_terminee:    'ton-succes',
 };
 
-const fmtDateRelative = (dateStr) => {
-  const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+const dateRelative = (valeur) => {
+  const diff = Math.floor((Date.now() - new Date(valeur)) / 1000);
   if (diff < 60)    return "À l'instant";
   if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)} min`;
-  if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)}h`;
-  return formaterDate(dateStr);
+  if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} h`;
+  return formaterDate(valeur);
 };
+
+const JOUR = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+// « Vendredi 9 octobre » : majuscule au jour seulement
+const aujourdhui = () => { const t = JOUR.format(new Date()); return t.charAt(0).toUpperCase() + t.slice(1); };
 
 export default function Navbar({ menuOuvert = false, onMenu }) {
   const { pathname } = useLocation();
-  const { user }     = useAuth();
+  const ici = emplacement(pathname);
 
-  const [ouvert,    setOuvert]   = useState(false);
-  const dropdownRef = useRef(null);
+  const [ouvert, setOuvert] = useState(false);
+  const panneauRef = useRef(null);
 
   const { data } = useNotifications();
   const notifs  = data?.notifications ?? [];
   const nonLues = data?.non_lues ?? 0;
   const rafraichir = useRafraichir();
 
-  const lire      = useEcriture('notifications', (id) => api.patch(`/notifications/${id}/read`));
-  const toutLire  = useEcriture('notifications', () => api.patch('/notifications/read-all'));
-  const masquer   = useEcriture('notifications', (id) => api.delete(`/notifications/${id}`));
+  const lire     = useEcriture('notifications', (id) => api.patch(`/notifications/${id}/read`));
+  const toutLire = useEcriture('notifications', () => api.patch('/notifications/read-all'));
+  const masquer  = useEcriture('notifications', (id) => api.delete(`/notifications/${id}`));
 
   // Événements temps réel : les données concernées sont rechargées depuis l'API, si bien
   // que toutes les pages ouvertes et les badges restent à jour, y compris quand la
@@ -76,112 +61,91 @@ export default function Navbar({ menuOuvert = false, onMenu }) {
     rafraichir('missions', 'planning', 'vehicules', 'chauffeurs', 'tableau-de-bord', 'paie');
   });
 
+  // Le panneau se ferme au clic à l'extérieur, avec Échap et au changement de page
   useEffect(() => {
-    const handleOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOuvert(false);
+    if (!ouvert) return undefined;
+    const dehors = (e) => { if (panneauRef.current && !panneauRef.current.contains(e.target)) setOuvert(false); };
+    const touche = (e) => { if (e.key === 'Escape') setOuvert(false); };
+    document.addEventListener('mousedown', dehors);
+    document.addEventListener('keydown', touche);
+    return () => {
+      document.removeEventListener('mousedown', dehors);
+      document.removeEventListener('keydown', touche);
     };
-    document.addEventListener('mousedown', handleOutside);
-
-    return () => document.removeEventListener('mousedown', handleOutside);
-  }, []);
-
-  const marquerLue = (notif) => {
-    if (!notif.est_lue) lire.mutate(notif.id);
-  };
-
-  const marquerToutesLues = () => toutLire.mutate();
-
-  const supprimerNotif = (e, id) => {
-    e.stopPropagation();
-    masquer.mutate(id);
-  };
+  }, [ouvert]);
+  useEffect(() => { setOuvert(false); }, [pathname]);
 
   return (
-    <header className="bg-white border-bottom px-3 px-lg-4 py-2 py-lg-3 d-flex align-items-center gap-2 flex-shrink-0">
+    <header className="barre-haut d-flex align-items-center gap-2 px-3 px-lg-4 flex-shrink-0">
       {/* Menu : ouvre la barre latérale sous 992 px */}
       <button type="button" onClick={onMenu} aria-label="Ouvrir le menu"
               aria-controls="barre-laterale" aria-expanded={menuOuvert}
-              className="btn btn-light border rounded-3 d-lg-none bouton-icone p-0 d-flex align-items-center justify-content-center">
+              className="btn btn-icone d-lg-none">
         <Menu size={20} />
       </button>
-      <h2 className="fs-5 fw-semibold text-gray-800 mb-0 text-truncate flex-grow-1" style={{ minWidth: 0 }}>
-        {TITRES[pathname] || 'CamionApp'}
-      </h2>
 
-      <div className="d-flex align-items-center gap-2 gap-lg-3 flex-shrink-0">
-        {/* Cloche notifications */}
-        <div className="position-relative" ref={dropdownRef}>
-          <button onClick={() => setOuvert(!ouvert)}
-                  className="btn btn-light btn-sm position-relative p-2 rounded-3 border bouton-icone"
-                  title="Notifications" aria-label="Notifications" aria-expanded={ouvert}>
-            <Bell size={18} className={nonLues > 0 ? 'text-gray-900' : 'text-gray-600'} />
-            {nonLues > 0 && (
-              <span className="position-absolute top-0 start-100 translate-middle badge rounded-circle bg-danger"
-                    style={{ fontSize: '10px', minWidth: '18px', height: '18px', lineHeight: '18px', padding: 0 }}>
-                {nonLues > 99 ? '99+' : nonLues}
-              </span>
-            )}
-          </button>
+      {/* Fil d'Ariane : section, puis page */}
+      <nav aria-label="Fil d'Ariane" className="flex-grow-1 min-w-0">
+        <ol className="fil-ariane">
+          {ici && <li className="d-none d-sm-flex">{ici.section}<ChevronRight size={14} aria-hidden="true" /></li>}
+          <li aria-current="page" className="text-truncate">{ici?.page || 'FlotteApp'}</li>
+        </ol>
+      </nav>
 
-          {ouvert && (
-            <div className="position-absolute end-0 mt-2 bg-white border rounded-3 shadow-lg"
-                 style={{ width: 'min(360px, calc(100vw - 1.5rem))', zIndex: 1050, maxHeight: 'min(480px, 75vh)', display: 'flex', flexDirection: 'column' }}>
-              <div className="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
-                <span className="fw-semibold text-dark small">Notifications</span>
-                {nonLues > 0 && (
-                  <button onClick={marquerToutesLues}
-                          className="btn btn-link p-0 small text-primary d-flex align-items-center gap-1">
-                    <CheckCheck size={14} /> Tout marquer lu
-                  </button>
-                )}
-              </div>
+      <span className="date-du-jour d-none d-xl-inline">{aujourdhui()}</span>
 
-              <div className="overflow-y-auto flex-grow-1">
-                {notifs.length === 0 ? (
-                  <div className="text-center py-4 text-muted small">
-                    <Bell size={32} className="mb-2 opacity-25 d-block mx-auto" />
-                    Aucune notification
-                  </div>
-                ) : (
-                  notifs.slice(0, 20).map((n) => {
-                    const Icone   = ICONE_NOTIF[n.type]   || ICONE_NOTIF.default;
-                    const couleur = COULEUR_NOTIF[n.type] || COULEUR_NOTIF.default;
-                    return (
-                      <div key={n.id} onClick={() => marquerLue(n)}
-                           className={`d-flex align-items-start gap-3 px-3 py-2 border-bottom
-                                      ${!n.est_lue ? 'bg-light' : ''}`}
-                           style={{ cursor: 'pointer' }}>
-                        <div className={`flex-shrink-0 mt-1 ${couleur}`}><Icone size={16} /></div>
-                        <div className="flex-grow-1 min-w-0">
-                          <p className={`small mb-0 ${!n.est_lue ? 'fw-semibold text-dark' : 'text-gray-700'}`}>
-                            {n.titre}
-                          </p>
-                          <p className="text-xs text-muted mb-0 mt-1">{n.message}</p>
-                          <p className="text-xs text-muted mb-0" style={{ opacity: 0.7 }}>
-                            {fmtDateRelative(n.created_at)}
-                          </p>
-                        </div>
-                        <button onClick={(e) => supprimerNotif(e, n.id)}
-                                className="btn btn-link p-0 flex-shrink-0 text-muted">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+      {/* Notifications */}
+      <div className="position-relative" ref={panneauRef}>
+        <button type="button" onClick={() => setOuvert(!ouvert)}
+                className="btn btn-icone position-relative"
+                title="Notifications" aria-label="Notifications" aria-expanded={ouvert} aria-haspopup="true">
+          <Bell size={18} />
+          {nonLues > 0 && <span className="pastille-compteur">{nonLues > 99 ? '99+' : nonLues}</span>}
+        </button>
+
+        {ouvert && (
+          <div className="panneau-notifications apparition" role="dialog" aria-label="Notifications">
+            <div className="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+              <span className="fw-semibold">Notifications</span>
+              {nonLues > 0 && (
+                <button type="button" onClick={() => toutLire.mutate()}
+                        className="btn btn-link btn-sm p-0 d-flex align-items-center gap-1">
+                  <CheckCheck size={14} /> Tout marquer comme lu
+                </button>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Infos utilisateur (le nom et le rôle sont aussi en bas du menu sur téléphone) */}
-        <div className="d-none d-md-flex align-items-center gap-3 small text-gray-600">
-          <span className="d-none d-xl-inline">Connecté en tant que</span>
-          <span className="fw-medium text-dark">{user?.nom}</span>
-          <span className="badge rounded-pill etat-neutre text-capitalize">
-            {user?.role}
-          </span>
-        </div>
+            <div className="overflow-y-auto flex-grow-1">
+              {notifs.length === 0 ? (
+                <div className="text-center py-5 px-3 text-muted">
+                  <Bell size={28} strokeWidth={1.5} className="mb-2 opacity-50" />
+                  <p className="mb-0 small">Aucune notification</p>
+                </div>
+              ) : (
+                notifs.slice(0, 20).map((n) => {
+                  const Icone = ICONE_NOTIF[n.type] || ICONE_NOTIF.default;
+                  return (
+                    <div key={n.id} className={`notification${n.est_lue ? '' : ' non-lue'}`}>
+                      <button type="button" className="notification-corps"
+                              onClick={() => { if (!n.est_lue) lire.mutate(n.id); }}>
+                        <span className={`notification-icone ${TON_NOTIF[n.type] || ''}`}><Icone size={15} /></span>
+                        <span className="flex-grow-1 min-w-0 text-start">
+                          <span className="d-block notification-titre">{n.titre}</span>
+                          <span className="d-block text-muted small">{n.message}</span>
+                          <span className="d-block text-muted text-xs mt-1">{dateRelative(n.created_at)}</span>
+                        </span>
+                      </button>
+                      <button type="button" onClick={() => masquer.mutate(n.id)}
+                              className="btn btn-icone btn-icone-sm" aria-label="Masquer la notification">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );

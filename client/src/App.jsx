@@ -1,5 +1,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { AlertTriangle, X } from 'lucide-react';
 import { ProtectedRoute } from './context/AuthContext';
 
 // La page de connexion reste dans le fichier principal : c'est la première affichée
@@ -11,8 +12,8 @@ import Navbar     from './components/Navbar';
 import ErreurPage from './components/ErreurPage';
 
 const ChargementPage = () => (
-  <div className="d-flex justify-content-center align-items-center h-100" style={{ minHeight: '12rem' }}>
-    <div className="spinner-border text-primary" role="status">
+  <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '12rem' }}>
+    <div className="spinner-border spinner-border-sm text-secondary" role="status">
       <span className="visually-hidden">Chargement de la page…</span>
     </div>
   </div>
@@ -42,12 +43,15 @@ const AppLayout = () => {
       <Sidebar ouvert={menuOuvert} onFermer={() => setMenuOuvert(false)} />
       <div className="d-flex flex-column flex-grow-1 overflow-hidden" style={{ minWidth: 0 }}>
         <Navbar menuOuvert={menuOuvert} onMenu={() => setMenuOuvert(true)} />
-        <main className="flex-grow-1 overflow-y-auto p-3 p-lg-4">
-          <ErreurPage cle={pathname}>
-            <Suspense fallback={<ChargementPage />}>
-              <Outlet />
-            </Suspense>
-          </ErreurPage>
+        <main className="flex-grow-1 overflow-y-auto">
+          {/* Largeur de lecture limitée sur grand écran ; courte entrée à chaque changement de page */}
+          <div key={pathname} className="contenu entree-page">
+            <ErreurPage cle={pathname}>
+              <Suspense fallback={<ChargementPage />}>
+                <Outlet />
+              </Suspense>
+            </ErreurPage>
+          </div>
         </main>
       </div>
     </div>
@@ -58,8 +62,8 @@ export default function App() {
   const [bannerMsg, setBannerMsg] = useState('');
 
   useEffect(() => {
-    const onReseau = () => setBannerMsg('Serveur inaccessible — vérifiez votre connexion.');
-    const on500    = () => setBannerMsg('Erreur serveur (500) — réessayez dans un instant.');
+    const onReseau = () => setBannerMsg('Serveur injoignable. Vérifiez votre connexion internet.');
+    const on500    = () => setBannerMsg('Le serveur a rencontré une erreur. Réessayez dans un instant.');
     window.addEventListener('api:reseau',    onReseau);
     window.addEventListener('api:erreur500', on500);
     return () => {
@@ -71,9 +75,12 @@ export default function App() {
   return (
     <>
       {bannerMsg && (
-        <div className="alert alert-danger m-0 text-center rounded-0 d-flex justify-content-between align-items-center px-4" role="alert">
-          {bannerMsg}
-          <button type="button" className="btn-close" onClick={() => setBannerMsg('')} />
+        <div className="bandeau-erreur" role="alert">
+          <AlertTriangle size={16} className="flex-shrink-0" />
+          <span className="flex-grow-1">{bannerMsg}</span>
+          <button type="button" className="btn btn-icone btn-icone-sm text-white" onClick={() => setBannerMsg('')} aria-label="Fermer">
+            <X size={14} />
+          </button>
         </div>
       )}
       <Routes>

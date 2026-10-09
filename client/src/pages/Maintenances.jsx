@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Wrench, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, X, Clock } from 'lucide-react';
+import { Wrench, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, X } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { messageErreur } from '../requetes/client';
@@ -7,6 +7,11 @@ import { useAlertesMaintenances, useEcriture, useMaintenances, useVehicules } fr
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
 import { dateDuJour, formaterDate, formaterKm, formaterMontant } from '../utils/format';
+import { LignesSquelette } from '../components/ui/Squelette';
+import Modal from '../components/Modal';
+import EnTetePage from '../components/ui/EnTetePage';
+import EtatVide from '../components/ui/EtatVide';
+import PanneauAlertes from '../components/ui/PanneauAlertes';
 
 const TYPES = {
   vidange: 'Vidange', freins: 'Freins', pneus: 'Pneus', courroie: 'Courroie',
@@ -128,16 +133,7 @@ export default function Maintenances() {
   // Fonction de rendu, pas un composant : un composant déclaré ici serait recréé à chaque rendu
   // et les champs perdraient le focus à chaque frappe.
   const renduFormulaire = () => (
-    <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-         style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="bg-white rounded-3 shadow-lg w-100 overflow-y-auto" style={{ maxWidth: '32rem', maxHeight: '90vh' }}>
-        <div className="d-flex align-items-center justify-content-between p-4 border-bottom position-sticky top-0 bg-white" style={{ zIndex: 10 }}>
-          <h2 className="fs-6 fw-bold text-dark mb-0">
-            {modal === 'ajout' ? 'Planifier une maintenance' : 'Modifier la maintenance'}
-          </h2>
-          <button onClick={fermerModal} className="btn-close" />
-        </div>
-        <form onSubmit={sauvegarder} className="p-4 d-flex flex-column gap-3">
+        <form onSubmit={sauvegarder} className="d-flex flex-column gap-3">
           {errModal && (
             <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small">
               <AlertTriangle size={16} className="flex-shrink-0" /> {errModal}
@@ -188,84 +184,54 @@ export default function Maintenances() {
               <input type="text" value={form.garage} onChange={(e) => setForm({ ...form, garage: e.target.value })} placeholder="Ex : Garage Rakoto" className="form-control form-control-sm" />
             </div>
           </div>
-          <div className="d-flex gap-3 pt-1">
-            <button type="button" onClick={fermerModal} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-            <button type="submit" disabled={sauvegarde} className="btn btn-primary btn-sm flex-grow-1">
-              {sauvegarde ? 'Enregistrement...' : modal === 'ajout' ? 'Planifier' : 'Enregistrer'}
+          <div className="modale-actions">
+            <button type="button" onClick={fermerModal} className="btn btn-outline-secondary">Annuler</button>
+            <button type="submit" disabled={sauvegarde} className="btn btn-primary">
+              {sauvegarde && <span className="spinner-border spinner-border-sm" role="status" />}
+              {modal === 'ajout' ? 'Planifier' : 'Enregistrer'}
             </button>
           </div>
         </form>
-      </div>
-    </div>
   );
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* En-tête */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <div className="icone-page rounded-3 p-2"><Wrench size={24} /></div>
-          <div>
-            <h1 className="fs-4 fw-bold text-dark mb-0">Maintenances</h1>
-            <p className="text-muted small mb-0">{paginInfo.total} maintenance(s) enregistrée(s)</p>
-          </div>
-        </div>
-        {peutModifier && (
-          <button onClick={ouvrirAjout} className="btn btn-primary d-flex align-items-center gap-2">
-            <Plus size={16} /> Planifier une maintenance
-          </button>
+      <EnTetePage
+        titre="Maintenances"
+        description={`${paginInfo.total} intervention(s) planifiée(s) ou réalisée(s)`}
+        actions={peutModifier && (
+          <button onClick={ouvrirAjout} className="btn btn-primary"><Plus size={16} /> Planifier une maintenance</button>
         )}
-      </div>
+      />
 
-      {/* Alertes urgentes */}
-      {alertes.length > 0 && (
-        <div className="alert alert-danger rounded-3">
-          <h3 className="d-flex align-items-center gap-2 fw-semibold fs-6 mb-3">
-            <AlertTriangle size={20} />
-            {alertes.length} maintenance(s) nécessitant une attention immédiate
-          </h3>
-          <div className="row g-3">
-            {alertes.map((a) => (
-              <div key={a.id} className="col-12 col-sm-6 col-xl-4">
-                <div className={`rounded-3 p-3 border ${a.priorite === 'urgente' ? 'bg-red-100 border-red-300' : 'bg-orange-50 border-orange-200'}`}>
-                  <div className="d-flex align-items-start justify-content-between gap-2">
-                    <div>
-                      <p className="fw-semibold small text-dark mb-0">{TYPES[a.type]}</p>
-                      <p className="text-muted text-xs mt-1 mb-0">{a.immatriculation} — {a.marque}</p>
-                    </div>
-                    <PrioriteBadge priorite={a.priorite} />
-                  </div>
-                  {a.date_prevue && (
-                    <p className="text-xs mt-2 text-gray-600 mb-0">
-                      <Clock size={12} className="me-1" />
-                      {a.depassee ? 'Dépassée — prévue le ' : 'Prévue le '}{formaterDate(a.date_prevue)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <PanneauAlertes
+        titre="Maintenances à traiter"
+        elements={alertes.map((a) => ({
+          id: a.id,
+          ton: a.priorite === 'urgente' || a.depassee ? 'danger' : 'attention',
+          titre: TYPES[a.type],
+          sousTitre: `${a.immatriculation} · ${a.marque}`,
+          precision: a.date_prevue ? `${a.depassee ? 'Dépassée, prévue le' : 'Prévue le'} ${formaterDate(a.date_prevue)}` : null,
+          badge: <PrioriteBadge priorite={a.priorite} />,
+        }))}
+      />
 
-      {/* Filtres */}
-      <div className="d-flex flex-wrap gap-3 align-items-center bg-white border rounded-3 p-3">
-        <select value={filtreVehicule} onChange={(e) => setFiltreVehicule(e.target.value)} className="form-select" style={{ width: 'auto' }}>
+      <div className="barre-filtres">
+        <select value={filtreVehicule} onChange={(e) => setFiltreVehicule(e.target.value)} className="form-select" aria-label="Camion">
           <option value="">Tous les camions</option>
           {vehicules.map((v) => <option key={v.id} value={v.id}>{v.immatriculation} — {v.marque}</option>)}
         </select>
-        <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)} className="form-select" style={{ width: 'auto' }}>
+        <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)} className="form-select" aria-label="Statut">
           <option value="">Tous les statuts</option>
           {Object.entries(STATUT_CFG).map(([v, c]) => <option key={v} value={v}>{c.label}</option>)}
         </select>
-        <select value={filtrePriorite} onChange={(e) => setFiltrePriorite(e.target.value)} className="form-select" style={{ width: 'auto' }}>
-          <option value="">Toutes priorités</option>
+        <select value={filtrePriorite} onChange={(e) => setFiltrePriorite(e.target.value)} className="form-select" aria-label="Priorité">
+          <option value="">Toutes les priorités</option>
           {Object.entries(PRIORITE_CFG).map(([v, c]) => <option key={v} value={v}>{c.label}</option>)}
         </select>
         {(filtreVehicule || filtreStatut || filtrePriorite) && (
-          <button onClick={() => { setFiltreVehicule(''); setFiltreStatut(''); setFiltrePriorite(''); }}
-                  className="btn btn-link text-muted p-0 d-flex align-items-center gap-1 small">
-            <X size={16} /> Effacer
+          <button onClick={() => { setFiltreVehicule(''); setFiltreStatut(''); setFiltrePriorite(''); }} className="btn btn-link btn-sm text-muted">
+            <X size={14} /> Effacer les filtres
           </button>
         )}
       </div>
@@ -273,62 +239,45 @@ export default function Maintenances() {
       {erreur && <div className="alert alert-danger d-flex align-items-center gap-2"><AlertTriangle size={20} className="flex-shrink-0" /> {erreur}</div>}
 
       {/* Tableau */}
-      <div className="card border rounded-3 overflow-hidden">
+      <div className="card carte-tableau">
         {chargement ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: '10rem' }}>
-            <div className="spinner-border text-primary" role="status" />
-          </div>
+          <LignesSquelette />
         ) : maintenances.length === 0 ? (
-          <div className="text-center py-5 text-muted">
-            <Wrench size={48} className="mb-3 opacity-25" />
-            <p className="fw-medium">Aucune maintenance trouvée</p>
-          </div>
+          <EtatVide Icone={Wrench} titre="Aucune maintenance trouvée"
+                    description={filtreVehicule || filtreStatut || filtrePriorite ? 'Modifiez ou effacez les filtres.' : 'Planifiez les vidanges, révisions et réparations de la flotte.'} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-sm table-hover mb-0">
-              <thead className="table-light">
-                <tr>
-                  {['Camion', 'Type', 'Description', 'Date prévue', 'Kilométrage', 'Priorité', 'Statut', 'Coût estimé', 'Actions'].map(h => (
-                    <th key={h} className="fw-semibold text-muted small px-3 py-2 text-nowrap">{h}</th>
-                  ))}
-                </tr>
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr><th>Intervention</th><th>Camion</th><th>Échéance</th><th>Priorité</th><th>Statut</th><th className="text-end">Coût estimé</th><th className="col-actions"><span className="visually-hidden">Actions</span></th></tr>
               </thead>
               <tbody>
                 {maintenances.map((m) => (
-                  <tr key={m.id} className={m.depassee ? 'table-danger table-danger-subtle' : ''}>
-                    <td className="px-3 py-2 text-nowrap">
-                      <span className="fw-medium text-dark">{m.immatriculation}</span>
-                      <span className="text-muted small ms-1">{m.marque}</span>
+                  <tr key={m.id}>
+                    <td style={{ maxWidth: '18rem' }}>
+                      <p className="fw-medium mb-0">{TYPES[m.type]}</p>
+                      <p className="small text-muted mb-0 text-truncate">{m.description || m.garage || '—'}</p>
                     </td>
-                    <td className="px-3 py-2 fw-medium text-dark text-nowrap">{TYPES[m.type]}</td>
-                    <td className="px-3 py-2 text-muted text-truncate" style={{ maxWidth: '180px' }}>{m.description || '—'}</td>
-                    <td className="px-3 py-2 text-nowrap">
-                      <span className={m.depassee ? 'text-danger fw-medium' : 'text-gray-600'}>
-                        {formaterDate(m.date_prevue)}{m.depassee && <span className="ms-1 small">(dépassée)</span>}
-                      </span>
+                    <td className="text-nowrap"><span className="immatriculation">{m.immatriculation}</span> <span className="text-muted small">{m.marque}</span></td>
+                    <td className="text-nowrap">
+                      <p className={`mb-0 ${m.depassee ? 'text-danger fw-medium' : 'text-gray-700'}`}>
+                        {formaterDate(m.date_prevue)}{m.depassee && ' · dépassée'}
+                      </p>
+                      {m.kilometrage_declencheur > 0 && <p className="small text-muted mb-0">ou à {formaterKm(m.kilometrage_declencheur)}</p>}
                     </td>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">
-                      {m.kilometrage_declencheur ? formaterKm(m.kilometrage_declencheur) : '—'}
-                    </td>
-                    <td className="px-3 py-2"><PrioriteBadge priorite={m.priorite} /></td>
-                    <td className="px-3 py-2"><StatutBadge statut={m.statut} /></td>
-                    <td className="px-3 py-2 text-dark text-nowrap">{formaterMontant(m.cout_estime)}</td>
-                    <td className="px-3 py-2">
+                    <td><PrioriteBadge priorite={m.priorite} /></td>
+                    <td><StatutBadge statut={m.statut} /></td>
+                    <td className="text-end text-nowrap">{formaterMontant(m.cout_estime)}</td>
+                    <td className="col-actions">
                       <div className="d-flex align-items-center gap-1">
                         {peutModifier && !['terminee', 'annulee'].includes(m.statut) && (
-                          <button onClick={() => ouvrirCloture(m)} className="btn btn-sm btn-outline-primary" title="Marquer terminée">
-                            <CheckCircle2 size={14} />
-                          </button>
+                          <button onClick={() => ouvrirCloture(m)} className="btn btn-icone" title="Marquer terminée" aria-label="Marquer terminée"><CheckCircle2 size={16} /></button>
                         )}
                         {peutModifier && (
-                          <button onClick={() => ouvrirEdition(m)} className="btn btn-sm btn-outline-primary" title="Modifier">
-                            <Pencil size={14} />
-                          </button>
+                          <button onClick={() => ouvrirEdition(m)} className="btn btn-icone" title="Modifier" aria-label="Modifier"><Pencil size={16} /></button>
                         )}
                         {isAdmin && (
-                          <button onClick={() => supprimer(m)} className="btn btn-sm btn-outline-danger" title="Supprimer">
-                            <Trash2 size={14} />
-                          </button>
+                          <button onClick={() => supprimer(m)} className="btn btn-icone btn-icone-danger" title="Supprimer" aria-label="Supprimer"><Trash2 size={16} /></button>
                         )}
                       </div>
                     </td>
@@ -338,50 +287,43 @@ export default function Maintenances() {
             </table>
           </div>
         )}
-      </div>
-
-      <div className="border-top">
-        <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
-                    limit={LIMIT} onChange={setPage} />
-      </div>
-
-      {modal && renduFormulaire()}
-
-      {/* Modal clôturer */}
-      {modalCloture && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-             style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3 shadow-lg w-100" style={{ maxWidth: '26rem' }}>
-            <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-              <h2 className="fs-6 fw-bold text-dark mb-0">Marquer comme terminée</h2>
-              <button onClick={fermerCloture} className="btn-close" />
-            </div>
-            <form onSubmit={sauvegarderCloture} className="p-4 d-flex flex-column gap-3">
-              <p className="small text-gray-600 mb-0">
-                <strong>{TYPES[maintenanceClt?.type]}</strong> — {maintenanceClt?.immatriculation}
-              </p>
-              <div>
-                <label className="form-label">Date réalisée</label>
-                <input type="date" value={formCloture.date_realisee} onChange={(e) => setFormCloture({ ...formCloture, date_realisee: e.target.value })} className="form-control form-control-sm" />
-              </div>
-              <div>
-                <label className="form-label">Coût réel (Ar)</label>
-                <input type="number" min="0" value={formCloture.cout_reel} onChange={(e) => setFormCloture({ ...formCloture, cout_reel: e.target.value })} placeholder="Montant payé" className="form-control form-control-sm" />
-              </div>
-              <div>
-                <label className="form-label">Notes</label>
-                <textarea value={formCloture.notes} onChange={(e) => setFormCloture({ ...formCloture, notes: e.target.value })} rows={2} placeholder="Observations..." className="form-control form-control-sm" style={{ resize: 'none' }} />
-              </div>
-              <div className="d-flex gap-3 pt-1">
-                <button type="button" onClick={fermerCloture} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" disabled={sauvegardeClt} className="btn btn-primary btn-sm flex-grow-1">
-                  {sauvegardeClt ? 'Enregistrement...' : 'Confirmer clôture'}
-                </button>
-              </div>
-            </form>
+        {paginInfo.pages > 1 && (
+          <div className="pied-tableau">
+            <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total} limit={LIMIT} onChange={setPage} />
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      <Modal isOpen={!!modal} onClose={fermerModal}
+             titre={modal === 'ajout' ? 'Planifier une maintenance' : 'Modifier la maintenance'}>
+        {renduFormulaire()}
+      </Modal>
+
+      {/* Clôture */}
+      <Modal isOpen={modalCloture} onClose={fermerCloture} titre="Marquer comme terminée" taille="sm"
+             description={maintenanceClt ? `${TYPES[maintenanceClt.type]} · ${maintenanceClt.immatriculation}` : undefined}>
+        <form onSubmit={sauvegarderCloture} className="d-flex flex-column gap-3">
+          <div>
+            <label className="form-label">Date de réalisation</label>
+            <input type="date" value={formCloture.date_realisee} onChange={(e) => setFormCloture({ ...formCloture, date_realisee: e.target.value })} className="form-control form-control-sm" />
+          </div>
+          <div>
+            <label className="form-label">Coût réel (Ar)</label>
+            <input type="number" min="0" value={formCloture.cout_reel} onChange={(e) => setFormCloture({ ...formCloture, cout_reel: e.target.value })} placeholder="Montant payé" className="form-control form-control-sm" />
+          </div>
+          <div>
+            <label className="form-label">Notes</label>
+            <textarea value={formCloture.notes} onChange={(e) => setFormCloture({ ...formCloture, notes: e.target.value })} rows={2} placeholder="Observations" className="form-control form-control-sm" style={{ resize: 'none' }} />
+          </div>
+          <div className="modale-actions">
+            <button type="button" onClick={fermerCloture} className="btn btn-outline-secondary">Annuler</button>
+            <button type="submit" disabled={sauvegardeClt} className="btn btn-primary">
+              {sauvegardeClt && <span className="spinner-border spinner-border-sm" role="status" />}
+              Confirmer la clôture
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <ConfirmModalComponent />
     </div>

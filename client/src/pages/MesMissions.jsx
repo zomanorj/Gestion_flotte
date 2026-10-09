@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import {
-  ClipboardList, MapPin, Truck, CalendarClock, Route, Weight, FileDown, AlertTriangle, StickyNote,
+  MapPin, Truck, CalendarClock, Route, Weight, FileDown, AlertTriangle, StickyNote,
 } from 'lucide-react';
 import { telechargerFichier } from '../services/api';
 import { useMesMissions } from '../requetes';
 import { formaterDateHeure, formaterKm } from '../utils/format';
+import EnTetePage from '../components/ui/EnTetePage';
+import { LignesSquelette } from '../components/ui/Squelette';
+import Trajet from '../components/ui/Trajet';
 
 const STATUTS = {
   planifiee: { label: 'Planifiée', cls: 'etat-neutre' },
@@ -47,9 +50,7 @@ function CarteMission({ mission, enAvant = false }) {
         </div>
 
         <Detail Icone={MapPin}>
-          <span className="fw-medium text-dark">{mission.lieu_depart}</span>
-          {' → '}
-          <span className="fw-medium text-dark">{mission.lieu_destination}</span>
+          <Trajet depart={mission.lieu_depart} destination={mission.lieu_destination} className="fw-medium text-dark" />
         </Detail>
         <Detail Icone={CalendarClock}>
           Départ {formaterDateHeure(mission.date_depart)}
@@ -84,8 +85,8 @@ function CarteMission({ mission, enAvant = false }) {
 
 const Section = ({ titre, missions, total = missions.length, enAvant, vide, children }) => (
   <section className="d-flex flex-column gap-2">
-    <h2 className="fs-6 fw-semibold text-gray-600 text-uppercase small mb-0">
-      {titre} <span className="text-muted fw-normal">({total})</span>
+    <h2 className="titre-bloc mt-0 mb-1">
+      {titre} <span className="fw-normal">({total})</span>
     </h2>
     {missions.length === 0
       ? <p className="text-muted small mb-0">{vide}</p>
@@ -119,22 +120,10 @@ export default function MesMissions() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      <div className="d-flex align-items-center gap-3">
-        <div className="icone-page rounded-3 p-2 flex-shrink-0"><ClipboardList size={24} /></div>
-        <div style={{ minWidth: 0 }}>
-          <h1 className="fs-4 fw-bold text-dark mb-0">Mes missions</h1>
-          <p className="text-muted small mb-0">
-            {isPending ? 'Chargement…' : `${enCours.length} en cours, ${aVenir.length} à venir`}
-          </p>
-        </div>
-      </div>
+      <EnTetePage titre="Mes missions" description={isPending ? 'Chargement…' : `${enCours.length} en cours, ${aVenir.length} à venir`} />
 
       {isPending ? (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Chargement des missions…</span>
-          </div>
-        </div>
+        <div className="card"><LignesSquelette colonnes={2} lignes={3} /></div>
       ) : isError ? (
         <div className="alert alert-warning d-flex align-items-start gap-2 mb-0">
           <AlertTriangle size={20} className="flex-shrink-0" />

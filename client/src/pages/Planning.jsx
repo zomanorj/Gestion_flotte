@@ -3,10 +3,12 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin    from '@fullcalendar/daygrid';
 import timeGridPlugin   from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Calendar, MapPin, Truck, User, ArrowRight } from 'lucide-react';
+import { MapPin, Truck, User, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ECRAN_ETROIT, useMediaQuery } from '../hooks/useMediaQuery';
 import { usePlanning } from '../requetes';
+import EnTetePage from '../components/ui/EnTetePage';
+import Trajet from '../components/ui/Trajet';
 
 const STATUT_CFG = {
   planifiee: { label: 'Planifiée',  cls: 'etat-neutre'  },
@@ -49,31 +51,21 @@ export default function Planning() {
   };
 
   return (
-    <div className="d-flex flex-column gap-3">
-
-      {/* En-tête */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <div className="icone-page rounded-3 p-2">
-            <Calendar size={24} />
-          </div>
-          <div>
-            <h1 className="fs-4 fw-bold text-dark mb-0">Planning des missions</h1>
-            <p className="text-muted small mb-0">Vue calendrier de toutes les missions</p>
-          </div>
-        </div>
-        <div className="d-flex align-items-center flex-wrap column-gap-3 row-gap-1">
-          {LEGENDE.map(({ couleur, label }) => (
-            <div key={label} className="d-flex align-items-center gap-2 small text-gray-600">
-              <span className="rounded-circle flex-shrink-0" style={{ width: '12px', height: '12px', backgroundColor: couleur }} />
-              {label}
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="d-flex flex-column gap-4">
+      <EnTetePage
+        titre="Planning"
+        description="Missions dans le temps, par camion et par chauffeur"
+        actions={(
+          <ul className="legende list-unstyled mb-0" aria-label="Légende">
+            {LEGENDE.map(({ couleur, label }) => (
+              <li key={label}><span className="pastille-legende" style={{ background: couleur, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08)' }} />{label}</li>
+            ))}
+          </ul>
+        )}
+      />
 
       {/* Calendrier */}
-      <div className="card border rounded-3">
+      <div className="card">
         <div className="card-body p-2 p-md-3">
           <FullCalendar
             ref={calendarRef}
@@ -102,44 +94,38 @@ export default function Planning() {
           <div className="position-fixed top-0 start-0 w-100 h-100" style={{ zIndex: 1040 }}
                onClick={() => setPopup(null)} />
           {/* Sur téléphone : panneau en bas de l'écran plutôt que bulle près de l'événement */}
-          <div className="position-fixed bg-white rounded-3 shadow-lg border"
+          <div className="position-fixed bg-white rounded-4 shadow-lg border apparition" role="dialog" aria-label={popup.titre}
                style={etroit
                  ? { left: 8, right: 8, bottom: 8, zIndex: 1050, maxHeight: '70vh', overflowY: 'auto' }
                  : { left: popupPos.x, top: popupPos.y, zIndex: 1050, width: '320px' }}>
-            <div className="p-4">
-              <div className="d-flex align-items-start justify-content-between mb-3">
-                <h3 className="fw-bold text-dark small mb-0 pe-2">{popup.titre}</h3>
-                <button onClick={() => setPopup(null)} className="btn-close" />
+            <div className="p-3">
+              <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                <div className="min-w-0">
+                  <p className="fw-semibold mb-1">{popup.titre}</p>
+                  <span className={`badge ${STATUT_CFG[popup.statut]?.cls || 'etat-neutre'}`}>{STATUT_CFG[popup.statut]?.label || popup.statut}</span>
+                </div>
+                <button onClick={() => setPopup(null)} className="btn btn-icone btn-icone-sm" aria-label="Fermer"><X size={14} /></button>
               </div>
 
-              <div className="d-flex flex-column gap-2 small">
-                <div>
-                  <span className={`badge rounded-pill fw-medium ${STATUT_CFG[popup.statut]?.cls || 'bg-gray-100 text-gray-600'}`}>
-                    {STATUT_CFG[popup.statut]?.label || popup.statut}
-                  </span>
+              <div className="d-flex flex-column gap-2 small mt-3">
+                <div className="d-flex align-items-center gap-2 text-gray-700">
+                  <MapPin size={15} className="text-muted flex-shrink-0" />
+                  <Trajet depart={popup.lieu_depart} destination={popup.lieu_destination} />
+                  {popup.distance_km > 0 && <span className="text-muted">· {Math.round(popup.distance_km)} km</span>}
                 </div>
                 <div className="d-flex align-items-center gap-2 text-gray-700">
-                  <MapPin size={16} className="text-muted flex-shrink-0" />
-                  <span>{popup.lieu_depart}</span>
-                  <ArrowRight size={12} className="text-muted" />
-                  <span>{popup.lieu_destination}</span>
-                </div>
-                {popup.distance_km && (
-                  <p className="text-muted mb-0 ps-4">{popup.distance_km} km</p>
-                )}
-                <div className="d-flex align-items-center gap-2 text-gray-700">
-                  <Truck size={16} className="text-muted flex-shrink-0" />
+                  <Truck size={15} className="text-muted flex-shrink-0" />
                   <span>{popup.vehicule}</span>
                 </div>
                 <div className="d-flex align-items-center gap-2 text-gray-700">
-                  <User size={16} className="text-muted flex-shrink-0" />
+                  <User size={15} className="text-muted flex-shrink-0" />
                   <span>{popup.chauffeur}</span>
                 </div>
               </div>
 
               <button onClick={() => { setPopup(null); navigate('/missions'); }}
-                      className="btn btn-outline-primary btn-sm w-100 mt-3">
-                Voir toutes les missions
+                      className="btn btn-outline-secondary btn-sm w-100 mt-3">
+                Voir les missions
               </button>
             </div>
           </div>

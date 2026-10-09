@@ -73,8 +73,9 @@ describe('Missions', () => {
   it('création : villes et distance saisies, coût carburant estimé avec la consommation du camion', async () => {
     repondre(api.get, ROUTES);
     api.post.mockResolvedValue({ data: { id: 1 } });
-    const { container } = rendre(<Missions />);
-    const champ = (nom) => container.querySelector(`[name=${nom}]`);
+    rendre(<Missions />);
+    // La fenêtre est rendue dans document.body (portail), hors du conteneur de la page
+    const champ = (nom) => document.querySelector(`[name=${nom}]`);
 
     fireEvent.click(await screen.findByRole('button', { name: /Nouvelle mission/ }));
     await waitFor(() => expect(champ('vehicule_id').querySelectorAll('option').length).toBeGreaterThan(1));

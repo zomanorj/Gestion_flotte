@@ -1,11 +1,16 @@
 import { useState } from 'react';
-import { Building2, Plus, Pencil, Trash2, AlertTriangle, Phone, MapPin, History, ArrowLeft } from 'lucide-react';
+import { Building2, Plus, Pencil, Trash2, AlertTriangle, History, ArrowLeft } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { messageErreur } from '../requetes/client';
 import { useClients, useEcriture, useMissionsClient } from '../requetes';
 import { useConfirm } from '../components/ConfirmModal';
 import { formaterDate, formaterMontant } from '../utils/format';
+import { LignesSquelette } from '../components/ui/Squelette';
+import Trajet from '../components/ui/Trajet';
+import Modal from '../components/Modal';
+import EnTetePage from '../components/ui/EnTetePage';
+import EtatVide from '../components/ui/EtatVide';
 
 const TYPES = { entreprise: 'Entreprise', particulier: 'Particulier' };
 
@@ -70,53 +75,37 @@ export default function Clients() {
   // Vue historique
   if (historique) {
     return (
-      <div className="d-flex flex-column gap-4">
-        <div className="d-flex align-items-center gap-3">
-          <button onClick={() => setIdHistorique(null)} className="btn btn-light d-flex align-items-center gap-1">
-            <ArrowLeft size={20} />
+      <div className="d-flex flex-column gap-3">
+        <div>
+          <button onClick={() => setIdHistorique(null)} className="btn btn-link btn-sm text-muted px-0 mb-2">
+            <ArrowLeft size={14} /> Tous les clients
           </button>
-          <div className="d-flex align-items-center gap-3">
-            <div className="icone-page rounded-3 p-2"><History size={24} /></div>
-            <div>
-              <h1 className="fs-4 fw-bold text-dark mb-0">Missions — {historique.client.nom}</h1>
-              <p className="text-muted small mb-0">{historique.missions.length} mission(s)</p>
-            </div>
-          </div>
+          <EnTetePage titre={historique.client.nom} description={`${historique.missions.length} mission(s) réalisée(s) pour ce client`} />
         </div>
 
-        <div className="card border rounded-3 overflow-hidden">
+        <div className="card carte-tableau">
           {historique.missions.length === 0 ? (
-            <div className="text-center py-5 text-muted">
-              <History size={48} className="mb-3 opacity-25" />
-              <p>Aucune mission pour ce client</p>
-            </div>
+            <EtatVide Icone={History} titre="Aucune mission" description="Aucune mission n'a encore été réalisée pour ce client." />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="table table-sm table-hover mb-0">
-                <thead className="table-light">
-                  <tr>
-                    {['Titre', 'Camion', 'Chauffeur', 'Trajet', 'Date départ', 'Statut', 'Coût'].map(h => (
-                      <th key={h} className="fw-semibold text-muted small px-3 py-2 text-nowrap">{h}</th>
-                    ))}
-                  </tr>
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead>
+                  <tr><th>Mission</th><th>Camion et chauffeur</th><th>Départ</th><th>Statut</th><th className="text-end">Coût carburant</th></tr>
                 </thead>
                 <tbody>
                   {historique.missions.map(m => (
                     <tr key={m.id}>
-                      <td className="px-3 py-2 fw-medium text-dark text-truncate" style={{ maxWidth: '160px' }}>{m.titre}</td>
-                      <td className="px-3 py-2 text-gray-600 font-monospace small">{m.immatriculation}</td>
-                      <td className="px-3 py-2 text-gray-600">{m.chauffeur_prenom} {m.chauffeur_nom}</td>
-                      <td className="px-3 py-2 text-gray-600 small">
-                        {m.lieu_depart} → {m.lieu_destination}
-                        <br /><span className="text-muted">{m.distance_km} km</span>
+                      <td style={{ maxWidth: '18rem' }}>
+                        <p className="fw-medium mb-0 text-truncate">{m.titre}</p>
+                        <p className="small text-muted mb-0"><Trajet depart={m.lieu_depart} destination={m.lieu_destination} /></p>
                       </td>
-                      <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(m.date_depart)}</td>
-                      <td className="px-3 py-2">
-                        <span className={`badge rounded-pill fw-medium ${STATUT_CFG[m.statut]?.cls || ''}`}>
-                          {STATUT_CFG[m.statut]?.label || m.statut}
-                        </span>
+                      <td>
+                        <p className="mb-0 immatriculation">{m.immatriculation}</p>
+                        <p className="small text-muted mb-0">{m.chauffeur_prenom} {m.chauffeur_nom}</p>
                       </td>
-                      <td className="px-3 py-2 text-dark text-nowrap">{formaterMontant(m.cout_carburant)}</td>
+                      <td className="text-gray-700 text-nowrap">{formaterDate(m.date_depart)}</td>
+                      <td><span className={`badge ${STATUT_CFG[m.statut]?.cls || 'etat-neutre'}`}>{STATUT_CFG[m.statut]?.label || m.statut}</span></td>
+                      <td className="text-end text-nowrap">{formaterMontant(m.cout_carburant)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -131,73 +120,51 @@ export default function Clients() {
   // Vue liste
   return (
     <div className="d-flex flex-column gap-4">
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <div className="icone-page rounded-3 p-2"><Building2 size={24} /></div>
-          <div>
-            <h1 className="fs-4 fw-bold text-dark mb-0">Clients</h1>
-            <p className="text-muted small mb-0">{clients.length} client(s) enregistré(s)</p>
-          </div>
-        </div>
-        {peutModifier && (
-          <button onClick={ouvrirAjout} className="btn btn-primary d-flex align-items-center gap-2">
-            <Plus size={16} /> Ajouter un client
-          </button>
+      <EnTetePage
+        titre="Clients"
+        description={`${clients.length} client(s) : entreprises et particuliers`}
+        actions={peutModifier && (
+          <button onClick={ouvrirAjout} className="btn btn-primary"><Plus size={16} /> Ajouter un client</button>
         )}
-      </div>
+      />
 
       {erreur && <div className="alert alert-danger d-flex align-items-center gap-2"><AlertTriangle size={20} className="flex-shrink-0" /> {erreur}</div>}
 
-      <div className="card border rounded-3 overflow-hidden">
+      <div className="card carte-tableau">
         {chargement ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: '10rem' }}>
-            <div className="spinner-border text-primary" role="status" />
-          </div>
+          <LignesSquelette />
         ) : clients.length === 0 ? (
-          <div className="text-center py-5 text-muted">
-            <Building2 size={48} className="mb-3 opacity-25" />
-            <p className="fw-medium">Aucun client enregistré</p>
-          </div>
+          <EtatVide Icone={Building2} titre="Aucun client enregistré" description="Ajoutez vos clients pour les associer aux missions et suivre leur historique." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-sm table-hover mb-0">
-              <thead className="table-light">
-                <tr>
-                  {['Nom', 'Type', 'Contact', 'Téléphone', 'Ville', 'Missions', 'Actions'].map(h => (
-                    <th key={h} className="fw-semibold text-muted small px-3 py-2 text-nowrap">{h}</th>
-                  ))}
-                </tr>
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr><th>Client</th><th>Contact</th><th>Ville</th><th>Missions</th><th className="col-actions"><span className="visually-hidden">Actions</span></th></tr>
               </thead>
               <tbody>
                 {clients.map((c) => (
                   <tr key={c.id}>
-                    <td className="px-3 py-2 fw-semibold text-dark">{c.nom}</td>
-                    <td className="px-3 py-2">
-                      <span className={`badge rounded-pill fw-medium ${c.type === 'entreprise' ? 'etat-actif' : 'etat-neutre'}`}>
-                        {TYPES[c.type]}
-                      </span>
+                    <td>
+                      <p className="fw-medium mb-0">{c.nom}</p>
+                      <p className="small text-muted mb-0">{TYPES[c.type]}</p>
                     </td>
-                    <td className="px-3 py-2 text-gray-600">{c.contact_nom || '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">
-                      {c.telephone ? <span className="d-flex align-items-center gap-1"><Phone size={12} /> {c.telephone}</span> : '—'}
+                    <td>
+                      <p className="mb-0 text-gray-700">{c.contact_nom || '—'}</p>
+                      {c.telephone && <p className="small text-muted mb-0">{c.telephone}</p>}
                     </td>
-                    <td className="px-3 py-2 text-gray-600">
-                      {c.ville ? <span className="d-flex align-items-center gap-1"><MapPin size={12} /> {c.ville}</span> : '—'}
-                    </td>
-                    <td className="px-3 py-2">
-                      <button onClick={() => setIdHistorique(c.id)}
-                              className="btn btn-link p-0 text-primary d-flex align-items-center gap-1 small fw-medium">
-                        <History size={16} />
-                        {c.nb_missions} mission{c.nb_missions !== 1 ? 's' : ''}
+                    <td className="text-gray-700">{c.ville || '—'}</td>
+                    <td>
+                      <button onClick={() => setIdHistorique(c.id)} className="btn btn-link btn-sm p-0 lien-fleche">
+                        <History size={14} /> {c.nb_missions} mission{c.nb_missions !== 1 ? 's' : ''}
                       </button>
                     </td>
-                    <td className="px-3 py-2">
-                      <div className="d-flex align-items-center gap-2">
+                    <td className="col-actions">
+                      <div className="d-flex align-items-center gap-1">
                         {peutModifier && (
-                          <button onClick={() => ouvrirEdition(c)} className="btn btn-sm btn-outline-primary"><Pencil size={14} /></button>
+                          <button onClick={() => ouvrirEdition(c)} className="btn btn-icone" title="Modifier" aria-label="Modifier"><Pencil size={16} /></button>
                         )}
                         {isAdmin && (
-                          <button onClick={() => supprimer(c)} className="btn btn-sm btn-outline-danger"><Trash2 size={14} /></button>
+                          <button onClick={() => supprimer(c)} className="btn btn-icone btn-icone-danger" title="Supprimer" aria-label="Supprimer"><Trash2 size={16} /></button>
                         )}
                       </div>
                     </td>
@@ -210,17 +177,8 @@ export default function Clients() {
       </div>
 
       {/* Modal */}
-      {modal && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-             style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3 shadow-lg w-100 overflow-y-auto" style={{ maxWidth: '32rem', maxHeight: '90vh' }}>
-            <div className="d-flex align-items-center justify-content-between p-4 border-bottom position-sticky top-0 bg-white" style={{ zIndex: 10 }}>
-              <h2 className="fs-6 fw-bold text-dark mb-0">
-                {clientEdite ? 'Modifier le client' : 'Ajouter un client'}
-              </h2>
-              <button onClick={fermerModal} className="btn-close" />
-            </div>
-            <form onSubmit={sauvegarder} className="p-4">
+      <Modal isOpen={!!modal} onClose={fermerModal} titre={clientEdite ? 'Modifier le client' : 'Ajouter un client'}>
+            <form onSubmit={sauvegarder}>
               {errModal && (
                 <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small mb-3">
                   <AlertTriangle size={16} className="flex-shrink-0" /> {errModal}
@@ -262,16 +220,15 @@ export default function Clients() {
                   <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Informations complémentaires..." className="form-control form-control-sm" style={{ resize: 'none' }} />
                 </div>
               </div>
-              <div className="d-flex gap-3 mt-3">
-                <button type="button" onClick={fermerModal} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" disabled={sauvegarde} className="btn btn-primary btn-sm flex-grow-1">
-                  {sauvegarde ? 'Enregistrement...' : clientEdite ? 'Enregistrer' : 'Ajouter'}
+              <div className="modale-actions">
+                <button type="button" onClick={fermerModal} className="btn btn-outline-secondary">Annuler</button>
+                <button type="submit" disabled={sauvegarde} className="btn btn-primary">
+                  {sauvegarde && <span className="spinner-border spinner-border-sm" role="status" />}
+                  {clientEdite ? 'Enregistrer' : 'Ajouter'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
       <ConfirmModalComponent />
     </div>
   );

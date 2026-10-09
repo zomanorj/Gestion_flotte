@@ -1,7 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Truck, AlertTriangle, Mail, KeyRound } from 'lucide-react';
+import { Truck, AlertTriangle, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+
+const COMPTES_DEMO = [
+  { libelle: 'Administrateur', email: 'admin@flotte.mg' },
+  { libelle: 'Gestionnaire',   email: 'gestionnaire@flotte.mg' },
+  { libelle: 'Chauffeur',      email: 'chauffeur@flotte.mg' },
+];
+
+const ATOUTS = [
+  'Missions, planning et disponibilité des camions et des chauffeurs',
+  'Documents, maintenances et alertes avant expiration',
+  'Carburant, dépenses et paie calculés automatiquement',
+];
 
 export default function Login() {
   const { login }   = useAuth();
@@ -34,101 +46,78 @@ export default function Login() {
   };
 
   return (
-    <div className="min-vh-100 d-flex align-items-center justify-content-center p-3"
-         style={{ background: 'linear-gradient(135deg, #212529, #343a40, #495057)' }}>
-      <div className="w-100" style={{ maxWidth: '26rem' }}>
-
-        {/* Logo */}
-        <div className="text-center mb-4">
-          <div className="d-inline-flex align-items-center justify-content-center rounded-3 mb-3"
-               style={{ width: '80px', height: '80px', backgroundColor: 'rgba(255,255,255,0.2)' }}>
-            <Truck size={44} color="white" />
-          </div>
-          <h1 className="fw-bold text-white fs-3">FlotteApp</h1>
-          <p style={{ color: '#ced4da' }}>Gestion de Flotte — Madagascar</p>
+    <div className="connexion">
+      {/* Marque (grand écran) */}
+      <aside className="connexion-marque">
+        <div className="d-flex align-items-center gap-2">
+          <span className="d-inline-flex align-items-center justify-content-center rounded-2 bg-white text-dark"
+                style={{ width: 34, height: 34 }}>
+            <Truck size={18} />
+          </span>
+          <span className="fw-semibold fs-6">FlotteApp</span>
         </div>
+        <div>
+          <p className="connexion-accroche mb-4">La gestion de votre flotte de transport, au même endroit.</p>
+          <ul className="list-unstyled connexion-points mb-0">
+            {ATOUTS.map((a) => <li key={a}><Check size={16} /> {a}</li>)}
+          </ul>
+        </div>
+        <p className="small mb-0" style={{ color: '#adb5bd' }}>Transport routier — Madagascar</p>
+      </aside>
 
-        {/* Formulaire */}
-        <div className="card border-0 shadow-lg rounded-3">
-          <div className="card-body p-4">
-            <h2 className="fs-5 fw-semibold text-dark mb-4">Connexion</h2>
+      {/* Formulaire */}
+      <main className="connexion-formulaire">
+        <div className="connexion-boite entree-page">
+          <div className="d-flex d-lg-none align-items-center gap-2 mb-4">
+            <span className="d-inline-flex align-items-center justify-content-center rounded-2 bg-dark text-white"
+                  style={{ width: 32, height: 32 }}>
+              <Truck size={17} />
+            </span>
+            <span className="fw-semibold">FlotteApp</span>
+          </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label className="form-label fw-medium">Adresse email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="admin@flotte.mg"
-                  className="form-control"
-                  autoComplete="email"
-                />
+          <h1 className="titre-page mb-1" style={{ fontSize: '1.5rem' }}>Connexion</h1>
+          <p className="text-muted mb-4">Accédez à votre espace de gestion.</p>
+
+          <form onSubmit={handleSubmit} noValidate>
+            <div className="mb-3">
+              <label htmlFor="email" className="form-label">Adresse e-mail</label>
+              <input id="email" type="email" name="email" value={form.email} onChange={handleChange}
+                     className="form-control" placeholder="nom@entreprise.mg" autoComplete="email" autoFocus />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="password" className="form-label">Mot de passe</label>
+              <input id="password" type="password" name="password" value={form.password} onChange={handleChange}
+                     className="form-control" autoComplete="current-password" />
+            </div>
+
+            {erreur && (
+              <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small apparition" role="alert">
+                <AlertTriangle size={16} className="flex-shrink-0" /> {erreur}
               </div>
+            )}
 
-              <div className="mb-3">
-                <label className="form-label fw-medium">Mot de passe</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className="form-control"
-                  autoComplete="current-password"
-                />
-              </div>
+            <button type="submit" disabled={chargement} className="btn btn-primary w-100 mt-1" style={{ height: 40 }}>
+              {chargement ? (
+                <><span className="spinner-border spinner-border-sm" role="status" /> Connexion…</>
+              ) : 'Se connecter'}
+            </button>
+          </form>
 
-              {erreur && (
-                <div className="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3">
-                  <AlertTriangle size={16} className="flex-shrink-0" />
-                  <span className="small">{erreur}</span>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={chargement}
-                className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
-              >
-                {chargement ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm" role="status" />
-                    Connexion en cours…
-                  </>
-                ) : (
-                  'Se connecter'
-                )}
-              </button>
-            </form>
-
-            {/* Comptes démo */}
-            <div className="mt-4 p-3 bg-light rounded-3">
-              <p className="fw-medium text-dark small mb-2">Comptes de démonstration :</p>
-              <div className="d-flex flex-column gap-1 text-muted" style={{ fontSize: '0.8rem' }}>
-                <p className="d-flex align-items-center gap-2 mb-0">
-                  <Mail size={12} /> admin@flotte.mg
-                </p>
-                <p className="d-flex align-items-center gap-2 mb-0">
-                  <Mail size={12} /> gestionnaire@flotte.mg
-                </p>
-                <p className="d-flex align-items-center gap-2 mb-0">
-                  <Mail size={12} /> chauffeur@flotte.mg
-                </p>
-                <p className="d-flex align-items-center gap-2 mb-0 mt-1">
-                  <KeyRound size={12} />
-                  Mot de passe : <span className="font-monospace fw-medium">password123</span>
-                </p>
-              </div>
+          {/* Comptes de démonstration : un clic remplit le formulaire */}
+          <div className="mt-4 pt-4 border-top">
+            <p className="small text-muted mb-2">Comptes de démonstration (mot de passe <span className="font-monospace">password123</span>)</p>
+            <div className="d-flex flex-wrap gap-2">
+              {COMPTES_DEMO.map((c) => (
+                <button key={c.email} type="button" className="btn btn-outline-secondary btn-sm"
+                        onClick={() => { setForm({ email: c.email, password: 'password123' }); setErreur(''); }}>
+                  {c.libelle}
+                </button>
+              ))}
             </div>
           </div>
         </div>
-
-        <p className="text-center mt-4 small" style={{ color: '#ced4da' }}>
-          Projet portfolio — L3 Informatique — Antananarivo
-        </p>
-      </div>
+      </main>
     </div>
   );
 }

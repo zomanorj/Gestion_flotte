@@ -32,17 +32,17 @@ export default function Pagination({ page, pages, total, limit = 20, onChange })
   };
 
   return (
-    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 px-1 py-2">
+    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 py-2">
       <span className="small text-muted">
         Affichage {debut}–{fin} sur <strong>{total}</strong> résultat{total > 1 ? 's' : ''}
       </span>
 
-      <nav>
+      <nav aria-label="Pagination">
         <ul className="pagination pagination-sm mb-0 gap-1">
           {/* Précédent */}
           <li className={`page-item ${page <= 1 ? 'disabled' : ''}`}>
             <button className="page-link rounded-2" onClick={() => onChange(page - 1)}
-                    disabled={page <= 1}>
+                    disabled={page <= 1} aria-label="Page précédente">
               <ChevronLeft size={14} />
             </button>
           </li>
@@ -61,7 +61,7 @@ export default function Pagination({ page, pages, total, limit = 20, onChange })
           {/* Suivant */}
           <li className={`page-item ${page >= pages ? 'disabled' : ''}`}>
             <button className="page-link rounded-2" onClick={() => onChange(page + 1)}
-                    disabled={page >= pages}>
+                    disabled={page >= pages} aria-label="Page suivante">
               <ChevronRight size={14} />
             </button>
           </li>

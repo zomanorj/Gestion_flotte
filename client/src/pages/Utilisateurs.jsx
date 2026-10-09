@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Users, Plus, Pencil, KeyRound, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Pencil, KeyRound, UserX, UserCheck } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { messageErreur } from '../requetes/client';
 import { useEcriture, useUtilisateurs } from '../requetes';
 import { useConfirm } from '../components/ConfirmModal';
 import { formaterDate } from '../utils/format';
+import { LignesSquelette } from '../components/ui/Squelette';
+import Modal from '../components/Modal';
+import EnTetePage from '../components/ui/EnTetePage';
 
-const ROLES = { admin: 'Admin', gestionnaire: 'Gestionnaire', chauffeur: 'Chauffeur' };
+const ROLES = { admin: 'Administrateur', gestionnaire: 'Gestionnaire', chauffeur: 'Chauffeur' };
 const ROLE_COULEURS = {
   admin:        'etat-actif',
   gestionnaire: 'etat-neutre',
@@ -95,78 +98,52 @@ export default function Utilisateurs() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* En-tête */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <div className="icone-page rounded-3 p-2"><Users size={24} /></div>
-          <div>
-            <h1 className="fs-4 fw-bold text-dark mb-0">Gestion des utilisateurs</h1>
-            <p className="text-muted small mb-0">{utilisateurs.length} compte(s) enregistré(s)</p>
-          </div>
-        </div>
-        <button onClick={ouvrirAjout} className="btn btn-primary d-flex align-items-center gap-2">
-          <Plus size={16} /> Nouveau compte
-        </button>
-      </div>
+      <EnTetePage
+        titre="Utilisateurs"
+        description={`${utilisateurs.length} compte(s) ayant accès à l'application`}
+        actions={<button onClick={ouvrirAjout} className="btn btn-primary"><Plus size={16} /> Nouveau compte</button>}
+      />
 
       {erreur && <div className="alert alert-danger">{erreur}</div>}
 
       {/* Tableau */}
-      <div className="card border rounded-3 overflow-hidden">
+      <div className="card carte-tableau">
         {chargement ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: '8rem' }}>
-            <div className="spinner-border text-primary" role="status" />
-          </div>
+          <LignesSquelette />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-sm table-hover mb-0">
-              <thead className="table-light">
-                <tr>
-                  {['Nom', 'Email', 'Rôle', 'Statut', 'Créé le', 'Actions'].map(h => (
-                    <th key={h} className="fw-semibold text-muted small px-3 py-2 text-nowrap">{h}</th>
-                  ))}
-                </tr>
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr><th>Utilisateur</th><th>Rôle</th><th>Statut</th><th>Créé le</th><th className="col-actions"><span className="visually-hidden">Actions</span></th></tr>
               </thead>
               <tbody>
                 {utilisateurs.map((u) => (
-                  <tr key={u.id} className={!u.is_active ? 'opacity-50' : ''}>
-                    <td className="px-3 py-2">
-                      <div className="fw-medium text-dark">{u.nom}</div>
-                      {u.chauffeur_id && (
-                        <div className="text-xs text-muted">
-                          Chauffeur : {u.chauffeur_prenom} {u.chauffeur_nom}
+                  <tr key={u.id}>
+                    <td>
+                      <div className={`d-flex align-items-center gap-3 ${u.is_active ? '' : 'opacity-50'}`}>
+                        <span className="avatar avatar-clair">{u.nom.split(' ').map((m) => m[0]).join('').slice(0, 2).toUpperCase()}</span>
+                        <div className="min-w-0">
+                          <p className="fw-medium mb-0">{u.nom}{u.id === moi?.id && <span className="text-muted fw-normal"> (vous)</span>}</p>
+                          <p className="small text-muted mb-0">
+                            {u.email}{u.chauffeur_id && ` · fiche ${u.chauffeur_prenom} ${u.chauffeur_nom}`}
+                          </p>
                         </div>
-                      )}
+                      </div>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 small">{u.email}</td>
-                    <td className="px-3 py-2">
-                      <span className={`badge rounded-pill fw-medium ${ROLE_COULEURS[u.role]}`}>
-                        {ROLES[u.role]}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      {u.is_active
-                        ? <span className="badge rounded-pill bg-green-100 text-green-700">Actif</span>
-                        : <span className="badge rounded-pill bg-gray-100 text-gray-600">Inactif</span>
-                      }
-                    </td>
-                    <td className="px-3 py-2 text-muted small text-nowrap">
-                      {formaterDate(u.created_at)}
-                    </td>
-                    <td className="px-3 py-2">
+                    <td><span className={`badge ${ROLE_COULEURS[u.role]}`}>{ROLES[u.role]}</span></td>
+                    <td>{u.is_active ? <span className="badge etat-succes">Actif</span> : <span className="badge etat-inactif">Désactivé</span>}</td>
+                    <td className="text-gray-700 text-nowrap">{formaterDate(u.created_at)}</td>
+                    <td className="col-actions">
                       <div className="d-flex align-items-center gap-1">
-                        <button onClick={() => ouvrirEdition(u)} className="btn btn-sm btn-outline-primary" title="Modifier">
-                          <Pencil size={14} />
-                        </button>
+                        <button onClick={() => ouvrirEdition(u)} className="btn btn-icone" title="Modifier" aria-label="Modifier"><Pencil size={16} /></button>
                         <button onClick={() => { setModalMdp(u.id); setNouveauMdp(''); setErrMdp(''); }}
-                                className="btn btn-sm btn-outline-secondary" title="Changer le mot de passe">
-                          <KeyRound size={14} />
-                        </button>
+                                className="btn btn-icone" title="Changer le mot de passe" aria-label="Changer le mot de passe"><KeyRound size={16} /></button>
                         {u.id !== moi?.id && (
                           <button onClick={() => toggleActif(u)}
-                                  className={`btn btn-sm ${u.is_active ? 'btn-outline-danger' : 'btn-outline-primary'}`}
-                                  title={u.is_active ? 'Désactiver' : 'Réactiver'}>
-                            {u.is_active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                                  className={`btn btn-icone ${u.is_active ? 'btn-icone-danger' : ''}`}
+                                  title={u.is_active ? 'Désactiver le compte' : 'Réactiver le compte'}
+                                  aria-label={u.is_active ? 'Désactiver le compte' : 'Réactiver le compte'}>
+                            {u.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
                           </button>
                         )}
                       </div>
@@ -180,17 +157,8 @@ export default function Utilisateurs() {
       </div>
 
       {/* Modal CRUD */}
-      {modal && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-             style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3 shadow-lg w-100" style={{ maxWidth: '28rem' }}>
-            <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-              <h2 className="fs-6 fw-bold text-dark mb-0">
-                {userEdite ? 'Modifier le compte' : 'Nouveau compte utilisateur'}
-              </h2>
-              <button onClick={fermerModal} className="btn-close" />
-            </div>
-            <form onSubmit={sauvegarder} className="p-4 d-flex flex-column gap-3">
+      <Modal isOpen={!!modal} onClose={fermerModal} titre={userEdite ? 'Modifier le compte' : 'Nouveau compte utilisateur'}>
+            <form onSubmit={sauvegarder} className="d-flex flex-column gap-3">
               {errModal && <div className="alert alert-danger small py-2">{errModal}</div>}
 
               <div>
@@ -217,41 +185,33 @@ export default function Utilisateurs() {
                   {Object.entries(ROLES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </div>
-              <div className="d-flex gap-2 pt-1">
-                <button type="button" onClick={fermerModal} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" disabled={sauvegarde} className="btn btn-primary btn-sm flex-grow-1">
-                  {sauvegarde ? 'Enregistrement...' : userEdite ? 'Mettre à jour' : 'Créer le compte'}
+              <div className="modale-actions">
+                <button type="button" onClick={fermerModal} className="btn btn-outline-secondary">Annuler</button>
+                <button type="submit" disabled={sauvegarde} className="btn btn-primary">
+                  {sauvegarde && <span className="spinner-border spinner-border-sm" role="status" />}
+                  {userEdite ? 'Mettre à jour' : 'Créer le compte'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
-      {/* Modal changement mot de passe */}
-      {modalMdp && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-             style={{ zIndex: 1060, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3 shadow-lg p-4" style={{ maxWidth: '26rem', width: '100%' }}>
-            <h3 className="fs-6 fw-bold mb-3">Réinitialiser le mot de passe</h3>
-            {errMdp && <div className="alert alert-danger small py-2 mb-3">{errMdp}</div>}
-            <form onSubmit={changerMotDePasse} className="d-flex flex-column gap-3">
-              <div>
-                <label className="form-label">Nouveau mot de passe *</label>
-                <input type="password" value={nouveauMdp} onChange={e => setNouveauMdp(e.target.value)}
-                       required minLength={8} className="form-control form-control-sm" />
-              </div>
-              <div className="d-flex gap-2">
-                <button type="button" onClick={() => setModalMdp(null)}
-                        className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" className="btn btn-primary btn-sm flex-grow-1">
-                  Réinitialiser
-                </button>
-              </div>
-            </form>
+      {/* Mot de passe */}
+      <Modal isOpen={!!modalMdp} onClose={() => setModalMdp(null)} titre="Réinitialiser le mot de passe" taille="sm"
+             description="Les sessions ouvertes avec ce compte seront fermées.">
+        <form onSubmit={changerMotDePasse} className="d-flex flex-column gap-3">
+          {errMdp && <div className="alert alert-danger small py-2 mb-0">{errMdp}</div>}
+          <div>
+            <label className="form-label">Nouveau mot de passe</label>
+            <input type="password" value={nouveauMdp} onChange={e => setNouveauMdp(e.target.value)}
+                   required minLength={8} className="form-control form-control-sm" autoComplete="new-password" />
+            <p className="form-text mb-0">8 caractères au minimum.</p>
           </div>
-        </div>
-      )}
+          <div className="modale-actions">
+            <button type="button" onClick={() => setModalMdp(null)} className="btn btn-outline-secondary">Annuler</button>
+            <button type="submit" className="btn btn-primary">Réinitialiser</button>
+          </div>
+        </form>
+      </Modal>
 
       <ConfirmModalComponent />
     </div>

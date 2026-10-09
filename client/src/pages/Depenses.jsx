@@ -7,6 +7,11 @@ import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
 import { formaterDate, formaterMontant } from '../utils/format';
+import { LignesSquelette } from '../components/ui/Squelette';
+import Modal from '../components/Modal';
+import StatCard from '../components/StatCard';
+import EnTetePage from '../components/ui/EnTetePage';
+import EtatVide from '../components/ui/EtatVide';
 
 const CATEGORIES = {
   peage: 'Péage', amende: 'Amende', lavage: 'Lavage', pneu: 'Pneu',
@@ -14,25 +19,8 @@ const CATEGORIES = {
   parking: 'Parking', divers: 'Divers'
 };
 
-const CATEGORIE_COULEURS = {
-  // Catégories : simple étiquette, sans couleur d'état
-  peage: 'etat-neutre', amende: 'etat-neutre', lavage: 'etat-neutre', pneu: 'etat-neutre',
-  pieces_detachees: 'etat-neutre', main_oeuvre: 'etat-neutre', parking: 'etat-neutre', divers: 'etat-neutre'
-};
-
 const FORM_VIDE = { vehicule_id: '', categorie: 'peage', montant: '', date_depense: '', description: '' };
 
-const KpiCard = ({ Icon, label, valeur, couleur }) => (
-  <div className="card border rounded-3">
-    <div className="card-body p-3 d-flex align-items-center gap-3">
-      <div className={`rounded-3 p-2 ${couleur}`}><Icon size={24} color="white" /></div>
-      <div>
-        <p className="text-xs text-muted fw-medium text-uppercase mb-1">{label}</p>
-        <p className="fs-5 fw-bold text-dark mb-0">{valeur}</p>
-      </div>
-    </div>
-  </div>
-);
 
 export default function Depenses() {
   const { user } = useAuth();
@@ -101,53 +89,45 @@ export default function Depenses() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* En-tête */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <div className="icone-page rounded-3 p-2"><Receipt size={24} /></div>
-          <div>
-            <h1 className="fs-4 fw-bold text-dark mb-0">Dépenses</h1>
-            <p className="text-muted small mb-0">{depenses.length} dépense(s) enregistrée(s)</p>
-          </div>
-        </div>
-        {peutModifier && (
-          <button onClick={ouvrirAjout} className="btn btn-primary d-flex align-items-center gap-2">
-            <Plus size={16} /> Ajouter une dépense
-          </button>
+      <EnTetePage
+        titre="Dépenses"
+        description="Péages, amendes, pièces et autres frais liés aux camions"
+        actions={peutModifier && (
+          <button onClick={ouvrirAjout} className="btn btn-primary"><Plus size={16} /> Ajouter une dépense</button>
         )}
-      </div>
+      />
 
-      {/* KPI */}
       {stats && (
         <div className="row g-3">
-          <div className="col-12 col-sm-4">
-            <KpiCard Icon={CalendarDays} label="Dépenses ce mois"   valeur={formaterMontant(stats.totalMois)}  couleur="bg-primary" />
+          <div className="col-12 col-md-4">
+            <StatCard titre="Dépenses ce mois" valeur={formaterMontant(stats.totalMois)} icone={<CalendarDays size={16} />} />
           </div>
-          <div className="col-12 col-sm-4">
-            <KpiCard Icon={TrendingUp}   label="Total cette année"  valeur={formaterMontant(stats.totalAnnee)} couleur="bg-dark" />
+          <div className="col-12 col-md-4">
+            <StatCard titre="Total de l'année" valeur={formaterMontant(stats.totalAnnee)} icone={<TrendingUp size={16} />} />
           </div>
-          <div className="col-12 col-sm-4">
-            <KpiCard Icon={ListChecks}   label="Nombre de dépenses" valeur={stats.nbDepenses}             couleur="bg-secondary" />
+          <div className="col-12 col-md-4">
+            <StatCard titre="Nombre de dépenses" valeur={stats.nbDepenses} icone={<ListChecks size={16} />} />
           </div>
         </div>
       )}
 
-      {/* Filtres */}
-      <div className="d-flex flex-wrap gap-3 align-items-center bg-white border rounded-3 p-3">
-        <select value={filtreVehicule} onChange={(e) => setFiltreVehicule(e.target.value)} className="form-select" style={{ width: 'auto' }}>
+      <div className="barre-filtres">
+        <select value={filtreVehicule} onChange={(e) => setFiltreVehicule(e.target.value)} className="form-select" aria-label="Camion">
           <option value="">Tous les camions</option>
           {vehicules.map((v) => <option key={v.id} value={v.id}>{v.immatriculation} — {v.marque}</option>)}
         </select>
-        <select value={filtreCategorie} onChange={(e) => setFiltreCategorie(e.target.value)} className="form-select" style={{ width: 'auto' }}>
-          <option value="">Toutes catégories</option>
+        <select value={filtreCategorie} onChange={(e) => setFiltreCategorie(e.target.value)} className="form-select" aria-label="Catégorie">
+          <option value="">Toutes les catégories</option>
           {Object.entries(CATEGORIES).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
         </select>
-        <input type="date" value={filtreDebut} onChange={(e) => setFiltreDebut(e.target.value)} className="form-control" style={{ width: 'auto' }} />
-        <input type="date" value={filtreFin}   onChange={(e) => setFiltreFin(e.target.value)}   className="form-control" style={{ width: 'auto' }} />
+        <div className="plage-dates">
+          <input type="date" value={filtreDebut} onChange={(e) => setFiltreDebut(e.target.value)} className="form-control" aria-label="Du" />
+          <span className="text-muted small">au</span>
+          <input type="date" value={filtreFin} onChange={(e) => setFiltreFin(e.target.value)} className="form-control" aria-label="Au" />
+        </div>
         {filtresActifs && (
-          <button onClick={() => { setFiltreVehicule(''); setFiltreCategorie(''); setFiltreDebut(''); setFiltreFin(''); }}
-                  className="btn btn-link text-muted p-0 d-flex align-items-center gap-1 small">
-            <X size={16} /> Effacer
+          <button onClick={() => { setFiltreVehicule(''); setFiltreCategorie(''); setFiltreDebut(''); setFiltreFin(''); }} className="btn btn-link btn-sm text-muted">
+            <X size={14} /> Effacer les filtres
           </button>
         )}
       </div>
@@ -155,48 +135,33 @@ export default function Depenses() {
       {erreur && <div className="alert alert-danger d-flex align-items-center gap-2"><AlertTriangle size={20} className="flex-shrink-0" /> {erreur}</div>}
 
       {/* Tableau */}
-      <div className="card border rounded-3 overflow-hidden">
+      <div className="card carte-tableau">
         {chargement ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: '10rem' }}>
-            <div className="spinner-border text-primary" role="status" />
-          </div>
+          <LignesSquelette />
         ) : depenses.length === 0 ? (
-          <div className="text-center py-5 text-muted">
-            <Receipt size={48} className="mb-3 opacity-25" />
-            <p className="fw-medium">Aucune dépense trouvée</p>
-          </div>
+          <EtatVide Icone={Receipt} titre="Aucune dépense trouvée"
+                    description={filtresActifs ? 'Modifiez ou effacez les filtres.' : 'Enregistrez les frais de route et d\'entretien de chaque camion.'} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-sm table-hover mb-0">
-              <thead className="table-light">
-                <tr>
-                  {['Date', 'Camion', 'Catégorie', 'Montant', 'Description', 'Actions'].map((h) => (
-                    <th key={h} className="fw-semibold text-muted small px-3 py-2 text-nowrap">{h}</th>
-                  ))}
-                </tr>
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr><th>Date</th><th>Camion</th><th>Catégorie</th><th>Description</th><th className="text-end">Montant</th><th className="col-actions"><span className="visually-hidden">Actions</span></th></tr>
               </thead>
               <tbody>
                 {depenses.map((d) => (
                   <tr key={d.id}>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(d.date_depense)}</td>
-                    <td className="px-3 py-2 text-nowrap">
-                      <span className="fw-medium text-dark">{d.immatriculation}</span>
-                      <span className="text-muted small ms-1">{d.marque}</span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className={`badge rounded-pill fw-medium ${CATEGORIE_COULEURS[d.categorie] || 'bg-gray-100 text-gray-700'}`}>
-                        {CATEGORIES[d.categorie] || d.categorie}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 fw-semibold text-dark text-nowrap">{formaterMontant(d.montant)}</td>
-                    <td className="px-3 py-2 text-muted text-truncate" style={{ maxWidth: '200px' }}>{d.description || '—'}</td>
-                    <td className="px-3 py-2">
-                      <div className="d-flex align-items-center gap-2">
+                    <td className="text-gray-700 text-nowrap">{formaterDate(d.date_depense)}</td>
+                    <td className="text-nowrap"><span className="immatriculation">{d.immatriculation}</span> <span className="text-muted small">{d.marque}</span></td>
+                    <td><span className="badge etat-neutre">{CATEGORIES[d.categorie] || d.categorie}</span></td>
+                    <td className="text-muted text-truncate" style={{ maxWidth: '18rem' }}>{d.description || '—'}</td>
+                    <td className="text-end fw-semibold text-nowrap">{formaterMontant(d.montant)}</td>
+                    <td className="col-actions">
+                      <div className="d-flex align-items-center gap-1">
                         {peutModifier && (
-                          <button onClick={() => ouvrirEdition(d)} className="btn btn-sm btn-outline-primary"><Pencil size={14} /></button>
+                          <button onClick={() => ouvrirEdition(d)} className="btn btn-icone" title="Modifier" aria-label="Modifier"><Pencil size={16} /></button>
                         )}
                         {isAdmin && (
-                          <button onClick={() => supprimer(d)} className="btn btn-sm btn-outline-danger"><Trash2 size={14} /></button>
+                          <button onClick={() => supprimer(d)} className="btn btn-icone btn-icone-danger" title="Supprimer" aria-label="Supprimer"><Trash2 size={16} /></button>
                         )}
                       </div>
                     </td>
@@ -206,20 +171,16 @@ export default function Depenses() {
             </table>
           </div>
         )}
+        {paginInfo.pages > 1 && (
+          <div className="pied-tableau">
+            <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total} limit={LIMIT} onChange={setPage} />
+          </div>
+        )}
       </div>
 
       {/* Modal */}
-      {modal && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-             style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3 shadow-lg w-100" style={{ maxWidth: '32rem' }}>
-            <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-              <h2 className="fs-6 fw-bold text-dark mb-0">
-                {modal === 'ajout' ? 'Ajouter une dépense' : 'Modifier la dépense'}
-              </h2>
-              <button onClick={fermerModal} className="btn-close" />
-            </div>
-            <form onSubmit={sauvegarder} className="p-4 d-flex flex-column gap-3">
+      <Modal isOpen={!!modal} onClose={fermerModal} titre={modal === 'ajout' ? 'Ajouter une dépense' : 'Modifier la dépense'}>
+            <form onSubmit={sauvegarder} className="d-flex flex-column gap-3">
               {errModal && (
                 <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small">
                   <AlertTriangle size={16} className="flex-shrink-0" /> {errModal}
@@ -252,20 +213,15 @@ export default function Depenses() {
                 <label className="form-label">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Détails de la dépense..." className="form-control form-control-sm" style={{ resize: 'none' }} />
               </div>
-              <div className="d-flex gap-3 pt-1">
-                <button type="button" onClick={fermerModal} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" disabled={sauvegarde} className="btn btn-primary btn-sm flex-grow-1">
-                  {sauvegarde ? 'Enregistrement...' : modal === 'ajout' ? 'Ajouter' : 'Enregistrer'}
+              <div className="modale-actions">
+                <button type="button" onClick={fermerModal} className="btn btn-outline-secondary">Annuler</button>
+                <button type="submit" disabled={sauvegarde} className="btn btn-primary">
+                  {sauvegarde && <span className="spinner-border spinner-border-sm" role="status" />}
+                  {modal === 'ajout' ? 'Ajouter' : 'Enregistrer'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-      <div className="border-top">
-        <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
-                    limit={LIMIT} onChange={setPage} />
-      </div>
+      </Modal>
       <ConfirmModalComponent />
     </div>
   );

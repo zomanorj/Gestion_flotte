@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Search, FileDown, Table2 } from 'lucide-react';
+import { Search, FileDown, Table2, FileText } from 'lucide-react';
 import { useMissions } from '../requetes';
 import { dateDuJour, formaterDate, formaterKm, formaterMontant, pourPdf } from '../utils/format';
+import Trajet from '../components/ui/Trajet';
+import EnTetePage from '../components/ui/EnTetePage';
+import EtatVide from '../components/ui/EtatVide';
 
 
 export default function Rapports() {
@@ -111,92 +114,88 @@ export default function Rapports() {
 
   return (
     <div className="d-flex flex-column gap-4">
+      <EnTetePage titre="Rapports" description="Missions terminées sur une période, exportables en PDF ou Excel" />
 
-      {/* Paramètres */}
-      <div className="card border rounded-3">
-        <div className="card-body p-4">
-          <h3 className="fw-semibold text-dark fs-6 mb-3">Paramètres du rapport</h3>
+      <div className="card">
+        <div className="card-body">
           <div className="d-flex flex-wrap gap-3 align-items-end">
             <div>
-              <label className="form-label">Date de début</label>
-              <input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)}
-                     className="form-control form-control-sm" />
+              <label htmlFor="rapport-debut" className="form-label">Du</label>
+              <input id="rapport-debut" type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} className="form-control" />
             </div>
             <div>
-              <label className="form-label">Date de fin</label>
-              <input type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)}
-                     className="form-control form-control-sm" />
+              <label htmlFor="rapport-fin" className="form-label">Au</label>
+              <input id="rapport-fin" type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} className="form-control" />
             </div>
-            <button onClick={genererRapport} disabled={chargement}
-                    className="btn btn-primary d-flex align-items-center gap-2">
-              {chargement
-                ? <><span className="spinner-border spinner-border-sm" role="status" /> Chargement…</>
-                : <><Search size={16} /> Générer le rapport</>
-              }
+            <button onClick={genererRapport} disabled={chargement} className="btn btn-primary">
+              {chargement ? <span className="spinner-border spinner-border-sm" role="status" /> : <Search size={16} />}
+              Générer le rapport
             </button>
           </div>
-          <p className="text-muted small mt-2 mb-0">
-            Sans filtre de date : toutes les missions terminées sont incluses.
-          </p>
+          <p className="form-text mb-0 mt-2">Sans dates, toutes les missions terminées sont incluses.</p>
         </div>
       </div>
 
-      {/* Résultats */}
+      {!genere && !chargement && (
+        <div className="card">
+          <EtatVide Icone={FileText} titre="Aucun rapport généré"
+                    description="Choisissez une période puis générez le rapport pour afficher et exporter les missions terminées." />
+        </div>
+      )}
+
       {genere && (
         <>
           <div className="d-flex flex-wrap gap-3 align-items-center">
-            <span className="small text-gray-600">
-              <strong>{missions.length}</strong> mission(s) trouvée(s)
-            </span>
+            <p className="mb-0 text-gray-700">
+              <strong className="text-dark">{missions.length}</strong> mission(s) trouvée(s)
+              {missions.length > 0 && <> · {formaterKm(totalKm, 1)} · {formaterMontant(totalCout)} de carburant</>}
+            </p>
             <div className="flex-grow-1" />
             {missions.length > 0 && (
-              <>
-                <button onClick={() => exporter('pdf', exporterPDF)} disabled={exportEnCours !== null}
-                        className="btn btn-danger btn-sm d-flex align-items-center gap-2">
-                  {exportEnCours === 'pdf' ? <span className="spinner-border spinner-border-sm" role="status" aria-label="Préparation de l'export" /> : <FileDown size={16} />}
+              <div className="d-flex gap-2">
+                <button onClick={() => exporter('pdf', exporterPDF)} disabled={exportEnCours !== null} className="btn btn-outline-secondary btn-sm">
+                  {exportEnCours === 'pdf' ? <span className="spinner-border spinner-border-sm" role="status" aria-label="Préparation de l'export" /> : <FileDown size={15} />}
                   Exporter PDF
                 </button>
-                <button onClick={() => exporter('excel', exporterExcel)} disabled={exportEnCours !== null}
-                        className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
-                  {exportEnCours === 'excel' ? <span className="spinner-border spinner-border-sm" role="status" aria-label="Préparation de l'export" /> : <Table2 size={16} />}
+                <button onClick={() => exporter('excel', exporterExcel)} disabled={exportEnCours !== null} className="btn btn-outline-secondary btn-sm">
+                  {exportEnCours === 'excel' ? <span className="spinner-border spinner-border-sm" role="status" aria-label="Préparation de l'export" /> : <Table2 size={15} />}
                   Exporter Excel
                 </button>
-              </>
+              </div>
             )}
           </div>
 
-          <div className="card border rounded-3 overflow-hidden">
+          <div className="card carte-tableau">
             {missions.length === 0 ? (
-              <p className="text-center text-muted py-5">Aucune mission terminée sur cette période</p>
+              <EtatVide Icone={FileText} titre="Aucune mission terminée" description="Aucune mission terminée sur cette période." />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="table table-sm table-hover mb-0">
-                  <thead className="table-light">
-                    <tr>
-                      {['Mission', 'Véhicule', 'Chauffeur', 'Trajet', 'Distance', 'Coût carburant', 'Date'].map((h) => (
-                        <th key={h} className="text-uppercase small fw-semibold text-muted px-3 py-2">{h}</th>
-                      ))}
-                    </tr>
+              <div className="table-responsive">
+                <table className="table table-hover align-middle">
+                  <thead>
+                    <tr><th>Mission</th><th>Camion et chauffeur</th><th>Date</th><th className="text-end">Distance</th><th className="text-end">Coût carburant</th></tr>
                   </thead>
                   <tbody>
                     {missions.map((m) => (
                       <tr key={m.id}>
-                        <td className="px-3 py-2 fw-medium text-dark text-truncate" style={{ maxWidth: '180px' }}>{m.titre}</td>
-                        <td className="px-3 py-2 text-gray-600 font-monospace small">{m.immatriculation}</td>
-                        <td className="px-3 py-2 text-gray-600">{m.chauffeur_prenom} {m.chauffeur_nom}</td>
-                        <td className="px-3 py-2 text-gray-600 small">{m.lieu_depart} → {m.lieu_destination}</td>
-                        <td className="px-3 py-2 text-gray-600">{formaterKm(m.distance_km, 1)}</td>
-                        <td className="px-3 py-2 text-primary fw-medium">{formaterMontant(m.cout_carburant, '0 Ar')}</td>
-                        <td className="px-3 py-2 text-gray-600">{formaterDate(m.date_depart)}</td>
+                        <td style={{ maxWidth: '20rem' }}>
+                          <p className="fw-medium mb-0 text-truncate">{m.titre}</p>
+                          <p className="small text-muted mb-0"><Trajet depart={m.lieu_depart} destination={m.lieu_destination} /></p>
+                        </td>
+                        <td>
+                          <p className="mb-0 immatriculation">{m.immatriculation}</p>
+                          <p className="small text-muted mb-0">{m.chauffeur_prenom} {m.chauffeur_nom}</p>
+                        </td>
+                        <td className="text-gray-700 text-nowrap">{formaterDate(m.date_depart)}</td>
+                        <td className="text-end text-nowrap">{formaterKm(m.distance_km, 1)}</td>
+                        <td className="text-end text-nowrap">{formaterMontant(m.cout_carburant, '0 Ar')}</td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="table-primary border-top border-primary">
-                    <tr>
-                      <td colSpan={4} className="px-3 py-2 fw-bold text-dark">Total — {missions.length} mission(s)</td>
-                      <td className="px-3 py-2 fw-bold text-dark">{formaterKm(totalKm, 1)}</td>
-                      <td className="px-3 py-2 fw-bold text-primary">{formaterMontant(totalCout)}</td>
-                      <td />
+                  <tfoot>
+                    <tr className="ligne-total">
+                      <td colSpan={3}>Total, {missions.length} mission(s)</td>
+                      <td className="text-end text-nowrap">{formaterKm(totalKm, 1)}</td>
+                      <td className="text-end text-nowrap">{formaterMontant(totalCout)}</td>
                     </tr>
                   </tfoot>
                 </table>

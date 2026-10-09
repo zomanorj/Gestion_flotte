@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileCheck, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, X, Download } from 'lucide-react';
+import { FileCheck, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, X, Download, Paperclip } from 'lucide-react';
 import api, { telechargerFichier } from '../services/api';
 import { messageErreur } from '../requetes/client';
 import { useAlertesDocuments, useDocuments, useEcriture, useVehicules } from '../requetes';
@@ -7,6 +7,11 @@ import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
 import { formaterDate } from '../utils/format';
+import { LignesSquelette } from '../components/ui/Squelette';
+import Modal from '../components/Modal';
+import EnTetePage from '../components/ui/EnTetePage';
+import EtatVide from '../components/ui/EtatVide';
+import PanneauAlertes from '../components/ui/PanneauAlertes';
 
 const TYPES = {
   carte_grise: 'Carte grise', assurance: 'Assurance', vignette: 'Vignette',
@@ -14,9 +19,9 @@ const TYPES = {
 };
 
 const STATUT_CONFIG = {
-  valide:         { label: 'Valide',         bg: 'bg-green-100', text: 'text-green-800',  Icon: CheckCircle2 },
-  expire_bientot: { label: 'Expire bientôt', bg: 'bg-orange-100', text: 'text-orange-800', Icon: Clock },
-  expire:         { label: 'Expiré',         bg: 'bg-red-100',   text: 'text-red-800',    Icon: AlertTriangle }
+  valide:         { label: 'Valide',         cls: 'etat-succes',    Icon: CheckCircle2 },
+  expire_bientot: { label: 'Expire bientôt', cls: 'etat-attention', Icon: Clock },
+  expire:         { label: 'Expiré',         cls: 'etat-danger',    Icon: AlertTriangle }
 };
 
 const FORM_VIDE = { vehicule_id: '', type: 'carte_grise', numero: '', date_emission: '', date_expiration: '', notes: '' };
@@ -24,9 +29,7 @@ const FORM_VIDE = { vehicule_id: '', type: 'carte_grise', numero: '', date_emiss
 const StatutBadge = ({ statut }) => {
   const cfg = STATUT_CONFIG[statut] || STATUT_CONFIG.valide;
   return (
-    <span className={`badge rounded-pill d-inline-flex align-items-center gap-1 fw-medium ${cfg.bg} ${cfg.text}`}>
-      <cfg.Icon size={12} /> {cfg.label}
-    </span>
+    <span className={`badge ${cfg.cls}`}>{cfg.label}</span>
   );
 };
 
@@ -117,64 +120,37 @@ export default function Documents() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* En-tête */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <div className="icone-page rounded-3 p-2"><FileCheck size={24} /></div>
-          <div>
-            <h1 className="fs-4 fw-bold text-dark mb-0">Documents</h1>
-            <p className="text-muted small mb-0">{paginInfo.total} document(s) enregistré(s)</p>
-          </div>
-        </div>
-        {peutModifier && (
-          <button onClick={ouvrirAjout} className="btn btn-primary d-flex align-items-center gap-2">
-            <Plus size={16} /> Ajouter un document
-          </button>
+      <EnTetePage
+        titre="Documents"
+        description={`${paginInfo.total} document(s) : cartes grises, assurances, vignettes, visites techniques`}
+        actions={peutModifier && (
+          <button onClick={ouvrirAjout} className="btn btn-primary"><Plus size={16} /> Ajouter un document</button>
         )}
-      </div>
+      />
 
-      {/* Alertes */}
-      {alertes.length > 0 && (
-        <div className="alert alert-danger rounded-3">
-          <h3 className="d-flex align-items-center gap-2 fw-semibold fs-6 mb-3">
-            <AlertTriangle size={20} />
-            {alertes.length} document(s) nécessitant une attention
-          </h3>
-          <div className="row g-3">
-            {alertes.map((a) => (
-              <div key={a.id} className="col-12 col-sm-6 col-xl-4">
-                <div className={`rounded-3 p-3 border ${a.statut === 'expire' ? 'bg-red-100 border-red-300' : 'bg-orange-50 border-orange-200'}`}>
-                  <div className="d-flex align-items-start justify-content-between gap-2">
-                    <div>
-                      <p className={`fw-semibold small mb-0 ${a.statut === 'expire' ? 'text-red-800' : 'text-orange-800'}`}>{TYPES[a.type]}</p>
-                      <p className="text-muted text-xs mt-1 mb-0">{a.immatriculation} — {a.marque}</p>
-                    </div>
-                    <StatutBadge statut={a.statut} />
-                  </div>
-                  <p className={`text-xs mt-2 fw-medium mb-0 ${a.statut === 'expire' ? 'text-red-700' : 'text-orange-700'}`}>
-                    {a.jours_restants < 0 ? `Expiré depuis ${Math.abs(a.jours_restants)} jour(s)` : `Expire dans ${a.jours_restants} jour(s)`}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <PanneauAlertes
+        titre="Documents à renouveler"
+        elements={alertes.map((a) => ({
+          id: a.id,
+          ton: a.statut === 'expire' ? 'danger' : 'attention',
+          titre: TYPES[a.type],
+          sousTitre: `${a.immatriculation} · ${a.marque}`,
+          precision: a.jours_restants < 0 ? `Expiré depuis ${Math.abs(a.jours_restants)} jour(s)` : `Expire dans ${a.jours_restants} jour(s)`,
+        }))}
+      />
 
-      {/* Filtres */}
-      <div className="d-flex flex-wrap gap-3 align-items-center bg-white border rounded-3 p-3">
-        <select value={filtreVehicule} onChange={(e) => setFiltreVehicule(e.target.value)} className="form-select" style={{ width: 'auto' }}>
+      <div className="barre-filtres">
+        <select value={filtreVehicule} onChange={(e) => setFiltreVehicule(e.target.value)} className="form-select" aria-label="Camion">
           <option value="">Tous les camions</option>
           {vehicules.map((v) => <option key={v.id} value={v.id}>{v.immatriculation} — {v.marque} {v.modele}</option>)}
         </select>
-        <select value={filtreType} onChange={(e) => setFiltreType(e.target.value)} className="form-select" style={{ width: 'auto' }}>
+        <select value={filtreType} onChange={(e) => setFiltreType(e.target.value)} className="form-select" aria-label="Type">
           <option value="">Tous les types</option>
           {Object.entries(TYPES).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
         </select>
         {(filtreVehicule || filtreType) && (
-          <button onClick={() => { setFiltreVehicule(''); setFiltreType(''); }}
-                  className="btn btn-link text-muted p-0 d-flex align-items-center gap-1 small">
-            <X size={16} /> Effacer
+          <button onClick={() => { setFiltreVehicule(''); setFiltreType(''); }} className="btn btn-link btn-sm text-muted">
+            <X size={14} /> Effacer les filtres
           </button>
         )}
       </div>
@@ -182,57 +158,42 @@ export default function Documents() {
       {erreur && <div className="alert alert-danger d-flex align-items-center gap-2"><AlertTriangle size={20} className="flex-shrink-0" /> {erreur}</div>}
 
       {/* Tableau */}
-      <div className="card border rounded-3 overflow-hidden">
+      <div className="card carte-tableau">
         {chargement ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: '10rem' }}>
-            <div className="spinner-border text-primary" role="status" />
-          </div>
+          <LignesSquelette />
         ) : docs.length === 0 ? (
-          <div className="text-center py-5 text-muted">
-            <FileCheck size={48} className="mb-3 opacity-25" />
-            <p className="fw-medium">Aucun document trouvé</p>
-          </div>
+          <EtatVide Icone={FileCheck} titre="Aucun document trouvé"
+                    description={filtreVehicule || filtreType ? 'Modifiez ou effacez les filtres.' : 'Enregistrez les pièces administratives des camions pour suivre leur expiration.'} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-sm table-hover mb-0">
-              <thead className="table-light">
-                <tr>
-                  {['Type', 'Numéro', 'Camion', 'Émission', 'Expiration', 'Statut', 'Actions'].map((h) => (
-                    <th key={h} className="fw-semibold text-muted small px-3 py-2 text-nowrap">{h}</th>
-                  ))}
-                </tr>
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr><th>Type</th><th>Numéro</th><th>Camion</th><th>Émission</th><th>Expiration</th><th>Statut</th><th className="col-actions"><span className="visually-hidden">Actions</span></th></tr>
               </thead>
               <tbody>
                 {docs.map((doc) => (
                   <tr key={doc.id}>
-                    <td className="px-3 py-2 fw-medium text-dark text-nowrap">{TYPES[doc.type]}</td>
-                    <td className="px-3 py-2 text-gray-600">{doc.numero || '—'}</td>
-                    <td className="px-3 py-2 text-nowrap">
-                      <span className="fw-medium text-dark">{doc.immatriculation}</span>
-                      <span className="text-muted small ms-1">{doc.marque}</span>
-                    </td>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(doc.date_emission)}</td>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(doc.date_expiration)}</td>
-                    <td className="px-3 py-2"><StatutBadge statut={doc.statut} /></td>
-                    <td className="px-3 py-2">
-                      <div className="d-flex align-items-center gap-2">
+                    <td className="fw-medium text-nowrap">{TYPES[doc.type]}</td>
+                    <td className="text-gray-700">{doc.numero || '—'}</td>
+                    <td className="text-nowrap"><span className="immatriculation">{doc.immatriculation}</span> <span className="text-muted small">{doc.marque}</span></td>
+                    <td className="text-gray-700 text-nowrap">{formaterDate(doc.date_emission)}</td>
+                    <td className="text-gray-700 text-nowrap">{formaterDate(doc.date_expiration)}</td>
+                    <td><StatutBadge statut={doc.statut} /></td>
+                    <td className="col-actions">
+                      <div className="d-flex align-items-center gap-1">
                         {doc.fichier_url && (
                           <button onClick={() => telechargerDocument(doc)}
-                                  className="btn btn-sm btn-outline-secondary" title="Télécharger le fichier">
-                            <Download size={14} />
-                          </button>
+                                  className="btn btn-icone" title="Télécharger le fichier" aria-label="Télécharger le fichier"><Download size={16} /></button>
                         )}
                         {peutModifier && (
                           <>
                             <button onClick={() => { setUploadDocId(doc.id); setFichierUpload(null); }}
-                                    className="btn btn-sm btn-outline-secondary" title="Upload fichier">
-                              <FileCheck size={14} />
-                            </button>
-                            <button onClick={() => ouvrirEdition(doc)} className="btn btn-sm btn-outline-primary"><Pencil size={14} /></button>
+                                    className="btn btn-icone" title="Joindre un fichier" aria-label="Joindre un fichier"><Paperclip size={16} /></button>
+                            <button onClick={() => ouvrirEdition(doc)} className="btn btn-icone" title="Modifier" aria-label="Modifier"><Pencil size={16} /></button>
                           </>
                         )}
                         {isAdmin && (
-                          <button onClick={() => supprimer(doc)} className="btn btn-sm btn-outline-danger"><Trash2 size={14} /></button>
+                          <button onClick={() => supprimer(doc)} className="btn btn-icone btn-icone-danger" title="Supprimer" aria-label="Supprimer"><Trash2 size={16} /></button>
                         )}
                       </div>
                     </td>
@@ -242,43 +203,27 @@ export default function Documents() {
             </table>
           </div>
         )}
-        <div className="border-top">
-          <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
-                      limit={LIMIT} onChange={setPage} />
-        </div>
+        {paginInfo.pages > 1 && (
+          <div className="pied-tableau">
+            <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total} limit={LIMIT} onChange={setPage} />
+          </div>
+        )}
       </div>
 
-      {/* Modal upload fichier */}
-      {uploadDocId && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-             style={{ zIndex: 1060, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3 shadow-lg p-4" style={{ maxWidth: '26rem', width: '100%' }}>
-            <h3 className="fs-6 fw-bold mb-3">Attacher un fichier</h3>
-            <input type="file" onChange={e => setFichierUpload(e.target.files[0])}
-                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                   className="form-control form-control-sm mb-3" />
-            <div className="d-flex gap-2">
-              <button onClick={() => { setUploadDocId(null); setFichierUpload(null); }}
-                      className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-              <button onClick={() => uploadFichier(uploadDocId)} disabled={!fichierUpload}
-                      className="btn btn-primary btn-sm flex-grow-1">Uploader</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Fichier joint */}
+      <Modal isOpen={!!uploadDocId} onClose={() => { setUploadDocId(null); setFichierUpload(null); }}
+             titre="Joindre un fichier" description="PDF, image ou document Word, 10 Mo au plus." taille="sm"
+             pied={<>
+               <button onClick={() => { setUploadDocId(null); setFichierUpload(null); }} className="btn btn-outline-secondary">Annuler</button>
+               <button onClick={() => uploadFichier(uploadDocId)} disabled={!fichierUpload} className="btn btn-primary">Envoyer</button>
+             </>}>
+        <input type="file" onChange={e => setFichierUpload(e.target.files[0])}
+               accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="form-control" />
+      </Modal>
 
-      {/* Modal */}
-      {modal && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-             style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3 shadow-lg w-100" style={{ maxWidth: '32rem' }}>
-            <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-              <h2 className="fs-6 fw-bold text-dark mb-0">
-                {modal === 'ajout' ? 'Ajouter un document' : 'Modifier le document'}
-              </h2>
-              <button onClick={fermerModal} className="btn-close" />
-            </div>
-            <form onSubmit={sauvegarder} className="p-4 d-flex flex-column gap-3">
+      {/* Formulaire */}
+      <Modal isOpen={!!modal} onClose={fermerModal} titre={modal === 'ajout' ? 'Ajouter un document' : 'Modifier le document'}>
+            <form onSubmit={sauvegarder} className="d-flex flex-column gap-3">
               {errModal && (
                 <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small">
                   <AlertTriangle size={16} className="flex-shrink-0" /> {errModal}
@@ -318,16 +263,15 @@ export default function Documents() {
                           rows={2} placeholder="Informations complémentaires..."
                           className="form-control form-control-sm" style={{ resize: 'none' }} />
               </div>
-              <div className="d-flex gap-3 pt-1">
-                <button type="button" onClick={fermerModal} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" disabled={sauvegarde} className="btn btn-primary btn-sm flex-grow-1">
-                  {sauvegarde ? 'Enregistrement...' : modal === 'ajout' ? 'Ajouter' : 'Enregistrer'}
+              <div className="modale-actions">
+                <button type="button" onClick={fermerModal} className="btn btn-outline-secondary">Annuler</button>
+                <button type="submit" disabled={sauvegarde} className="btn btn-primary">
+                  {sauvegarde && <span className="spinner-border spinner-border-sm" role="status" />}
+                  {modal === 'ajout' ? 'Ajouter' : 'Enregistrer'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
       <ConfirmModalComponent />
     </div>
   );

@@ -4,6 +4,11 @@ import api, { telechargerFichier } from '../services/api';
 import { messageErreur } from '../requetes/client';
 import { useEcriture, usePaie } from '../requetes';
 import { formaterKm, formaterMontant } from '../utils/format';
+import { LignesSquelette } from '../components/ui/Squelette';
+import Modal from '../components/Modal';
+import StatCard from '../components/StatCard';
+import EnTetePage from '../components/ui/EnTetePage';
+import EtatVide from '../components/ui/EtatVide';
 
 const MOIS_FR = ['', 'Janvier','Février','Mars','Avril','Mai','Juin',
                  'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -57,127 +62,83 @@ export default function Paie() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* En-tête */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <div className="icone-page rounded-3 p-2"><Wallet size={24} /></div>
-          <div>
-            <h1 className="fs-4 fw-bold text-dark mb-0">Paie des chauffeurs</h1>
-            <p className="text-muted small mb-0">Bulletins de salaire mensuels</p>
+      <EnTetePage
+        titre="Paie des chauffeurs"
+        description="Salaire de base, primes de mission et bonus kilométrique, nets de la cotisation CNAPS"
+        actions={(
+          <div className="d-flex align-items-center gap-2">
+            <select value={mois} onChange={e => setMois(parseInt(e.target.value))} className="form-select" aria-label="Mois">
+              {MOIS_FR.slice(1).map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+            </select>
+            <select value={annee} onChange={e => setAnnee(parseInt(e.target.value))} className="form-select" aria-label="Année">
+              {annees.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
           </div>
-        </div>
-
-        {/* Sélecteur mois/année */}
-        <div className="d-flex align-items-center gap-2">
-          <select value={mois} onChange={e => setMois(parseInt(e.target.value))} className="form-select form-select-sm" style={{ width: '130px' }}>
-            {MOIS_FR.slice(1).map((m, i) => (
-              <option key={i+1} value={i+1}>{m}</option>
-            ))}
-          </select>
-          <select value={annee} onChange={e => setAnnee(parseInt(e.target.value))} className="form-select form-select-sm" style={{ width: '90px' }}>
-            {annees.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-        </div>
-      </div>
+        )}
+      />
 
       {erreur && <div className="alert alert-danger">{erreur}</div>}
 
-      {/* KPIs */}
       {resume && (
         <div className="row g-3">
-          <div className="col-12 col-sm-4">
-            <div className="card border rounded-3">
-              <div className="card-body p-3 d-flex align-items-center gap-3">
-                <div className="bg-dark rounded-3 p-2"><TrendingUp size={24} color="white" /></div>
-                <div>
-                  <p className="text-xs text-muted fw-medium text-uppercase mb-1">Masse salariale nette</p>
-                  <p className="fs-5 fw-bold text-dark mb-0">{formaterMontant(resume.masse_salariale)}</p>
-                </div>
-              </div>
-            </div>
+          <div className="col-12 col-md-4">
+            <StatCard titre="Masse salariale nette" valeur={formaterMontant(resume.masse_salariale)} icone={<TrendingUp size={16} />}
+                      sousTitre={`${MOIS_FR[mois]} ${annee}`} />
           </div>
-          <div className="col-12 col-sm-4">
-            <div className="card border rounded-3">
-              <div className="card-body p-3 d-flex align-items-center gap-3">
-                <div className="bg-primary rounded-3 p-2"><Users size={24} color="white" /></div>
-                <div>
-                  <p className="text-xs text-muted fw-medium text-uppercase mb-1">Chauffeurs actifs</p>
-                  <p className="fs-5 fw-bold text-dark mb-0">{resume.fiches.length}</p>
-                </div>
-              </div>
-            </div>
+          <div className="col-12 col-md-4">
+            <StatCard titre="Chauffeurs" valeur={resume.fiches.length} icone={<Users size={16} />} />
           </div>
-          <div className="col-12 col-sm-4">
-            <div className="card border rounded-3">
-              <div className="card-body p-3 d-flex align-items-center gap-3">
-                <div className="bg-secondary rounded-3 p-2"><MapPin size={24} color="white" /></div>
-                <div>
-                  <p className="text-xs text-muted fw-medium text-uppercase mb-1">Missions ce mois</p>
-                  <p className="fs-5 fw-bold text-dark mb-0">{resume.nb_missions}</p>
-                </div>
-              </div>
-            </div>
+          <div className="col-12 col-md-4">
+            <StatCard titre="Missions du mois" valeur={resume.nb_missions} icone={<MapPin size={16} />} />
           </div>
         </div>
       )}
 
       {/* Tableau */}
-      <div className="card border rounded-3 overflow-hidden">
+      <div className="card carte-tableau">
         {chargement ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: '10rem' }}>
-            <div className="spinner-border text-primary" role="status" />
-          </div>
+          <LignesSquelette />
         ) : !resume || resume.fiches.length === 0 ? (
-          <div className="text-center py-5 text-muted">
-            <Wallet size={48} className="mb-3 opacity-25" />
-            <p className="fw-medium">Aucune donnée pour {MOIS_FR[mois]} {annee}</p>
-          </div>
+          <EtatVide Icone={Wallet} titre={`Aucune donnée pour ${MOIS_FR[mois].toLowerCase()} ${annee}`}
+                    description="Aucun chauffeur ni aucune mission sur cette période." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-sm table-hover mb-0">
-              <thead className="table-light">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
                 <tr>
-                  {['Chauffeur', 'Missions', 'Km parcourus', 'Salaire de base', 'Primes missions', 'Bonus km', 'Net à payer', 'Actions'].map(h => (
-                    <th key={h} className="fw-semibold text-muted small px-3 py-2 text-nowrap">{h}</th>
-                  ))}
+                  <th>Chauffeur</th><th className="text-end">Missions</th><th className="text-end">Distance</th>
+                  <th className="text-end">Salaire de base</th><th className="text-end">Primes</th><th className="text-end">Bonus km</th>
+                  <th className="text-end">Net à payer</th><th className="col-actions"><span className="visually-hidden">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {resume.fiches.map((f) => (
                   <tr key={f.chauffeur_id}>
-                    <td className="px-3 py-2 fw-medium text-dark text-nowrap">{f.prenom} {f.nom}</td>
-                    <td className="px-3 py-2 text-center">
-                      <span className={`badge rounded-pill fw-medium ${f.nb_missions > 0 ? 'bg-primary' : 'bg-gray-100 text-gray-600'}`}>
-                        {f.nb_missions}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-gray-600">{formaterKm(f.total_km)}</td>
-                    <td className="px-3 py-2 text-gray-600">{formaterMontant(f.salaire_base)}</td>
-                    <td className="px-3 py-2 text-gray-700">{formaterMontant(f.total_primes)}</td>
-                    <td className="px-3 py-2 text-gray-700">{f.km_bonus > 0 ? formaterMontant(f.km_bonus) : '—'}</td>
-                    <td className="px-3 py-2 fw-bold text-dark text-nowrap">{formaterMontant(f.net_a_payer)}</td>
-                    <td className="px-3 py-2">
+                    <td className="fw-medium text-nowrap">{f.prenom} {f.nom}</td>
+                    <td className="text-end">{f.nb_missions}</td>
+                    <td className="text-end text-nowrap text-gray-700">{formaterKm(f.total_km)}</td>
+                    <td className="text-end text-nowrap text-gray-700">{formaterMontant(f.salaire_base)}</td>
+                    <td className="text-end text-nowrap text-gray-700">{formaterMontant(f.total_primes)}</td>
+                    <td className="text-end text-nowrap text-gray-700">{f.km_bonus > 0 ? formaterMontant(f.km_bonus) : '—'}</td>
+                    <td className="text-end text-nowrap fw-semibold">{formaterMontant(f.net_a_payer)}</td>
+                    <td className="col-actions">
                       <div className="d-flex gap-1">
                         <button onClick={() => telechargerPDF(f)}
-                                className="btn btn-sm btn-outline-danger" title="Bulletin PDF">
-                          <Download size={14} />
-                        </button>
+                                className="btn btn-icone" title="Bulletin PDF" aria-label="Bulletin PDF"><Download size={16} /></button>
                         <button onClick={() => ouvrirSalaire(f)}
-                                className="btn btn-sm btn-outline-secondary" title="Modifier le salaire">
-                          <Pencil size={14} />
-                        </button>
+                                className="btn btn-icone" title="Modifier le salaire" aria-label="Modifier le salaire"><Pencil size={16} /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="table-light">
-                <tr>
-                  <td className="px-3 py-2 fw-bold text-dark">TOTAL</td>
-                  <td className="px-3 py-2 text-center fw-bold">{resume.nb_missions}</td>
-                  <td className="px-3 py-2 fw-bold">{formaterKm(resume.fiches.reduce((s, f) => s + f.total_km, 0))}</td>
+              <tfoot>
+                <tr className="ligne-total">
+                  <td>Total</td>
+                  <td className="text-end">{resume.nb_missions}</td>
+                  <td className="text-end text-nowrap">{formaterKm(resume.fiches.reduce((s, f) => s + f.total_km, 0))}</td>
                   <td colSpan={3} />
-                  <td className="px-3 py-2 fw-bold text-dark">{formaterMontant(resume.masse_salariale)}</td>
+                  <td className="text-end text-nowrap">{formaterMontant(resume.masse_salariale)}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -186,42 +147,31 @@ export default function Paie() {
         )}
       </div>
 
-      {/* Modal modification salaire */}
-      {modalSalaire && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-             style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3 shadow-lg p-4" style={{ maxWidth: '28rem', width: '100%' }}>
-            <h3 className="fs-6 fw-bold mb-1">Modifier le salaire</h3>
-            <p className="text-muted small mb-3">{modalSalaire.prenom} {modalSalaire.nom}</p>
-            {errSalaire && <div className="alert alert-danger small py-2 mb-3">{errSalaire}</div>}
-            <form onSubmit={sauvegarderSalaire} className="d-flex flex-column gap-3">
-              <div>
-                <label className="form-label">Salaire de base mensuel (Ar)</label>
-                <input type="number" min="0" value={formSalaire.salaire_base}
-                       onChange={e => setFormSalaire({...formSalaire, salaire_base: e.target.value})}
-                       className="form-control form-control-sm" />
-              </div>
-              <div>
-                <label className="form-label">Prime par mission (Ar)</label>
-                <input type="number" min="0" value={formSalaire.prime_mission}
-                       onChange={e => setFormSalaire({...formSalaire, prime_mission: e.target.value})}
-                       className="form-control form-control-sm" />
-              </div>
-              <p className="text-muted text-xs mb-0">
-                Bonus km : +20 000 Ar par tranche de 500 km au-delà de 500 km/mois
-              </p>
-              <div className="d-flex gap-2">
-                <button type="button" onClick={() => setModalSalaire(null)}
-                        className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" disabled={savSalaire}
-                        className="btn btn-primary btn-sm flex-grow-1">
-                  {savSalaire ? 'Enregistrement...' : 'Enregistrer'}
-                </button>
-              </div>
-            </form>
+      {/* Salaire */}
+      <Modal isOpen={!!modalSalaire} onClose={() => setModalSalaire(null)} titre="Modifier la rémunération" taille="sm"
+             description={modalSalaire ? `${modalSalaire.prenom} ${modalSalaire.nom}` : undefined}>
+        <form onSubmit={sauvegarderSalaire} className="d-flex flex-column gap-3">
+          {errSalaire && <div className="alert alert-danger small py-2 mb-0">{errSalaire}</div>}
+          <div>
+            <label className="form-label">Salaire de base mensuel (Ar)</label>
+            <input type="number" min="0" value={formSalaire.salaire_base}
+                   onChange={e => setFormSalaire({ ...formSalaire, salaire_base: e.target.value })} className="form-control form-control-sm" />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="form-label">Prime par mission terminée (Ar)</label>
+            <input type="number" min="0" value={formSalaire.prime_mission}
+                   onChange={e => setFormSalaire({ ...formSalaire, prime_mission: e.target.value })} className="form-control form-control-sm" />
+            <p className="form-text mb-0">Le bonus kilométrique suit le barème défini dans les Paramètres.</p>
+          </div>
+          <div className="modale-actions">
+            <button type="button" onClick={() => setModalSalaire(null)} className="btn btn-outline-secondary">Annuler</button>
+            <button type="submit" disabled={savSalaire} className="btn btn-primary">
+              {savSalaire && <span className="spinner-border spinner-border-sm" role="status" />}
+              Enregistrer
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

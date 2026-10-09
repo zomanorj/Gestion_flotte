@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
+import { Eye, Pencil, Trash2, AlertTriangle, Plus, Truck } from 'lucide-react';
 import api from '../services/api';
 import { messageErreur } from '../requetes/client';
 import { useEcriture, useVehicule, useVehicules } from '../requetes';
@@ -7,6 +7,11 @@ import { useDiffere } from '../hooks/useDiffere';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
+import EnTetePage from '../components/ui/EnTetePage';
+import EtatVide from '../components/ui/EtatVide';
+import ChampRecherche from '../components/ui/ChampRecherche';
+import Trajet from '../components/ui/Trajet';
+import { LignesSquelette } from '../components/ui/Squelette';
 import { formaterDate, formaterKm, formaterMontant } from '../utils/format';
 
 const BADGES_STATUT = {
@@ -117,10 +122,11 @@ const FormulaireCamion = ({ camion, onSauvegarder, onAnnuler }) => {
         </div>
       )}
 
-      <div className="d-flex gap-3 pt-1">
-        <button type="button" onClick={onAnnuler} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-        <button type="submit" disabled={loading} className="btn btn-primary btn-sm flex-grow-1">
-          {loading ? '…' : camion?.id ? 'Mettre à jour' : 'Ajouter'}
+      <div className="modale-actions">
+        <button type="button" onClick={onAnnuler} className="btn btn-outline-secondary">Annuler</button>
+        <button type="submit" disabled={loading} className="btn btn-primary">
+          {loading && <span className="spinner-border spinner-border-sm" role="status" />}
+          {camion?.id ? 'Mettre à jour' : 'Ajouter'}
         </button>
       </div>
     </form>
@@ -162,73 +168,64 @@ export default function Vehicules() {
     }
   };
 
+  const filtre = Boolean(recherche || filtreStatut);
+
   return (
-    <div className="d-flex flex-column gap-3">
-      {/* Barre d'outils */}
-      <div className="d-flex flex-column flex-sm-row gap-2">
-        <input type="text" placeholder="Rechercher par immatriculation, marque…"
-               value={search} onChange={(e) => setSearch(e.target.value)}
-               className="form-control flex-grow-1" />
-        <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)} className="form-select" style={{ width: 'auto' }}>
+    <div className="d-flex flex-column gap-4">
+      <EnTetePage
+        titre="Véhicules"
+        description={chargement ? 'Chargement…' : `${paginInfo.total} camion(s) ${filtre ? 'correspondant aux filtres' : 'dans la flotte'}`}
+        actions={isAdmin && (
+          <button onClick={() => ouvrirFormulaire()} className="btn btn-primary"><Plus size={16} /> Ajouter un camion</button>
+        )}
+      />
+
+      <div className="barre-filtres">
+        <ChampRecherche valeur={search} onChange={setSearch} placeholder="Rechercher par immatriculation, marque…" />
+        <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)} className="form-select" aria-label="Statut">
           <option value="">Tous les statuts</option>
           {Object.entries(LABELS_STATUT).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        {isAdmin && (
-          <button onClick={() => ouvrirFormulaire()}
-                  className="btn btn-primary d-flex align-items-center gap-2 text-nowrap">
-            <Plus size={16} /> Ajouter un camion
-          </button>
-        )}
       </div>
 
-      {/* Tableau */}
-      <div className="card border rounded-3 overflow-hidden">
+      <div className="card carte-tableau">
         {chargement ? (
-          <div className="d-flex align-items-center justify-content-center" style={{ height: '8rem' }}>
-            <div className="spinner-border text-primary" role="status" />
-          </div>
+          <LignesSquelette colonnes={7} />
         ) : camions.length === 0 ? (
-          <p className="text-center text-muted py-5">Aucun camion trouvé</p>
+          <EtatVide Icone={Truck} titre={filtre ? 'Aucun camion trouvé' : 'Aucun camion enregistré'}
+                    description={filtre ? 'Modifiez la recherche ou le statut.' : 'Ajoutez un premier camion pour planifier des missions.'} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-sm table-hover mb-0">
-              <thead className="table-light">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
                 <tr>
-                  {['Immatriculation', 'Marque / Modèle', 'Type', 'Tonnage (T)', 'Kilométrage', 'Statut', 'Prochain CT', 'Actions'].map((h) => (
-                    <th key={h} className="text-uppercase small fw-semibold text-muted text-nowrap px-3 py-2">{h}</th>
-                  ))}
+                  <th>Immatriculation</th><th>Marque / modèle</th><th>Type</th>
+                  <th className="text-end">Tonnage</th><th className="text-end">Kilométrage</th>
+                  <th>Statut</th><th>Prochain CT</th><th className="col-actions"><span className="visually-hidden">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {camions.map((c) => (
                   <tr key={c.id}>
-                    <td className="px-3 py-2 font-monospace fw-medium text-dark">{c.immatriculation}</td>
-                    <td className="px-3 py-2 text-gray-700">{c.marque} {c.modele}</td>
-                    <td className="px-3 py-2 text-gray-600 text-capitalize">{TYPES_CAMION[c.type_camion] || c.type_camion}</td>
-                    <td className="px-3 py-2 text-gray-600">{c.tonnage ? `${c.tonnage} T` : '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{formaterKm(c.kilometrage)}</td>
-                    <td className="px-3 py-2">
-                      <span className={`badge rounded-pill small fw-medium ${BADGES_STATUT[c.statut] || 'bg-gray-100 text-gray-700'}`}>
+                    <td className="immatriculation fw-medium">{c.immatriculation}</td>
+                    <td>{c.marque} <span className="text-muted">{c.modele}</span></td>
+                    <td className="text-gray-700">{TYPES_CAMION[c.type_camion] || c.type_camion}</td>
+                    <td className="text-end">{c.tonnage ? `${c.tonnage} T` : '—'}</td>
+                    <td className="text-end text-nowrap">{formaterKm(c.kilometrage)}</td>
+                    <td>
+                      <span className={`badge ${BADGES_STATUT[c.statut] || 'etat-neutre'}`}>
                         {LABELS_STATUT[c.statut] || c.statut}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(c.date_prochain_ct)}</td>
-                    <td className="px-3 py-2">
+                    <td className="text-nowrap text-gray-700">{formaterDate(c.date_prochain_ct)}</td>
+                    <td className="col-actions">
                       <div className="d-flex gap-1">
-                        <button onClick={() => ouvrirDetail(c)} className="btn btn-sm btn-light" title="Voir le détail">
-                          <Eye size={14} />
-                        </button>
+                        <button onClick={() => ouvrirDetail(c)} className="btn btn-icone" title="Voir le détail" aria-label="Voir le détail"><Eye size={16} /></button>
                         {isAdmin && (
-                          <>
-                            <button onClick={() => ouvrirFormulaire(c)} className="btn btn-sm btn-outline-primary" title="Modifier">
-                              <Pencil size={14} />
-                            </button>
-                            {user?.role === 'admin' && (
-                              <button onClick={() => setConfirmSuppression(c)} className="btn btn-sm btn-outline-danger" title="Supprimer">
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </>
+                          <button onClick={() => ouvrirFormulaire(c)} className="btn btn-icone" title="Modifier" aria-label="Modifier"><Pencil size={16} /></button>
+                        )}
+                        {user?.role === 'admin' && (
+                          <button onClick={() => setConfirmSuppression(c)} className="btn btn-icone btn-icone-danger" title="Supprimer" aria-label="Supprimer"><Trash2 size={16} /></button>
                         )}
                       </div>
                     </td>
@@ -238,16 +235,18 @@ export default function Vehicules() {
             </table>
           </div>
         )}
-        <div className="border-top">
-          <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total}
-                      limit={LIMIT} onChange={setPage} />
-        </div>
+        {paginInfo.pages > 1 && (
+          <div className="pied-tableau">
+            <Pagination page={page} pages={paginInfo.pages} total={paginInfo.total} limit={LIMIT} onChange={setPage} />
+          </div>
+        )}
       </div>
 
       {/* Modal formulaire / détail */}
       <Modal isOpen={modal.ouvert} onClose={fermerModal}
-             titre={modal.mode === 'detail' ? `Détail — ${modal.camion?.immatriculation}` : modal.camion?.id ? 'Modifier le camion' : 'Ajouter un camion'}
-             taille="max-w-xl">
+             titre={modal.mode === 'detail' ? modal.camion?.immatriculation : modal.camion?.id ? 'Modifier le camion' : 'Ajouter un camion'}
+             description={modal.mode === 'detail' ? `${modal.camion?.marque} ${modal.camion?.modele}` : undefined}
+             taille="lg">
         {modal.mode === 'form' ? (
           <FormulaireCamion camion={modal.camion} onSauvegarder={apresModification} onAnnuler={fermerModal} />
         ) : (
@@ -256,17 +255,14 @@ export default function Vehicules() {
       </Modal>
 
       {/* Modal confirmation suppression */}
-      <Modal isOpen={!!confirmSuppression} onClose={() => setConfirmSuppression(null)} titre="Confirmer la suppression">
-        <p className="text-gray-700 mb-4">
-          Supprimer le camion <strong>{confirmSuppression?.immatriculation}</strong> ? Cette action est irréversible.
+      <Modal isOpen={!!confirmSuppression} onClose={() => setConfirmSuppression(null)} titre="Supprimer ce camion ?" taille="sm"
+             pied={<>
+               <button onClick={() => setConfirmSuppression(null)} className="btn btn-outline-secondary">Annuler</button>
+               <button onClick={() => supprimer(confirmSuppression.id)} className="btn btn-danger"><Trash2 size={16} /> Supprimer</button>
+             </>}>
+        <p className="text-gray-700 mb-0">
+          Le camion <strong>{confirmSuppression?.immatriculation}</strong> et son historique seront supprimés. Cette action est irréversible.
         </p>
-        <div className="d-flex gap-3">
-          <button onClick={() => setConfirmSuppression(null)} className="btn btn-outline-secondary flex-grow-1">Annuler</button>
-          <button onClick={() => supprimer(confirmSuppression.id)}
-                  className="btn btn-danger flex-grow-1 d-flex align-items-center justify-content-center gap-2">
-            <Trash2 size={16} /> Supprimer
-          </button>
-        </div>
       </Modal>
     </div>
   );
@@ -275,50 +271,54 @@ export default function Vehicules() {
 function DetailCamion({ camion }) {
   const { data: detail, isPending: chargement } = useVehicule(camion?.id);
 
-  if (chargement) return <div className="text-center py-4 text-muted">Chargement…</div>;
-  if (!detail)    return <div className="text-center py-4 text-danger">Erreur de chargement</div>;
+  if (chargement) return <LignesSquelette colonnes={2} lignes={4} />;
+  if (!detail)    return <p className="text-danger mb-0">Impossible de charger le camion.</p>;
+
+  const champs = [
+    ['Type', TYPES_CAMION[detail.type_camion] || detail.type_camion],
+    ['Année', detail.annee],
+    ['Kilométrage', formaterKm(detail.kilometrage)],
+    ['Tonnage', detail.tonnage ? `${detail.tonnage} T` : '—'],
+    ['Consommation', `${detail.consommation_litre_km} L/km`],
+    ['Statut', <span key="s" className={`badge ${BADGES_STATUT[detail.statut] || 'etat-neutre'}`}>{LABELS_STATUT[detail.statut]}</span>],
+    ['Dernière vidange', formaterDate(detail.date_derniere_vidange)],
+    ['Prochain CT', formaterDate(detail.date_prochain_ct)],
+  ];
 
   return (
-    <div className="d-flex flex-column gap-3 small">
-      <div className="row g-2 text-gray-600">
-        <div className="col-6"><strong>Marque :</strong> {detail.marque}</div>
-        <div className="col-6"><strong>Modèle :</strong> {detail.modele}</div>
-        <div className="col-6"><strong>Année :</strong> {detail.annee}</div>
-        <div className="col-6"><strong>Km :</strong> {formaterKm(detail.kilometrage)}</div>
-        <div className="col-6"><strong>Type :</strong> {TYPES_CAMION[detail.type_camion] || detail.type_camion}</div>
-        <div className="col-6"><strong>Tonnage :</strong> {detail.tonnage ? `${detail.tonnage} T` : '—'}</div>
-        <div className="col-6"><strong>Conso :</strong> {detail.consommation_litre_km} L/km</div>
-        <div className="col-6"><strong>Statut :</strong> {LABELS_STATUT[detail.statut]}</div>
+    <div>
+      <dl className="grille-details">
+        {champs.map(([libelle, valeur]) => (
+          <div key={libelle}><dt>{libelle}</dt><dd>{valeur}</dd></div>
+        ))}
         {detail.numero_chassis && (
-          <div className="col-12"><strong>Châssis :</strong> <span className="font-monospace">{detail.numero_chassis}</span></div>
+          <div style={{ gridColumn: '1 / -1' }}><dt>Châssis</dt><dd className="immatriculation">{detail.numero_chassis}</dd></div>
         )}
-      </div>
+      </dl>
 
       {detail.missions?.length > 0 && (
         <>
-          <h4 className="fw-semibold text-dark border-top pt-3 fs-6">5 dernières missions</h4>
-          <div className="d-flex flex-column gap-2">
-            {detail.missions.map((m) => (
-              <div key={m.id} className="bg-light rounded-2 p-2">
-                <p className="fw-medium mb-1">{m.titre}</p>
-                <p className="text-muted mb-0">{m.lieu_depart} → {m.lieu_destination} — {m.distance_km} km</p>
-              </div>
-            ))}
-          </div>
+          <p className="titre-bloc">Dernières missions</p>
+          {detail.missions.map((m) => (
+            <div key={m.id} className="element-liste">
+              <p className="fw-medium mb-1">{m.titre}</p>
+              <p className="text-muted small mb-0">
+                <Trajet depart={m.lieu_depart} destination={m.lieu_destination} /> · {formaterKm(m.distance_km, 1)}
+              </p>
+            </div>
+          ))}
         </>
       )}
 
       {detail.maintenances?.length > 0 && (
         <>
-          <h4 className="fw-semibold text-dark border-top pt-3 fs-6">Maintenances</h4>
-          <div className="d-flex flex-column gap-2">
-            {detail.maintenances.map((m) => (
-              <div key={m.id} className="bg-light rounded-2 p-2">
-                <p className="fw-medium mb-1">{m.type} — {formaterMontant(m.cout)}</p>
-                <p className="text-muted mb-0">{formaterDate(m.date_maintenance)}</p>
-              </div>
-            ))}
-          </div>
+          <p className="titre-bloc">Maintenances</p>
+          {detail.maintenances.map((m) => (
+            <div key={m.id} className="element-liste d-flex justify-content-between gap-3">
+              <span className="fw-medium">{m.type}</span>
+              <span className="text-muted small">{formaterDate(m.date_maintenance)} · {formaterMontant(m.cout)}</span>
+            </div>
+          ))}
         </>
       )}
     </div>

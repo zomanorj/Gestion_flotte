@@ -1,4 +1,4 @@
-// Thème de l'application : Bootstrap compilé avec la palette de gris de FlotteApp.
+// Thème de l'application : Bootstrap compilé avec le système de design de FlotteApp.
 //
 // Palette (du plus clair au plus foncé) :
 //   #f8f9fa #e9ecef #dee2e6 #ced4da #adb5bd #6c757d #495057 #343a40 #212529
@@ -7,6 +7,7 @@
 // urgent, erreur, suppression), orange (expire bientôt, priorité haute), vert (terminé, valide).
 // Les couleurs d'état de Bootstrap ($success, $warning, $danger) ne sont donc pas modifiées.
 
+// ── Couleurs ──────────────────────────────────────────────────────────────────────────
 $gray-100: #f8f9fa;
 $gray-200: #e9ecef;
 $gray-300: #dee2e6;
@@ -17,20 +18,123 @@ $gray-700: #495057;
 $gray-800: #343a40;
 $gray-900: #212529;
 
-// Couleur principale : boutons, liens, focus des champs, cases cochées, pagination, chargements
 $primary:   $gray-800;
 $secondary: $gray-600;
 $info:      $gray-700;
 $light:     $gray-100;
 $dark:      $gray-900;
 
-$body-bg:        $gray-100;
-$body-color:     $gray-900;
-$border-color:   $gray-300;
-$link-color:     $gray-800;
-$link-hover-color: $gray-900;
-
-// Les tons « subtle » (alertes, badges clairs) suivent les gris pour info et secondaire
+$body-bg:           $gray-100;
+$body-color:        $gray-900;
+$body-secondary-color: $gray-600;
+$border-color:      $gray-200;
+$link-color:        $gray-800;
+$link-hover-color:  $gray-900;
+$link-decoration:   none;
+$link-hover-decoration: underline;
 $min-contrast-ratio: 4.5;
+
+// ── Typographie : Inter, interface dense (14 px), titres serrés, chiffres tabulaires ──
+$font-family-sans-serif: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$font-family-monospace:  ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+$font-size-base: .875rem;
+$font-size-sm:   .8125rem;
+$font-size-lg:   1rem;
+$line-height-base: 1.55;
+
+$h1-font-size: 1.5rem;
+$h2-font-size: 1.25rem;
+$h3-font-size: 1.0625rem;
+$h4-font-size: 1rem;
+$h5-font-size: .9375rem;
+$h6-font-size: .875rem;
+$headings-font-weight: 600;
+$headings-color: $gray-900;
+$headings-margin-bottom: .5rem;
+$font-weight-semibold: 600;
+$small-font-size: .8125rem;
+
+// ── Formes : rayons, ombres ──────────────────────────────────────────────────────────
+$border-radius:      .5rem;
+$border-radius-sm:   .375rem;
+$border-radius-lg:   .75rem;
+$border-radius-xl:   1rem;
+$border-radius-pill: 50rem;
+
+$box-shadow-sm: 0 1px 2px rgba($gray-900, .05);
+$box-shadow:    0 1px 3px rgba($gray-900, .06), 0 6px 16px rgba($gray-900, .06);
+$box-shadow-lg: 0 12px 32px rgba($gray-900, .14), 0 2px 6px rgba($gray-900, .06);
+
+// ── Boutons et champs ────────────────────────────────────────────────────────────────
+$input-btn-padding-y:    .5rem;
+$input-btn-padding-x:    .875rem;
+$input-btn-padding-y-sm: .3125rem;
+$input-btn-padding-x-sm: .625rem;
+$input-btn-font-size-sm: .8125rem;
+$input-btn-focus-width:  3px;
+$input-btn-focus-color-opacity: .14;
+$input-btn-focus-color:  rgba($gray-800, $input-btn-focus-color-opacity);
+$focus-ring-color:       rgba($gray-800, .16);
+
+$btn-font-weight: 500;
+$btn-border-radius:    $border-radius;
+$btn-border-radius-sm: $border-radius-sm;
+$btn-transition: color .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+
+$input-border-color:       $gray-300;
+$input-focus-border-color: $gray-600;
+$input-placeholder-color:  $gray-500;
+$input-border-radius:      $border-radius;
+$input-border-radius-sm:   $border-radius-sm;
+$form-label-font-size:     .8125rem;
+$form-label-font-weight:   500;
+$form-label-color:         $gray-700;
+$form-label-margin-bottom: .375rem;
+$form-text-color:          $gray-600;
+
+// ── Surfaces : cartes, tableaux, badges, fenêtres, alertes ──────────────────────────
+$card-border-color:   $gray-200;
+$card-border-radius:  $border-radius-lg;
+$card-cap-bg:         #fff;
+$card-spacer-y:       1.25rem;
+$card-spacer-x:       1.25rem;
+$card-box-shadow:     $box-shadow-sm;
+
+$table-cell-padding-y:    .75rem;
+$table-cell-padding-x:    1rem;
+$table-cell-padding-y-sm: .625rem;
+$table-cell-padding-x-sm: 1rem;
+$table-border-color:  $gray-200;
+$table-th-font-weight: 600;
+$table-hover-bg-factor: .03;
+$table-striped-bg-factor: .02;
+
+$badge-font-size:     .75rem;
+$badge-font-weight:   500;
+$badge-padding-y:     .3125rem;
+$badge-padding-x:     .625rem;
+$badge-border-radius: $border-radius-pill;
+
+$modal-content-border-color: transparent;
+$modal-content-border-radius: $border-radius-xl;
+$modal-backdrop-bg:      $gray-900;
+$modal-backdrop-opacity: .45;
+$modal-header-border-color: $gray-200;
+
+$alert-border-radius: $border-radius-lg;
+$alert-padding-y:     .875rem;
+$alert-padding-x:     1rem;
+
+$dropdown-border-color: $gray-200;
+$dropdown-border-radius: $border-radius-lg;
+$dropdown-box-shadow:   $box-shadow-lg;
+$dropdown-link-active-bg: $gray-200;
+$dropdown-link-active-color: $gray-900;
+
+$pagination-border-color: $gray-300;
+$pagination-active-bg:    $gray-800;
+$pagination-border-radius: $border-radius;
+
+$list-group-border-color: $gray-200;
 
 @import "bootstrap/scss/bootstrap";
