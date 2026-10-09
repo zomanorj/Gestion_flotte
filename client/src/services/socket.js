@@ -1,7 +1,7 @@
 // Connexion Socket.io unique pour toute la session
 //
 // Une seule connexion est ouverte après la connexion de l'utilisateur et partagée par tous les
-// composants (barre du haut, carte, suivi de mission), qui s'abonnent avec useEvenement().
+// composants (aujourd'hui la barre du haut), qui s'abonnent avec useEvenement().
 // Changer de page n'ouvre ni ne ferme de connexion.
 import { io } from 'socket.io-client';
 

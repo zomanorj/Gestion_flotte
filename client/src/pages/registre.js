@@ -37,7 +37,6 @@ const IMPORTS = {
   '/vehicules':    () => import('./Vehicules'),
   '/chauffeurs':   () => import('./Chauffeurs'),
   '/missions':     () => import('./Missions'),
-  '/carte':        () => import('./CarteGlobale'),
   '/documents':    () => import('./Documents'),
   '/carburant':    () => import('./Carburant'),
   '/depenses':     () => import('./Depenses'),
@@ -50,9 +49,6 @@ const IMPORTS = {
   '/utilisateurs': () => import('./Utilisateurs'),
   '/mes-missions': () => import('./MesMissions'),
 };
-
-/** Pages affichées sans marge intérieure, sur toute la surface disponible. */
-export const PAGES_PLEIN_ECRAN = new Set(['/carte']);
 
 export const PAGES = Object.entries(IMPORTS).map(([chemin, importer]) => ({
   chemin,

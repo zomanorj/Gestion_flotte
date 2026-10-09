@@ -1,5 +1,5 @@
 // Non-régression des formulaires : défauts corrigés qui ne doivent pas revenir
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../services/api';
@@ -65,28 +65,47 @@ describe('Maintenances', () => {
 });
 
 describe('Missions', () => {
-  it('distance : une réponse d’itinéraire arrivée en retard n’écrase pas le trajet choisi ensuite', async () => {
-    repondre(api.get, {
-      '/missions': PAGE_VIDE, '/vehicules': [CAMION], '/chauffeurs': [], '/clients': [],
-      '/simulation/villes': { villes: ['Antananarivo', 'Toamasina', 'Antsirabe'] },
-      '/parametres': [{ cle: 'prix_litre_gasoil', valeur: 5200 }],
-    });
-    // Réponses du calcul d'itinéraire contrôlées à la main, pour les faire arriver dans le désordre
-    const enAttente = {};
-    api.post.mockImplementation((chemin, corps) => new Promise((ok) => { enAttente[corps.villeArrivee] = ok; }));
+  const ROUTES = {
+    '/missions': PAGE_VIDE, '/vehicules': [CAMION], '/chauffeurs': [{ id: 2, nom: 'Rabe', prenom: 'Hery', statut: 'disponible' }],
+    '/clients': [], '/parametres': [{ cle: 'prix_litre_gasoil', valeur: 5200 }],
+  };
 
+  it('création : villes et distance saisies, coût carburant estimé avec la consommation du camion', async () => {
+    repondre(api.get, ROUTES);
+    api.post.mockResolvedValue({ data: { id: 1 } });
     const { container } = rendre(<Missions />);
+    const champ = (nom) => container.querySelector(`[name=${nom}]`);
+
     fireEvent.click(await screen.findByRole('button', { name: /Nouvelle mission/ }));
-    await waitFor(() => expect(container.querySelectorAll('select[name=lieu_destination] option').length).toBeGreaterThan(1));
-    fireEvent.change(container.querySelector('select[name=lieu_depart]'), { target: { value: 'Antananarivo' } });
-    fireEvent.change(container.querySelector('select[name=lieu_destination]'), { target: { value: 'Toamasina' } });
-    fireEvent.change(container.querySelector('select[name=lieu_destination]'), { target: { value: 'Antsirabe' } });
+    await waitFor(() => expect(champ('vehicule_id').querySelectorAll('option').length).toBeGreaterThan(1));
+    fireEvent.change(champ('titre'), { target: { value: 'Ciment Toamasina' } });
+    fireEvent.change(champ('vehicule_id'), { target: { value: '4' } });
+    fireEvent.change(champ('chauffeur_id'), { target: { value: '2' } });
+    fireEvent.change(champ('lieu_destination'), { target: { value: 'Toamasina' } });
+    fireEvent.change(champ('distance_km'), { target: { value: '350' } });
+    fireEvent.change(champ('date_depart'), { target: { value: '2036-01-10T08:00' } });
+    fireEvent.change(champ('date_retour_prevue'), { target: { value: '2036-01-11T18:00' } });
 
-    // Antsirabe (demandée en dernier) répond d'abord, puis l'ancienne demande vers Toamasina
-    await act(async () => { enAttente.Antsirabe({ data: { distanceKm: 170, dureeMin: 180 } }); });
-    await act(async () => { enAttente.Toamasina({ data: { distanceKm: 350, dureeMin: 420 } }); });
+    // 350 km × 0,3 L/km × 5 200 Ar = 546 000 Ar
+    expect(screen.getByText(/546\s000 Ar/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Créer la mission' }));
 
-    expect(screen.getByText('170 km')).toBeInTheDocument();
-    expect(screen.queryByText('350 km')).toBeNull();
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/missions', expect.objectContaining({
+      lieu_depart: 'Antananarivo', lieu_destination: 'Toamasina', distance_km: '350',
+    })));
+  });
+
+  it('démarrage : passe la mission en cours par le changement de statut', async () => {
+    const planifiee = { id: 5, titre: 'Riz Mahajanga', statut: 'planifiee', lieu_depart: 'Antananarivo',
+                        lieu_destination: 'Mahajanga', distance_km: 570, date_depart: '2036-02-01T08:00:00' };
+    repondre(api.get, { ...ROUTES, '/missions': { ...PAGE_VIDE, data: [planifiee], total: 1 } });
+    api.put.mockResolvedValue({ data: { ...planifiee, statut: 'en_cours' } });
+    connecter({ id: 2, nom: 'Rabe Marie', email: 'gestionnaire@flotte.mg', role: 'gestionnaire' });
+
+    rendre(<Missions />);
+    fireEvent.click(await screen.findByRole('button', { name: /Démarrer/ }));
+
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith('/missions/5/statut', { statut: 'en_cours' }));
+    expect(api.post).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  ClipboardList, MapPin, Truck, CalendarClock, Route, Weight, FileDown, Map, AlertTriangle, StickyNote,
+  ClipboardList, MapPin, Truck, CalendarClock, Route, Weight, FileDown, AlertTriangle, StickyNote,
 } from 'lucide-react';
 import { telechargerFichier } from '../services/api';
 import { useMesMissions } from '../requetes';
@@ -24,7 +23,6 @@ const Detail = ({ Icone, children }) => (
 );
 
 function CarteMission({ mission, enAvant = false }) {
-  const navigate = useNavigate();
   const [telechargement, setTelechargement] = useState(false);
   const [erreur, setErreur] = useState('');
   const statut = STATUTS[mission.statut] || STATUTS.planifiee;
@@ -77,12 +75,6 @@ function CarteMission({ mission, enAvant = false }) {
                     className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
               <FileDown size={16} /> {telechargement ? 'Téléchargement…' : 'Bon de livraison'}
             </button>
-            {mission.statut === 'en_cours' && (
-              <button type="button" onClick={() => navigate('/carte')}
-                      className="btn btn-primary btn-sm d-flex align-items-center gap-2">
-                <Map size={16} /> Suivre sur la carte
-              </button>
-            )}
           </div>
         )}
       </div>

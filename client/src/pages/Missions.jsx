@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, FileDown } from 'lucide-react';
 import api, { telechargerFichier } from '../services/api';
 import { messageErreur } from '../requetes/client';
-import { useChauffeurs, useClients, useEcriture, useMissions, useParametres, useVehicules, useVilles } from '../requetes';
+import { useChauffeurs, useClients, useEcriture, useMissions, useParametres, useVehicules } from '../requetes';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
@@ -33,51 +33,23 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
     poids_charge: '', notes: ''
   });
   const [erreur,        setErreur]        = useState('');
-  const [calculEnCours, setCalculEnCours] = useState(false);
-  const [dureeEstimee,  setDureeEstimee]  = useState(null);
 
   // La disponibilité se vérifie par période (le serveur refuse un chevauchement) : un camion en
   // mission aujourd'hui peut être planifié plus tard. Seuls les camions en panne ou en maintenance
   // et les chauffeurs en congé sont écartés.
   const vehicules  = (useVehicules().data ?? []).filter(v => !['en_panne', 'maintenance'].includes(v.statut));
   const chauffeurs = (useChauffeurs().data ?? []).filter(c => c.statut !== 'conge');
-  const { data: villes = [] }  = useVilles();
   const { data: clients = [] } = useClients();
   const { data: parametres }   = useParametres();
 
   const creer = useEcriture('missions', (valeurs) => api.post('/missions', valeurs));
   const loading = creer.isPending;
 
-  // Distance et durée recalculées à chaque changement de villes. Une réponse arrivée après un
-  // nouveau changement est ignorée : sinon l'itinéraire précédent pourrait l'emporter.
-  const { lieu_depart: depart, lieu_destination: destination } = form;
-  useEffect(() => {
-    if (!depart || !destination || depart === destination) {
-      setForm(p => ({ ...p, distance_km: '' }));
-      setDureeEstimee(null);
-      return undefined;
-    }
-    let perimee = false;
-    setCalculEnCours(true);
-    api.post('/simulation/route', { villeDepart: depart, villeArrivee: destination })
-      .then(({ data }) => {
-        if (perimee) return;
-        setForm(p => ({ ...p, distance_km: data.distanceKm }));
-        setDureeEstimee(data.dureeMin);
-      })
-      .catch((e) => { if (!perimee) console.error('Erreur calcul route:', e); })
-      .finally(() => { if (!perimee) setCalculEnCours(false); });
-    return () => { perimee = true; };
-  }, [depart, destination]);
 
   const handleChange = (e) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.distance_km) {
-      setErreur("La distance n'a pas pu être calculée.");
-      return;
-    }
     setErreur('');
     try {
       await creer.mutateAsync(form);
@@ -126,54 +98,29 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
       <div className="row g-3">
         <div className="col-6">
           <label className="form-label">Départ *</label>
-          <select name="lieu_depart" value={form.lieu_depart} onChange={handleChange} required
-                  className="form-select form-select-sm">
-            <option value="">— Choisir —</option>
-            {villes.map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
+          <input type="text" name="lieu_depart" value={form.lieu_depart} onChange={handleChange} required
+                 maxLength={150} placeholder="Antananarivo" className="form-control form-control-sm" />
         </div>
         <div className="col-6">
           <label className="form-label">Destination *</label>
-          <select name="lieu_destination" value={form.lieu_destination} onChange={handleChange} required
-                  className="form-select form-select-sm">
-            <option value="">— Choisir —</option>
-            {villes.filter(v => v !== form.lieu_depart).map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
+          <input type="text" name="lieu_destination" value={form.lieu_destination} onChange={handleChange} required
+                 maxLength={150} placeholder="Toamasina" className="form-control form-control-sm" />
         </div>
       </div>
 
-      {/* Distance calculée */}
-      <div>
-        <label className="form-label">Distance et durée</label>
-        <div className="bg-light rounded-2 p-3 border">
-          {calculEnCours ? (
-            <div className="d-flex align-items-center gap-2 text-muted small">
-              <span className="spinner-border spinner-border-sm" role="status" />
-              Calcul de la route en cours…
+      {/* Distance saisie : base du coût carburant à la clôture et des primes kilométriques */}
+      <div className="row g-3 align-items-end">
+        <div className="col-6">
+          <label className="form-label">Distance (km) *</label>
+          <input type="number" name="distance_km" value={form.distance_km} onChange={handleChange} required
+                 min="1" step="0.1" placeholder="350" className="form-control form-control-sm" />
+        </div>
+        <div className="col-6">
+          {coutEstime !== null && (
+            <div className="bg-light rounded-2 px-3 py-2 border">
+              <p className="text-xs text-muted mb-0">Coût carburant estimé</p>
+              <p className="fw-bold text-orange-500 mb-0">{formaterMontant(coutEstime)}</p>
             </div>
-          ) : form.distance_km ? (
-            <div className="row g-3">
-              <div className="col-4">
-                <p className="text-xs text-muted mb-1">Distance réelle</p>
-                <p className="fw-bold fs-5 text-dark mb-0">{formaterKm(form.distance_km)}</p>
-              </div>
-              {dureeEstimee !== null && (
-                <div className="col-4">
-                  <p className="text-xs text-muted mb-1">Durée estimée</p>
-                  <p className="fw-bold fs-5 text-dark mb-0">
-                    {Math.floor(dureeEstimee / 60)}h{Math.round(dureeEstimee % 60)}min
-                  </p>
-                </div>
-              )}
-              {coutEstime !== null && (
-                <div className="col-4">
-                  <p className="text-xs text-muted mb-1">Coût carburant</p>
-                  <p className="fw-bold fs-5 text-orange-500 mb-0">{formaterMontant(coutEstime)}</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-muted small mb-0">Sélectionne le départ et la destination pour calculer automatiquement</p>
           )}
         </div>
       </div>
@@ -220,7 +167,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
 
       <div className="d-flex gap-3 pt-1">
         <button type="button" onClick={onAnnuler} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-        <button type="submit" disabled={loading || calculEnCours} className="btn btn-primary btn-sm flex-grow-1">
+        <button type="submit" disabled={loading} className="btn btn-primary btn-sm flex-grow-1">
           {loading ? '…' : 'Créer la mission'}
         </button>
       </div>
@@ -269,15 +216,14 @@ export default function Missions() {
 
   useEffect(() => { setPage(1); }, [filtreStatut, dateDebut, dateFin]);
 
-  const demarrage   = useEcriture('missions', (id) => api.post(`/simulation/demarrer/${id}`));
   const suppression = useEcriture('missions', (id) => api.delete(`/missions/${id}`));
   const statut      = useEcriture('missions', ({ id, nouveauStatut }) =>
     api.put(`/missions/${id}/statut`, { statut: nouveauStatut }));
 
   const demarrerMission = async (mission) => {
     try {
-      await demarrage.mutateAsync(mission.id);
-      ajouterToast('Mission démarrée !', `${mission.lieu_depart} → ${mission.lieu_destination} · Visible sur la Carte globale`);
+      await statut.mutateAsync({ id: mission.id, nouveauStatut: 'en_cours' });
+      ajouterToast('Mission démarrée', `${mission.lieu_depart} → ${mission.lieu_destination}`);
     } catch (e) {
       ajouterToast('Erreur de démarrage', messageErreur(e, e.message), true);
     }
@@ -294,8 +240,7 @@ export default function Missions() {
   const supprimerMission = async (mission) => {
     const consequences = ['Cette action est irréversible'];
     if (mission.statut === 'en_cours') {
-      consequences.push('Le camion sera remis disponible');
-      consequences.push('La simulation en cours sera arrêtée');
+      consequences.push('Le camion et le chauffeur seront remis disponibles');
     }
     const ok = await confirmer({ type: 'supprimer', element: mission.titre, consequences });
     if (!ok) return;

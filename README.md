@@ -23,17 +23,15 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?logo=bootstrap&logoColor=white&style=flat-square)
 ![Socket.io](https://img.shields.io/badge/Socket.io-4-010101?logo=socket.io&logoColor=white&style=flat-square)
 ![JWT](https://img.shields.io/badge/JWT-Auth-000000?logo=jsonwebtokens&logoColor=white&style=flat-square)
-![Leaflet](https://img.shields.io/badge/Leaflet-Maps-199900?logo=leaflet&logoColor=white&style=flat-square)
 ![FullCalendar](https://img.shields.io/badge/FullCalendar-6-4285F4?style=flat-square)
 ![ReportLab](https://img.shields.io/badge/ReportLab-PDF-red?style=flat-square)
 
 | Couche | Technologies |
 |--------|-------------|
-| Frontend | React 18, Vite, Bootstrap 5, Leaflet, FullCalendar, Chart.js, jsPDF, SheetJS — pages chargées à la demande (124 Ko compressés au premier chargement) |
+| Frontend | React 18, Vite, Bootstrap 5, TanStack Query, FullCalendar, Chart.js, jsPDF, SheetJS — pages chargées à la demande (138 Ko compressés au premier chargement) |
 | Backend | Python 3.12, FastAPI, python-socketio, PyJWT, bcrypt, ReportLab |
 | Base de données | MySQL 5.7+ (pool de connexions async via aiomysql) |
-| Temps réel | Socket.io (python-socketio, compatible socket.io-client v4) — simulation GPS, notifications push |
-| Cartographie | Leaflet + OpenStreetMap, calcul de routes OSRM |
+| Temps réel | Socket.io (python-socketio, compatible socket.io-client v4) — notifications push, mise à jour des écrans à chaque changement de mission |
 
 ---
 
@@ -45,15 +43,13 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 |--------|--------|
 | Véhicules | CRUD complet — immatriculation, marque, modèle, tonnage, kilométrage, statut, alertes maintenance |
 | Chauffeurs | CRUD — numéro de permis, catégorie, salaire de base, prime par mission, historique |
-| Missions | Workflow planifiée → en cours → terminée / annulée, calcul de distance automatique via OSRM, coût carburant en Ariary, association client optionnelle |
+| Missions | Workflow planifiée → en cours → terminée / annulée, distance saisie avec coût carburant estimé en Ariary, association client optionnelle |
 | Clients | CRUD entreprises et particuliers, historique des missions par client |
 
 ### Suivi en temps réel
 
 | Module | Détail |
 |--------|--------|
-| Carte globale | Tous les camions actifs sur une carte Leaflet centrée sur Madagascar, positions mises à jour via Socket.io, sélecteur de vitesse x1 / x5 / x10 / x30 / x60 global et par véhicule |
-| Simulation GPS | Déplacement progressif le long d'une route réelle (OSRM), événements aléatoires (pauses, incidents), broadcast Socket.io vers tous les clients connectés |
 | Notifications | Alertes push temps réel (expiration de documents, maintenances urgentes, démarrage de mission) persistées en base et émises via Socket.io |
 
 ### Finances et opérations
@@ -140,7 +136,6 @@ flotte-app/
             ├── Vehicules.jsx
             ├── Chauffeurs.jsx
             ├── Missions.jsx
-            ├── CarteGlobale.jsx       # Carte temps réel + contrôles vitesse
             ├── Documents.jsx
             ├── Carburant.jsx
             ├── Depenses.jsx
@@ -352,15 +347,6 @@ Ne jamais charger ces données en production.
 | GET | `/api/notifications` | Tous | Liste des notifications (filtre `?non_lues=1`) |
 | PUT | `/api/notifications/:id/lire` | Tous | Marquer comme lue |
 | PUT | `/api/notifications/lire-tout` | Tous | Marquer toutes comme lues |
-
-### Simulation
-
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| POST | `/api/simulation/demarrer/:id` | Lancer la simulation GPS d'une mission |
-| POST | `/api/simulation/vitesse/:id` | Modifier le multiplicateur de vitesse |
-| GET | `/api/simulation/villes` | Liste des villes de Madagascar |
-| POST | `/api/simulation/route` | Calculer distance et durée via OSRM |
 
 ### Documents
 

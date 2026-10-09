@@ -1,10 +1,9 @@
-"""Règles métier pures : cycle de vie des missions, statut des documents, simulation."""
+"""Règles métier pures : cycle de vie des missions, statut des documents."""
 import pytest
 
 from app.exceptions import Conflit
 from app.services.documents import statut_depuis_jours
 from app.services.missions import TRANSITIONS, verifier_transition
-from app.services.simulation import calculer_delai, calculer_pause_evenement
 
 
 class TestTransitionsMission:
@@ -53,23 +52,3 @@ def test_statut_document(jours, attendu):
 def test_statut_document_suit_le_seuil():
     assert statut_depuis_jours(45, jours_alerte=60) == "expire_bientot"
     assert statut_depuis_jours(45, jours_alerte=30) == "valide"
-
-
-class TestSimulation:
-    def test_delai_inversement_proportionnel_au_multiplicateur(self):
-        route = {"distanceKm": 300, "points": [None] * 300}  # 1 km par point
-        # 1 km à 60 km/h = 60 s ; x30 → 2 s ; x60 → 1 s
-        assert calculer_delai(route, 30) == pytest.approx(2.0)
-        assert calculer_delai(route, 60) == pytest.approx(1.0)
-
-    def test_delai_minimum_50ms(self):
-        route = {"distanceKm": 1, "points": [None] * 1000}
-        assert calculer_delai(route, 60) == pytest.approx(0.05)
-
-    @pytest.mark.parametrize("duree_min,mult,attendu", [
-        (60, 1, 10.0),    # plafonné à 10 s
-        (10, 60, 1.0),    # plancher à 1 s
-        (30, 10, 3.0),
-    ])
-    def test_pause_evenement_bornee(self, duree_min, mult, attendu):
-        assert calculer_pause_evenement(duree_min, mult) == pytest.approx(attendu)

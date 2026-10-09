@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Truck, LayoutDashboard, Users, MapPin,
-  FileText, LogOut, Map, FileCheck, Fuel, Receipt, Wrench, Calendar, Building2,
+  FileText, LogOut, FileCheck, Fuel, Receipt, Wrench, Calendar, Building2,
   Wallet, UserCog, SlidersHorizontal, X, ClipboardList
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -80,7 +80,6 @@ export default function Sidebar({ ouvert = false, onFermer }) {
           <NavItem to="/vehicules"  Icon={Truck}           label="Véhicules"       badge={nbAlertes}  />
           <NavItem to="/chauffeurs" Icon={Users}           label="Chauffeurs"  />
           <NavItem to="/missions"   Icon={MapPin}          label="Missions"  />
-          <NavItem to="/carte"      Icon={Map}             label="Carte globale"  />
           <NavItem to="/documents"  Icon={FileCheck}       label="Documents"       badge={nbDocsExpires}  />
           <NavItem to="/carburant"    Icon={Fuel}        label="Carburant"  />
           <NavItem to="/depenses"     Icon={Receipt}     label="Dépenses"  />

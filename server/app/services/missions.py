@@ -20,7 +20,7 @@ from ..repositories import vehicules as depot_vehicules
 from ..repositories.base import Plage, Resultat
 from ..schemas.flotte import MissionCreation
 from ..socket import sio
-from . import parametres, simulation
+from . import parametres
 
 INTROUVABLE = "Mission introuvable"
 
@@ -207,32 +207,14 @@ async def changer_statut(id: int, statut: str) -> dict:
             # terminee / annulee depuis en_cours : les ressources étaient occupées
             await liberer_ressources(tx, mission)
 
-    if statut != "en_cours":
-        simulation.arreter_simulation(str(id))
     await sio.emit("mission:statut", {"id": id, "statut": statut})
     return await depot.resume(id)
 
 
 async def supprimer(id: int) -> None:
-    """Une mission en cours libère son camion et son chauffeur, et sa simulation est arrêtée."""
+    """Une mission en cours libère son camion et son chauffeur."""
     async with db.transaction() as tx:
         mission = trouve(await depot.obtenir(id, tx, verrou=True), INTROUVABLE)
         if mission["statut"] == "en_cours":
             await liberer_ressources(tx, mission)
         await depot.supprimer(id, tx)
-    simulation.arreter_simulation(str(id))
-
-
-async def demarrer_simulation(id: int) -> dict:
-    """Passe la mission planifiée en cours, puis lance sa simulation GPS. Retourne la mission."""
-    async with db.transaction() as tx:
-        # Verrou sur la mission : deux démarrages simultanés ne peuvent pas réussir tous les deux
-        mission = trouve(await depot.pour_simulation(id, tx), INTROUVABLE)
-        verifier_transition(mission["statut"], "en_cours")
-        await depot.modifier(id, {"statut": "en_cours"}, tx)
-        await occuper_ressources(tx, mission)
-
-    # Comme pour un changement de statut manuel : les écrans des autres utilisateurs se mettent à jour
-    await sio.emit("mission:statut", {"id": id, "statut": "en_cours"})
-    await simulation.demarrer_simulation(str(id), mission)
-    return mission

@@ -4,7 +4,7 @@ import { ProtectedRoute } from './context/AuthContext';
 
 // La page de connexion reste dans le fichier principal : c'est la première affichée
 import Login from './pages/Login';
-import { PAGES, PAGES_PLEIN_ECRAN } from './pages/registre';
+import { PAGES } from './pages/registre';
 
 import Sidebar    from './components/Sidebar';
 import Navbar     from './components/Navbar';
@@ -21,12 +21,11 @@ const ChargementPage = () => (
 /**
  * Cadre commun à toutes les pages connectées. Une seule instance pour toute la navigation :
  * la barre latérale et la barre du haut (badges, notifications temps réel) ne sont pas
- * recréées en changeant de page, y compris vers ou depuis la carte en plein écran.
+ * recréées en changeant de page.
  * Sous 992 px, la barre latérale devient un tiroir ouvert par le bouton menu.
  */
 const AppLayout = () => {
   const { pathname } = useLocation();
-  const pleinEcran = PAGES_PLEIN_ECRAN.has(pathname);
   const [menuOuvert, setMenuOuvert] = useState(false);
 
   // Le tiroir se referme après un changement de page et avec la touche Échap
@@ -39,11 +38,11 @@ const AppLayout = () => {
   }, [menuOuvert]);
 
   return (
-    <div className={`d-flex vh-100 overflow-hidden ${pleinEcran ? '' : 'bg-gray-100'}`}>
+    <div className="d-flex vh-100 overflow-hidden bg-gray-100">
       <Sidebar ouvert={menuOuvert} onFermer={() => setMenuOuvert(false)} />
       <div className="d-flex flex-column flex-grow-1 overflow-hidden" style={{ minWidth: 0 }}>
         <Navbar menuOuvert={menuOuvert} onMenu={() => setMenuOuvert(true)} />
-        <main className={`flex-grow-1 ${pleinEcran ? 'overflow-hidden' : 'overflow-y-auto p-3 p-lg-4'}`}>
+        <main className="flex-grow-1 overflow-y-auto p-3 p-lg-4">
           <ErreurPage cle={pathname}>
             <Suspense fallback={<ChargementPage />}>
               <Outlet />

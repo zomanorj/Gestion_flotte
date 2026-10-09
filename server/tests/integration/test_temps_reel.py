@@ -1,4 +1,4 @@
-"""Socket.io : authentification, coupure des sessions révoquées, simulation de mission en direct."""
+"""Socket.io : authentification, coupure des sessions révoquées, diffusion des événements de mission."""
 import asyncio
 
 import pytest
@@ -84,59 +84,18 @@ def test_evenement_mission_nouvelle_diffuse(serveur, api, admin, chauffeur, vehi
     asyncio.run(scenario())
 
 
-def test_simulation_de_mission(serveur, api, admin, vehicule, chauffeur_fiche, creer_mission):
-    mission = creer_mission(vehicule["id"], chauffeur_fiche["id"], "2034-02-01T08:00", "2034-02-02T08:00").json()
-    mid = mission["id"]
+def test_changement_de_statut_diffuse(serveur, api, admin, chauffeur, vehicule, chauffeur_fiche, creer_mission):
+    """Démarrage d'une mission : les écrans ouverts ailleurs (listes, Mes missions) se mettent à jour."""
+    mid = creer_mission(vehicule["id"], chauffeur_fiche["id"], "2034-02-01T08:00", "2034-02-02T08:00").json()["id"]
 
     async def scenario():
-        recus: dict[str, list] = {}
+        recus = []
         client = socketio.AsyncClient(reconnection=False)
-
-        @client.on("*")
-        async def tout(evenement, data):
-            recus.setdefault(evenement, []).append(data)
-
-        await client.connect(serveur, auth={"token": _token(admin)}, wait_timeout=5)
-
-        r = await asyncio.to_thread(api.post, f"/simulation/demarrer/{mid}", headers=admin)
+        client.on("mission:statut", lambda data: recus.append(data))
+        await client.connect(serveur, auth={"token": _token(chauffeur)}, wait_timeout=5)
+        r = await asyncio.to_thread(api.put, f"/missions/{mid}/statut", headers=admin, json={"statut": "en_cours"})
         assert r.status_code == 200
-        assert r.json()["mission"]["camion"] == vehicule["immatriculation"]
-
-        assert await _attendre(lambda: f"mission:{mid}:debut" in recus)
-        # Le passage en cours est diffusé : les listes ouvertes ailleurs se mettent à jour
-        assert {"id": mid, "statut": "en_cours"} in recus.get("mission:statut", [])
-        debut = recus[f"mission:{mid}:debut"][0]
-        assert debut["totalPoints"] == 51  # tracé de secours (OSRM désactivé en test)
-        assert debut["multiplicateur"] == 30
-
-        r = await asyncio.to_thread(api.post, f"/simulation/vitesse/{mid}", headers=admin, json={"multiplicateur": 60})
-        assert r.json()["multiplicateur"] == 60
-        assert await _attendre(lambda: f"mission:{mid}:position" in recus)
-        assert await _attendre(lambda: "flotte:positions" in recus)
-
-        actives = (await asyncio.to_thread(api.get, "/simulation/actives", headers=admin)).json()
-        assert str(mid) in [a["missionId"] for a in actives]
-
-        # Déjà en cours : un second démarrage est refusé
-        r = await asyncio.to_thread(api.post, f"/simulation/demarrer/{mid}", headers=admin)
-        assert r.status_code == 409
-
-        # Annuler la mission arrête la simulation
-        await asyncio.to_thread(api.put, f"/missions/{mid}/statut", headers=admin, json={"statut": "annulee"})
-        actives = (await asyncio.to_thread(api.get, "/simulation/actives", headers=admin)).json()
-        assert str(mid) not in [a["missionId"] for a in actives]
+        assert await _attendre(lambda: {"id": mid, "statut": "en_cours"} in recus, 5)
         await client.disconnect()
 
     asyncio.run(scenario())
-
-
-def test_vitesse_simulation_inexistante(api, admin):
-    assert api.post("/simulation/vitesse/999999", headers=admin, json={"multiplicateur": 5}).status_code == 404
-
-
-def test_calcul_d_itineraire(api, admin):
-    r = api.post("/simulation/route", headers=admin, json={"villeDepart": "Antananarivo", "villeArrivee": "Toamasina"})
-    assert r.status_code == 200
-    assert 210 < r.json()["distanceKm"] < 225  # ligne droite (OSRM désactivé en test)
-    r = api.post("/simulation/route", headers=admin, json={"villeDepart": "Paris", "villeArrivee": "Toamasina"})
-    assert r.status_code == 400

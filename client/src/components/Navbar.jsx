@@ -12,7 +12,6 @@ const TITRES = {
   '/vehicules':    'Gestion des Camions',
   '/chauffeurs':   'Gestion des Chauffeurs',
   '/missions':     'Missions de Transport',
-  '/carte':        'Carte Globale de la Flotte',
   '/documents':    'Documents des véhicules',
   '/carburant':    'Suivi du carburant',
   '/depenses':     'Dépenses',
@@ -74,7 +73,7 @@ export default function Navbar({ menuOuvert = false, onMenu }) {
   });
   useEvenement('mission:nouvelle', () => rafraichir('missions', 'planning', 'tableau-de-bord'));
   useEvenement('mission:statut', () => {
-    rafraichir('missions', 'planning', 'vehicules', 'chauffeurs', 'tableau-de-bord', 'paie', 'simulations');
+    rafraichir('missions', 'planning', 'vehicules', 'chauffeurs', 'tableau-de-bord', 'paie');
   });
 
   useEffect(() => {

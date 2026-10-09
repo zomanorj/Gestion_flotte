@@ -64,8 +64,7 @@ class Configuration(BaseSettings):
     s3_secret_access_key: SecretStr | None = None
     s3_region: str = "auto"
 
-    # Services externes et tests
-    osrm_url: str = "http://router.project-osrm.org/route/v1/driving"
+    # Tests
     api_schemas_stricts: bool = False
 
     @field_validator("stockage", mode="before")

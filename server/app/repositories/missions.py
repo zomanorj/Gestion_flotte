@@ -56,14 +56,6 @@ async def resume(id: int) -> dict | None:
     )
 
 
-async def pour_simulation(id: int, cx: Executeur) -> dict | None:
-    """Mission verrouillée avec ce qu'il faut afficher pendant la simulation."""
-    return await cx.query_one(
-        "SELECT m.*, c.nom AS chauffeur_nom, v.immatriculation" + _AVEC_RESSOURCES + " WHERE m.id = %s FOR UPDATE",
-        [id],
-    )
-
-
 async def pour_bon_livraison(id: int) -> dict | None:
     return await db.query_one("""
         SELECT m.*,

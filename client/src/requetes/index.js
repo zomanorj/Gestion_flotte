@@ -20,8 +20,7 @@ export const DEPENDANCES = {
   vehicules:     ['vehicules', 'missions', 'planning', 'tableau-de-bord', 'documents', 'carburant', 'depenses',
                   'maintenances'],
   chauffeurs:    ['chauffeurs', 'missions', 'planning', 'tableau-de-bord', 'paie'],
-  missions:      ['missions', 'planning', 'vehicules', 'chauffeurs', 'clients', 'tableau-de-bord', 'paie',
-                  'simulations'],
+  missions:      ['missions', 'planning', 'vehicules', 'chauffeurs', 'clients', 'tableau-de-bord', 'paie'],
   documents:     ['documents', 'tableau-de-bord'],
   carburant:     ['carburant'],
   depenses:      ['depenses'],
@@ -125,12 +124,3 @@ export const useHistoriqueParametres = (actif) => useQuery({
 
 // Notifications (rafraîchies aussi en temps réel par la barre du haut)
 export const useNotifications = () => useQuery({ queryKey: ['notifications'], queryFn: () => lire('/notifications') });
-
-// Simulation
-export const useVilles = () => useQuery({
-  queryKey: ['simulation', 'villes'], queryFn: () => lire('/simulation/villes').then((d) => d.villes || []),
-  staleTime: Infinity,  // liste fixe côté serveur
-});
-export const useSimulationsActives = () => useQuery({
-  queryKey: ['simulations'], queryFn: () => lire('/simulation/actives'), staleTime: 0,
-});

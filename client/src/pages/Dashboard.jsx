@@ -1,11 +1,10 @@
-import { Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, PointElement, LineElement,
   Title, Tooltip, Legend, Filler
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { Truck, MapPin, Calendar, AlertTriangle, CheckCircle2, Map, FileCheck } from 'lucide-react';
+import { Truck, MapPin, Calendar, AlertTriangle, CheckCircle2, FileCheck } from 'lucide-react';
 import { useTableauDeBord } from '../requetes';
 import StatCard    from '../components/StatCard';
 import AlerteBadge from '../components/AlerteBadge';
@@ -134,25 +133,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Raccourci carte */}
-      <div className="rounded-3 p-3 p-md-4 d-flex align-items-center justify-content-between flex-wrap gap-3 bg-slate-900">
-        <div className="d-flex align-items-center gap-3">
-          <div className="bg-orange-500 rounded-3 p-2 flex-shrink-0">
-            <Map size={28} color="white" />
-          </div>
-          <div>
-            <h3 className="text-white fw-bold fs-5 mb-0">Carte de la flotte</h3>
-            <p className="text-slate-400 small mb-0">
-              Suivez tous vos camions en temps réel sur la carte interactive
-            </p>
-          </div>
-        </div>
-        <Link to="/carte"
-          className="btn btn-warning d-flex align-items-center gap-2 flex-shrink-0">
-          <Map size={16} /> Ouvrir la carte
-        </Link>
       </div>
     </div>
   );

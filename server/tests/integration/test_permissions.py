@@ -6,7 +6,7 @@ LECTURES = [
     "/vehicules", "/vehicules/alertes", "/chauffeurs", "/missions", "/missions/planning",
     "/dashboard/stats", "/documents", "/documents/alertes", "/carburant", "/carburant/stats",
     "/depenses", "/depenses/stats", "/maintenances", "/maintenances/alertes", "/clients",
-    "/clients/1/missions", "/notifications", "/simulation/villes", "/simulation/actives", "/auth/me",
+    "/clients/1/missions", "/notifications", "/missions/miennes", "/auth/me",
 ]
 
 # Écritures réservées à la gestion (admin + gestionnaire)
@@ -15,8 +15,7 @@ ECRITURES_GESTION = [
     ("post", "/missions"), ("put", "/missions/1/statut"), ("post", "/documents"), ("put", "/documents/1"),
     ("post", "/carburant"), ("put", "/carburant/1"), ("post", "/depenses"), ("put", "/depenses/1"),
     ("post", "/maintenances"), ("put", "/maintenances/1"), ("put", "/maintenances/1/terminer"),
-    ("post", "/clients"), ("put", "/clients/1"), ("post", "/simulation/demarrer/1"),
-    ("post", "/simulation/arreter/1"), ("post", "/simulation/vitesse/1"),
+    ("post", "/clients"), ("put", "/clients/1"),
     ("get", "/paie/2026/1"), ("get", "/paie/chauffeur/1/2026/1"), ("patch", "/paie/chauffeur/1/salaire"),
 ]
 

@@ -61,6 +61,6 @@ async def changer_statut(id: int, donnees: ChangementStatutMission):
 
 @router.delete("/{id}", dependencies=[Admin], response_model=Message, summary="Supprimer une mission")
 async def supprimer(id: int):
-    """Une mission en cours libère son camion et son chauffeur, et sa simulation est arrêtée."""
+    """Une mission en cours libère son camion et son chauffeur."""
     await service.supprimer(id)
     return {"message": "Mission supprimée"}

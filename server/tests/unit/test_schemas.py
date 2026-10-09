@@ -8,7 +8,7 @@ from app.erreurs import message_validation
 from app.schemas.comptes import UtilisateurCreation, UtilisateurMiseAJour
 from app.schemas.flotte import MissionCreation, VehiculeCreation, VehiculeMiseAJour
 from app.schemas.operations import DocumentSaisie, MaintenanceMiseAJour, PleinSaisie
-from app.schemas.pilotage import ChangementVitesse, SalaireSaisie
+from app.schemas.pilotage import SalaireSaisie
 
 MISSION = {"titre": "T", "vehicule_id": 1, "chauffeur_id": 2, "lieu_depart": "A", "lieu_destination": "B",
            "date_depart": "2031-01-01T08:00", "date_retour_prevue": "2031-01-02T08:00"}
@@ -107,12 +107,6 @@ class TestComptes:
     def test_is_active_accepte_0_et_1(self):
         assert UtilisateurMiseAJour(is_active=0).is_active is False
         assert UtilisateurMiseAJour(is_active="1").is_active is True
-
-
-def test_vitesse_limitee_aux_valeurs_proposees():
-    assert ChangementVitesse(multiplicateur="30").multiplicateur == 30
-    with pytest.raises(ValidationError):
-        ChangementVitesse(multiplicateur=7)
 
 
 def test_salaire_au_moins_un_champ():

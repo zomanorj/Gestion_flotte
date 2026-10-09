@@ -108,8 +108,3 @@ class Page(Sortie, Generic[T]):
 class Sante(Sortie):
     status: str
     message: str
-
-
-class Position(Sortie):
-    lat: float
-    lng: float

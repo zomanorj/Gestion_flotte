@@ -13,8 +13,7 @@ repository, un service qui importe FastAPI, ou du SQL hors des repositories fait
 Les tests d'intégration créent une base MySQL vide, lancent l'API dans un sous-processus (qui
 crée le schéma avec les migrations Alembic et charge les données de démonstration), puis
 suppriment la base. `integration/test_migrations.py` vérifie en plus qu'une base créée par
-les anciens scripts (`donnees/historique/`) migre vers un schéma identique à une base neuve. Aucun accès Internet n'est nécessaire (OSRM est désactivé : l'API
-utilise son tracé de secours).
+les anciens scripts (`donnees/historique/`) migre vers un schéma identique à une base neuve. Aucun accès Internet n'est nécessaire.
 
 ## Lancer les tests en local
 

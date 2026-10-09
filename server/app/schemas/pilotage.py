@@ -1,11 +1,10 @@
-# Schémas paie, simulation et tableau de bord
-# Les noms en camelCase (villeDepart, totalVehicules…) sont ceux du contrat JSON existant avec le frontend.
+# Schémas paie et tableau de bord
+# Les noms en camelCase (totalVehicules…) sont ceux du contrat JSON existant avec le frontend.
 from datetime import datetime
-from typing import Annotated
 
-from pydantic import AfterValidator, Field, model_validator
+from pydantic import Field, model_validator
 
-from .commun import Entree, MontantOpt, Position, Sortie, Texte
+from .commun import Entree, MontantOpt, Sortie
 
 # ── Paie ───────────────────────────────────────────────────────────────────────
 
@@ -97,79 +96,6 @@ class Salaire(Sortie):
     prenom: str
     salaire_base: float | None = None
     prime_mission: float | None = None
-
-
-# ── Simulation ─────────────────────────────────────────────────────────────────
-
-class DemandeItineraire(Entree):
-    villeDepart: Texte(100)
-    villeArrivee: Texte(100)
-
-
-class Itineraire(Sortie):
-    distanceKm: int
-    dureeMin: int
-    totalPoints: int
-
-
-MULTIPLICATEURS = (1, 5, 10, 30, 60)
-
-
-def _multiplicateur_propose(valeur: int) -> int:
-    if valeur not in MULTIPLICATEURS:
-        raise ValueError(f"multiplicateur doit valoir {', '.join(map(str, MULTIPLICATEURS))}")
-    return valeur
-
-
-class ChangementVitesse(Entree):
-    multiplicateur: Annotated[int, AfterValidator(_multiplicateur_propose)] = Field(
-        description="Facteur d'accélération : 1, 5, 10, 30 ou 60")
-
-
-class VitesseModifiee(Sortie):
-    message: str
-    multiplicateur: int
-
-
-class MissionDemarree(Sortie):
-    id: int
-    titre: str
-    camion: str
-    chauffeur: str
-    depart: str
-    destination: str
-
-
-class SimulationDemarree(Sortie):
-    message: str
-    mission: MissionDemarree
-
-
-class EvenementEnCours(Sortie):
-    id: str
-    label: str
-    type: str
-    couleur: str
-
-
-class EtatSimulation(Sortie):
-    missionId: str
-    position: Position
-    progression: int
-    vitesse: float
-    multiplicateur: int
-    enPause: bool
-    evenementActuel: EvenementEnCours | None = None
-    immatriculation: str | None = None
-    chauffeur_nom: str | None = None
-    titre: str | None = None
-    lieu_depart: str | None = None
-    lieu_destination: str | None = None
-    distanceKm: float
-
-
-class Villes(Sortie):
-    villes: list[str]
 
 
 # ── Tableau de bord ────────────────────────────────────────────────────────────

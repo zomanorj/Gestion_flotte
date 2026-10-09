@@ -37,16 +37,6 @@ describe('Mes missions', () => {
     expect(titres('Historique')).toEqual(['Mission 4', 'Mission 5']);
   });
 
-  it('propose le suivi sur la carte seulement pour la mission en cours', async () => {
-    repondre(api.get, { '/missions/miennes': [mission(2, 'en_cours', '2026-10-08'), mission(3, 'planifiee', '2026-11-02')] });
-
-    rendre(<MesMissions />);
-
-    await screen.findByText('Mission 2');
-    expect(within(section('En cours')).getByRole('button', { name: /Suivre sur la carte/ })).toBeInTheDocument();
-    expect(within(section('À venir')).queryByRole('button', { name: /Suivre sur la carte/ })).toBeNull();
-  });
-
   it('télécharge le bon de livraison de la mission', async () => {
     repondre(api.get, { '/missions/miennes': [mission(7, 'planifiee', '2026-11-02')] });
     rendre(<MesMissions />);

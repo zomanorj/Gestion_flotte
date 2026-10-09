@@ -48,7 +48,6 @@ from app.routers import (
     notifications,
     paie,
     parametres,
-    simulation,
     users,
     vehicules,
 )
@@ -115,7 +114,6 @@ MODULES = [
     (vehicules, "vehicules", "Véhicules", "Camions et alertes d'entretien"),
     (chauffeurs, "chauffeurs", "Chauffeurs", "Chauffeurs et historique"),
     (missions, "missions", "Missions", "Planification, cycle de vie, planning et bon de livraison"),
-    (simulation, "simulation", "Simulation", "Itinéraires et simulation GPS en temps réel"),
     (dashboard, "dashboard", "Tableau de bord", "Indicateurs"),
     (documents, "documents", "Documents", "Pièces administratives des véhicules et fichiers joints"),
     (carburant, "carburant", "Carburant", "Pleins et consommation"),
