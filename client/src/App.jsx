@@ -6,6 +6,7 @@ import { ProtectedRoute } from './context/AuthContext';
 // La page de connexion reste dans le fichier principal : c'est la première affichée
 import Login from './pages/Login';
 import { PAGES } from './pages/registre';
+import { emplacement } from './navigation';
 
 import Sidebar    from './components/Sidebar';
 import Navbar     from './components/Navbar';
@@ -29,8 +30,13 @@ const AppLayout = () => {
   const { pathname } = useLocation();
   const [menuOuvert, setMenuOuvert] = useState(false);
 
-  // Le tiroir se referme après un changement de page et avec la touche Échap
-  useEffect(() => { setMenuOuvert(false); }, [pathname]);
+  // Le tiroir se referme après un changement de page et avec la touche Échap ;
+  // le titre de l'onglet suit la page (« Véhicules · FlotteApp »)
+  useEffect(() => {
+    setMenuOuvert(false);
+    const page = emplacement(pathname)?.page;
+    document.title = page ? `${page} · FlotteApp` : 'FlotteApp';
+  }, [pathname]);
   useEffect(() => {
     if (!menuOuvert) return undefined;
     const surTouche = (e) => { if (e.key === 'Escape') setMenuOuvert(false); };

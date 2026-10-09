@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, AlertTriangle, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +22,8 @@ export default function Login() {
   const [form,       setForm]       = useState({ email: '', password: '' });
   const [erreur,     setErreur]     = useState('');
   const [chargement, setChargement] = useState(false);
+
+  useEffect(() => { document.title = 'Connexion · FlotteApp'; }, []);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));

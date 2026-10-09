@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Logo FlotteApp (même dessin que la barre latérale) : carré arrondi et camion lucide.
+       Onglet clair : carré foncé, camion blanc. Onglet sombre : carré blanc, camion foncé. -->
+  <style>
+    .fond { fill: #212529; }
+    .camion { stroke: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      .fond { fill: #ffffff; }
+      .camion { stroke: #212529; }
+    }
+  </style>
+  <rect class="fond" width="32" height="32" rx="8" />
+  <g class="camion" transform="translate(6 6) scale(0.8333)" fill="none" stroke-width="2.2"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+    <path d="M15 18H9" />
+    <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" />
+    <circle cx="17" cy="18" r="2" />
+    <circle cx="7" cy="18" r="2" />
+  </g>
+</svg>
