@@ -1,7 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Building2, Plus, Pencil, Trash2, AlertTriangle, X, Phone, Mail, MapPin, History, ArrowLeft } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { messageErreur } from '../requetes/client';
+import { useClients, useEcriture, useMissionsClient } from '../requetes';
 import { useConfirm } from '../components/ConfirmModal';
 
 const TYPES = { entreprise: 'Entreprise', particulier: 'Particulier' };
@@ -23,30 +25,22 @@ export default function Clients() {
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
-  const [clients,    setClients]    = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const [erreur,     setErreur]     = useState('');
   const [modal,       setModal]       = useState(false);
   const [clientEdite, setClientEdite] = useState(null);
   const [form,        setForm]        = useState(FORM_VIDE);
-  const [sauvegarde,  setSauvegarde]  = useState(false);
   const [errModal,    setErrModal]    = useState('');
-  const [historique, setHistorique] = useState(null);
-  const [chargemHist, setChargemHist] = useState(false);
+  const [idHistorique, setIdHistorique] = useState(null);
 
-  const charger = useCallback(async () => {
-    setChargement(true);
-    try {
-      const { data } = await api.get('/clients');
-      setClients(data); setErreur('');
-    } catch {
-      setErreur('Impossible de charger les clients');
-    } finally {
-      setChargement(false);
-    }
-  }, []);
+  const { data: clients = [], isPending: chargement, isError } = useClients();
+  const histo = useMissionsClient(idHistorique);
+  const historique = idHistorique ? histo.data : null;
+  const erreur = isError ? 'Impossible de charger les clients'
+    : idHistorique && histo.isError ? 'Impossible de charger les missions de ce client' : '';
 
-  useEffect(() => { charger(); }, [charger]);
+  const enregistrement = useEcriture('clients', ({ id, valeurs }) =>
+    id ? api.put(`/clients/${id}`, valeurs) : api.post('/clients', valeurs));
+  const suppression = useEcriture('clients', (id) => api.delete(`/clients/${id}`));
+  const sauvegarde = enregistrement.isPending;
 
   const ouvrirAjout = () => { setForm(FORM_VIDE); setClientEdite(null); setErrModal(''); setModal(true); };
   const ouvrirEdition = (c) => {
@@ -57,34 +51,21 @@ export default function Clients() {
   const fermerModal = () => { setModal(false); setClientEdite(null); };
 
   const sauvegarder = async (e) => {
-    e.preventDefault(); setSauvegarde(true); setErrModal('');
+    e.preventDefault(); setErrModal('');
     try {
-      if (clientEdite) await api.put(`/clients/${clientEdite.id}`, form);
-      else await api.post('/clients', form);
-      fermerModal(); charger();
+      await enregistrement.mutateAsync({ id: clientEdite?.id, valeurs: form });
+      fermerModal();
     } catch (err) {
-      setErrModal(err.response?.data?.message || 'Erreur lors de la sauvegarde');
-    } finally { setSauvegarde(false); }
+      setErrModal(messageErreur(err, 'Erreur lors de la sauvegarde'));
+    }
   };
 
   const supprimer = async (c) => {
     const ok = await confirmer({ type: 'supprimer', element: c.nom,
       consequences: ['Les missions liées seront détachées de ce client', 'Cette action est irréversible'] });
     if (!ok) return;
-    try { await api.delete(`/clients/${c.id}`); charger(); }
-    catch (err) { alert(err.response?.data?.message || 'Erreur lors de la suppression'); }
-  };
-
-  const voirHistorique = async (c) => {
-    setChargemHist(true);
-    try {
-      const { data } = await api.get(`/clients/${c.id}/missions`);
-      setHistorique(data);
-    } catch {
-      alert('Impossible de charger les missions de ce client');
-    } finally {
-      setChargemHist(false);
-    }
+    try { await suppression.mutateAsync(c.id); }
+    catch (err) { alert(messageErreur(err, 'Erreur lors de la suppression')); }
   };
 
   // Vue historique
@@ -92,7 +73,7 @@ export default function Clients() {
     return (
       <div className="d-flex flex-column gap-4">
         <div className="d-flex align-items-center gap-3">
-          <button onClick={() => setHistorique(null)} className="btn btn-light d-flex align-items-center gap-1">
+          <button onClick={() => setIdHistorique(null)} className="btn btn-light d-flex align-items-center gap-1">
             <ArrowLeft size={20} />
           </button>
           <div className="d-flex align-items-center gap-3">
@@ -205,7 +186,7 @@ export default function Clients() {
                       {c.ville ? <span className="d-flex align-items-center gap-1"><MapPin size={12} /> {c.ville}</span> : '—'}
                     </td>
                     <td className="px-3 py-2">
-                      <button onClick={() => voirHistorique(c)}
+                      <button onClick={() => setIdHistorique(c.id)}
                               className="btn btn-link p-0 text-primary d-flex align-items-center gap-1 small fw-medium">
                         <History size={16} />
                         {c.nb_missions} mission{c.nb_missions !== 1 ? 's' : ''}

@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, Loader2, FileDown } from 'lucide-react';
 import api, { telechargerFichier } from '../services/api';
+import { messageErreur } from '../requetes/client';
+import { useChauffeurs, useClients, useEcriture, useMissions, useParametres, useVehicules, useVilles } from '../requetes';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
@@ -31,21 +33,21 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
     distance_km: '', date_depart: '', date_retour_prevue: '',
     poids_charge: '', notes: ''
   });
-  const [vehicules,     setVehicules]     = useState([]);
-  const [chauffeurs,    setChauffeurs]    = useState([]);
-  const [villes,        setVilles]        = useState([]);
-  const [clients,       setClients]       = useState([]);
   const [erreur,        setErreur]        = useState('');
-  const [loading,       setLoading]       = useState(false);
   const [calculEnCours, setCalculEnCours] = useState(false);
   const [dureeEstimee,  setDureeEstimee]  = useState(null);
 
-  useEffect(() => {
-    api.get('/vehicules',  { params: { statut: 'disponible' } }).then(({ data }) => setVehicules(data));
-    api.get('/chauffeurs', { params: { statut: 'disponible' } }).then(({ data }) => setChauffeurs(data));
-    api.get('/simulation/villes').then(({ data }) => setVilles(data.villes || []));
-    api.get('/clients').then(({ data }) => setClients(data));
-  }, []);
+  // La disponibilité se vérifie par période (le serveur refuse un chevauchement) : un camion en
+  // mission aujourd'hui peut être planifié plus tard. Seuls les camions en panne ou en maintenance
+  // et les chauffeurs en congé sont écartés.
+  const vehicules  = (useVehicules().data ?? []).filter(v => !['en_panne', 'maintenance'].includes(v.statut));
+  const chauffeurs = (useChauffeurs().data ?? []).filter(c => c.statut !== 'conge');
+  const { data: villes = [] }  = useVilles();
+  const { data: clients = [] } = useClients();
+  const { data: parametres }   = useParametres();
+
+  const creer = useEcriture('missions', (valeurs) => api.post('/missions', valeurs));
+  const loading = creer.isPending;
 
   useEffect(() => {
     if (form.lieu_depart && form.lieu_destination && form.lieu_depart !== form.lieu_destination) {
@@ -79,19 +81,22 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
       setErreur("La distance n'a pas pu être calculée.");
       return;
     }
-    setLoading(true);
     setErreur('');
     try {
-      await api.post('/missions', form);
+      await creer.mutateAsync(form);
       onSauvegarder();
     } catch (err) {
-      setErreur(err.response?.data?.message || 'Erreur lors de la création');
-    } finally {
-      setLoading(false);
+      setErreur(messageErreur(err, 'Erreur lors de la création'));
     }
   };
 
-  const coutEstime = form.distance_km ? Math.round(form.distance_km * 0.30 * 5200) : null;
+  // Même calcul que le serveur à la clôture : distance × consommation du camion × prix en vigueur
+  const parametre = (cle) => parametres?.find(p => p.cle === cle)?.valeur;
+  const camionChoisi = vehicules.find(v => String(v.id) === String(form.vehicule_id));
+  const consommation = camionChoisi?.consommation_litre_km || parametre('consommation_par_defaut');
+  const prixLitre = parametre('prix_litre_gasoil');
+  const coutEstime = form.distance_km && consommation && prixLitre
+    ? Math.round(form.distance_km * consommation * prixLitre) : null;
 
   return (
     <form onSubmit={handleSubmit} className="d-flex flex-column gap-3 small">
@@ -104,7 +109,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
 
       <div className="row g-3">
         <div className="col-6">
-          <label className="form-label">Camion disponible *</label>
+          <label className="form-label">Camion *</label>
           <select name="vehicule_id" value={form.vehicule_id} onChange={handleChange} required
                   className="form-select form-select-sm">
             <option value="">— Choisir —</option>
@@ -112,7 +117,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
           </select>
         </div>
         <div className="col-6">
-          <label className="form-label">Chauffeur disponible *</label>
+          <label className="form-label">Chauffeur *</label>
           <select name="chauffeur_id" value={form.chauffeur_id} onChange={handleChange} required
                   className="form-select form-select-sm">
             <option value="">— Choisir —</option>
@@ -253,43 +258,31 @@ export default function Missions() {
   const { ajouterToast, ToastContainer }     = useToast();
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
-  const [missions,     setMissions]     = useState([]);
-  const [chargement,   setChargement]   = useState(true);
   const [filtreStatut, setFiltreStatut] = useState('');
   const [dateDebut,    setDateDebut]    = useState('');
   const [dateFin,      setDateFin]      = useState('');
   const [modal,        setModal]        = useState({ ouvert: false, mission: null, mode: 'new' });
   const [page,         setPage]         = useState(1);
-  const [paginInfo,    setPaginInfo]    = useState({ total: 0, pages: 1 });
   const LIMIT = 20;
 
-  const chargerMissions = useCallback(async () => {
-    setChargement(true);
-    try {
-      const params = { paginate: 'true', page, limit: LIMIT };
-      if (filtreStatut) params.statut = filtreStatut;
-      if (dateDebut)    params.debut  = dateDebut;
-      if (dateFin)      params.fin    = dateFin;
-      const { data } = await api.get('/missions', { params });
-      setMissions(data.data);
-      setPaginInfo({ total: data.total, pages: data.pages });
-    } catch {
-      setMissions([]);
-    } finally {
-      setChargement(false);
-    }
-  }, [filtreStatut, dateDebut, dateFin, page]);
+  const { data, isPending: chargement } = useMissions(
+    { page, limit: LIMIT, statut: filtreStatut, debut: dateDebut, fin: dateFin }, { pagine: true });
+  const missions  = data?.data ?? [];
+  const paginInfo = { total: data?.total ?? 0, pages: data?.pages ?? 1 };
 
   useEffect(() => { setPage(1); }, [filtreStatut, dateDebut, dateFin]);
-  useEffect(() => { chargerMissions(); }, [chargerMissions]);
+
+  const demarrage   = useEcriture('missions', (id) => api.post(`/simulation/demarrer/${id}`));
+  const suppression = useEcriture('missions', (id) => api.delete(`/missions/${id}`));
+  const statut      = useEcriture('missions', ({ id, nouveauStatut }) =>
+    api.put(`/missions/${id}/statut`, { statut: nouveauStatut }));
 
   const demarrerMission = async (mission) => {
     try {
-      await api.post(`/simulation/demarrer/${mission.id}`);
+      await demarrage.mutateAsync(mission.id);
       ajouterToast('Mission démarrée !', `${mission.lieu_depart} → ${mission.lieu_destination} · Visible sur la Carte globale`);
-      chargerMissions();
     } catch (e) {
-      ajouterToast('Erreur de démarrage', e.response?.data?.message || e.message, true);
+      ajouterToast('Erreur de démarrage', messageErreur(e, e.message), true);
     }
   };
 
@@ -310,25 +303,23 @@ export default function Missions() {
     const ok = await confirmer({ type: 'supprimer', element: mission.titre, consequences });
     if (!ok) return;
     try {
-      await api.delete(`/missions/${mission.id}`);
+      await suppression.mutateAsync(mission.id);
       ajouterToast('Mission supprimée', mission.titre);
-      chargerMissions();
     } catch (e) {
-      ajouterToast('Erreur', e.response?.data?.message || e.message, true);
+      ajouterToast('Erreur', messageErreur(e, e.message), true);
     }
   };
 
   const changerStatut = async (id, nouveauStatut) => {
     try {
-      await api.put(`/missions/${id}/statut`, { statut: nouveauStatut });
-      chargerMissions();
+      await statut.mutateAsync({ id, nouveauStatut });
     } catch (err) {
-      ajouterToast('Erreur', err.response?.data?.message || 'Mise à jour impossible', true);
+      ajouterToast('Erreur', messageErreur(err, 'Mise à jour impossible'), true);
     }
   };
 
   const fermerModal   = () => setModal({ ouvert: false, mission: null, mode: 'new' });
-  const apresCreation = () => { fermerModal(); chargerMissions(); };
+  const apresCreation = () => fermerModal();
 
   return (
     <div className="d-flex flex-column gap-3">

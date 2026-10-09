@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Receipt, Plus, Pencil, Trash2, AlertTriangle, X, CalendarDays, TrendingUp, ListChecks } from 'lucide-react';
 import api from '../services/api';
+import { messageErreur } from '../requetes/client';
+import { useDepenses, useEcriture, useStatsDepenses, useVehicules } from '../requetes';
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
@@ -40,11 +42,6 @@ export default function Depenses() {
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
-  const [depenses,  setDepenses]  = useState([]);
-  const [stats,     setStats]     = useState(null);
-  const [vehicules, setVehicules] = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const [erreur,    setErreur]    = useState('');
   const [filtreVehicule,  setFiltreVehicule]  = useState('');
   const [filtreCategorie, setFiltreCategorie] = useState('');
   const [filtreDebut,     setFiltreDebut]     = useState('');
@@ -52,36 +49,26 @@ export default function Depenses() {
   const [modal,       setModal]       = useState(false);
   const [depenseEditee, setDepenseEditee] = useState(null);
   const [form,        setForm]        = useState(FORM_VIDE);
-  const [sauvegarde,  setSauvegarde]  = useState(false);
   const [errModal,    setErrModal]    = useState('');
 
   const [page,         setPage]         = useState(1);
-  const [paginInfo,    setPaginInfo]    = useState({ total: 0, pages: 1 });
   const LIMIT = 20;
 
-  const charger = useCallback(async () => {
-    setChargement(true);
-    try {
-      const params = { paginate: 'true', page, limit: LIMIT };
-      if (filtreVehicule)  params.vehicule_id = filtreVehicule;
-      if (filtreCategorie) params.categorie   = filtreCategorie;
-      if (filtreDebut)     params.debut       = filtreDebut;
-      if (filtreFin)       params.fin         = filtreFin;
-      const [resDepenses, resStats, resVehicules] = await Promise.all([
-        api.get('/depenses', { params }), api.get('/depenses/stats'), api.get('/vehicules')
-      ]);
-      setDepenses(resDepenses.data.data); setPaginInfo({ total: resDepenses.data.total, pages: resDepenses.data.pages });
-      setStats(resStats.data); setVehicules(resVehicules.data);
-      setErreur('');
-    } catch {
-      setErreur('Impossible de charger les dépenses');
-    } finally {
-      setChargement(false);
-    }
-  }, [filtreVehicule, filtreCategorie, filtreDebut, filtreFin, page]);
+  const liste = useDepenses({ page, limit: LIMIT, vehicule_id: filtreVehicule, categorie: filtreCategorie,
+                              debut: filtreDebut, fin: filtreFin }, { pagine: true });
+  const { data: stats = null }   = useStatsDepenses();
+  const { data: vehicules = [] } = useVehicules();
+  const depenses   = liste.data?.data ?? [];
+  const paginInfo  = { total: liste.data?.total ?? 0, pages: liste.data?.pages ?? 1 };
+  const chargement = liste.isPending;
+  const erreur     = liste.isError ? 'Impossible de charger les dépenses' : '';
 
   useEffect(() => { setPage(1); }, [filtreVehicule, filtreCategorie, filtreDebut, filtreFin]);
-  useEffect(() => { charger(); }, [charger]);
+
+  const enregistrement = useEcriture('depenses', ({ id, valeurs }) =>
+    id ? api.put(`/depenses/${id}`, valeurs) : api.post('/depenses', valeurs));
+  const suppression = useEcriture('depenses', (id) => api.delete(`/depenses/${id}`));
+  const sauvegarde = enregistrement.isPending;
 
   const ouvrirAjout = () => { setForm(FORM_VIDE); setDepenseEditee(null); setErrModal(''); setModal('ajout'); };
   const ouvrirEdition = (dep) => {
@@ -92,14 +79,13 @@ export default function Depenses() {
   const fermerModal = () => { setModal(false); setDepenseEditee(null); };
 
   const sauvegarder = async (e) => {
-    e.preventDefault(); setSauvegarde(true); setErrModal('');
+    e.preventDefault(); setErrModal('');
     try {
-      if (modal === 'ajout') await api.post('/depenses', form);
-      else await api.put(`/depenses/${depenseEditee.id}`, form);
-      fermerModal(); charger();
+      await enregistrement.mutateAsync({ id: modal === 'ajout' ? null : depenseEditee.id, valeurs: form });
+      fermerModal();
     } catch (err) {
-      setErrModal(err.response?.data?.message || 'Erreur lors de la sauvegarde');
-    } finally { setSauvegarde(false); }
+      setErrModal(messageErreur(err, 'Erreur lors de la sauvegarde'));
+    }
   };
 
   const supprimer = async (dep) => {
@@ -109,8 +95,8 @@ export default function Depenses() {
       consequences: ['La dépense sera définitivement supprimée', 'Cette action est irréversible']
     });
     if (!ok) return;
-    try { await api.delete(`/depenses/${dep.id}`); charger(); }
-    catch (err) { alert(err.response?.data?.message || 'Erreur lors de la suppression'); }
+    try { await suppression.mutateAsync(dep.id); }
+    catch (err) { alert(messageErreur(err, 'Erreur lors de la suppression')); }
   };
 
   const filtresActifs = filtreVehicule || filtreCategorie || filtreDebut || filtreFin;

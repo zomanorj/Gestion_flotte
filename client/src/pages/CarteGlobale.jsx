@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Truck, RefreshCw, ChevronLeft, ChevronRight, MapPin, AlertTriangle, Clock, Gauge } from 'lucide-react';
 import api, { creerSocket } from '../services/api';
+import { useSimulationsActives } from '../requetes';
 
 const PALETTE = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#eab308', '#06b6d4', '#ec4899'];
 const couleurParIndex = (index) => PALETTE[index % PALETTE.length];
@@ -36,41 +37,36 @@ function formatTemps(sec) {
 export default function CarteGlobale() {
   const socketRef = useRef(null);
   const [camions,               setCamions]               = useState({});
-  const [indicesCouleur,        setIndicesCouleur]        = useState({});
   const [cible,                 setCible]                 = useState(null);
   const [panneauOuvert,         setPanneauOuvert]         = useState(true);
   const [derniereMaj,           setDerniereMaj]           = useState(null);
-  const [chargement,            setChargement]            = useState(true);
   const [multiplicateurs,       setMultiplicateurs]       = useState({});
   const [multiplicateurGlobal,  setMultiplicateurGlobal]  = useState(30);
 
-  const getCouleur = useCallback((missionId) => {
-    setIndicesCouleur(prev => {
-      if (prev[missionId] !== undefined) return prev;
-      return { ...prev, [missionId]: Object.keys(prev).length };
-    });
-    return indicesCouleur[missionId] ?? 0;
-  }, [indicesCouleur]);
-
-  const chargerActifs = useCallback(async () => {
-    setChargement(true);
-    try {
-      const { data } = await api.get('/simulation/actives');
-      const nouvellesDonnees = {};
-      const nouveauxIndices  = {};
-      data.forEach((c, i) => {
-        nouveauxIndices[c.missionId] = i;
-        const initiale = (c.immatriculation || '?').replace(/[^A-Z0-9]/gi, '').charAt(0).toUpperCase();
-        nouvellesDonnees[c.missionId] = { ...c, trace: c.position ? [[c.position.lat, c.position.lng]] : [], couleur: couleurParIndex(i), initiale };
-      });
-      setCamions(nouvellesDonnees); setIndicesCouleur(nouveauxIndices);
-    } catch { /* aucune simulation active */ } finally {
-      setChargement(false);
-    }
-  }, []);
+  // Instantané des simulations en cours ; les positions arrivent ensuite par le socket.
+  // Une relecture (bouton, mission modifiée) complète l'état sans effacer les traces déjà tracées.
+  const actives = useSimulationsActives();
+  const chargement = actives.isPending;
 
   useEffect(() => {
-    chargerActifs();
+    if (!actives.data) return;
+    setCamions(prev => {
+      const suivant = {};
+      actives.data.forEach((c, i) => {
+        const existant = prev[c.missionId];
+        const initiale = (c.immatriculation || '?').replace(/[^A-Z0-9]/gi, '').charAt(0).toUpperCase();
+        suivant[c.missionId] = {
+          ...c,
+          trace:    existant?.trace || (c.position ? [[c.position.lat, c.position.lng]] : []),
+          couleur:  existant?.couleur || couleurParIndex(i),
+          initiale: existant?.initiale || initiale,
+        };
+      });
+      return suivant;
+    });
+  }, [actives.data]);
+
+  useEffect(() => {
     socketRef.current = creerSocket();
     const socket = socketRef.current;
 
@@ -102,7 +98,7 @@ export default function CarteGlobale() {
     });
 
     return () => socket.disconnect();
-  }, [chargerActifs]);
+  }, []);
 
   const camionsList = Object.values(camions);
   const nbEnMission = camionsList.length;
@@ -140,7 +136,7 @@ export default function CarteGlobale() {
               Mis à jour {derniereMaj.toLocaleTimeString('fr-FR')}
             </p>
           )}
-          <button onClick={chargerActifs}
+          <button onClick={() => actives.refetch()}
                   className="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1 bg-slate-800 text-slate-300 border-0"
                   style={{ fontSize: '12px' }}>
             <RefreshCw size={12} /> Actualiser

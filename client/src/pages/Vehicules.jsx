@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import api from '../services/api';
+import { messageErreur } from '../requetes/client';
+import { useEcriture, useVehicule, useVehicules } from '../requetes';
+import { useDiffere } from '../hooks/useDiffere';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
@@ -42,20 +45,17 @@ const FormulaireCamion = ({ camion, onSauvegarder, onAnnuler }) => {
     numero_chassis:        camion?.numero_chassis        || ''
   });
   const [erreur,  setErreur]  = useState('');
-  const [loading, setLoading] = useState(false);
+  const enregistrer = useEcriture('vehicules', (valeurs) =>
+    camion?.id ? api.put(`/vehicules/${camion.id}`, valeurs) : api.post('/vehicules', valeurs));
+  const loading = enregistrer.isPending;
 
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setErreur('');
     try {
-      if (camion?.id) {
-        await api.put(`/vehicules/${camion.id}`, form);
-      } else {
-        await api.post('/vehicules', form);
-      }
+      await enregistrer.mutateAsync(form);
       onSauvegarder();
     } catch (err) {
       setErreur(err.response?.data?.message || 'Erreur lors de la sauvegarde');
@@ -133,47 +133,34 @@ export default function Vehicules() {
   const { user } = useAuth();
   const isAdmin  = ['admin', 'gestionnaire'].includes(user?.role);
 
-  const [camions,    setCamions]    = useState([]);
-  const [chargement, setChargement] = useState(true);
   const [search,     setSearch]     = useState('');
   const [filtreStatut, setFiltreStatut] = useState('');
   const [modal,      setModal]      = useState({ ouvert: false, camion: null, mode: 'form' });
   const [confirmSuppression, setConfirmSuppression] = useState(null);
   const [page,       setPage]       = useState(1);
-  const [paginInfo,  setPaginInfo]  = useState({ total: 0, pages: 1 });
   const LIMIT = 15;
 
-  const chargerCamions = useCallback(async () => {
-    setChargement(true);
-    try {
-      const params = { paginate: 'true', page, limit: LIMIT };
-      if (filtreStatut) params.statut = filtreStatut;
-      if (search)       params.search = search;
-      const { data } = await api.get('/vehicules', { params });
-      setCamions(data.data);
-      setPaginInfo({ total: data.total, pages: data.pages });
-    } catch {
-      setCamions([]);
-    } finally {
-      setChargement(false);
-    }
-  }, [filtreStatut, search, page]);
+  const recherche = useDiffere(search);
+  const { data, isPending: chargement } = useVehicules(
+    { page, limit: LIMIT, statut: filtreStatut, search: recherche }, { pagine: true });
+  const camions   = data?.data ?? [];
+  const paginInfo = { total: data?.total ?? 0, pages: data?.pages ?? 1 };
 
-  useEffect(() => { setPage(1); }, [filtreStatut, search]);
-  useEffect(() => { chargerCamions(); }, [chargerCamions]);
+  useEffect(() => { setPage(1); }, [filtreStatut, recherche]);
+
+  const suppression = useEcriture('vehicules', (id) => api.delete(`/vehicules/${id}`));
 
   const ouvrirFormulaire = (camion = null) => setModal({ ouvert: true, camion, mode: 'form' });
   const ouvrirDetail     = (camion)         => setModal({ ouvert: true, camion, mode: 'detail' });
   const fermerModal      = ()               => setModal({ ouvert: false, camion: null, mode: 'form' });
-  const apresModification = ()              => { fermerModal(); chargerCamions(); };
+  const apresModification = ()              => fermerModal();
 
   const supprimer = async (id) => {
     try {
-      await api.delete(`/vehicules/${id}`);
+      await suppression.mutateAsync(id);
       setConfirmSuppression(null);
-      chargerCamions();
     } catch (err) {
-      alert(err.response?.data?.message || 'Erreur lors de la suppression');
+      alert(messageErreur(err, 'Erreur lors de la suppression'));
     }
   };
 
@@ -288,15 +275,7 @@ export default function Vehicules() {
 }
 
 function DetailCamion({ camion }) {
-  const [detail,     setDetail]     = useState(null);
-  const [chargement, setChargement] = useState(true);
-
-  useEffect(() => {
-    if (!camion?.id) return;
-    api.get(`/vehicules/${camion.id}`)
-      .then(({ data }) => { setDetail(data); setChargement(false); })
-      .catch(() => setChargement(false));
-  }, [camion]);
+  const { data: detail, isPending: chargement } = useVehicule(camion?.id);
 
   if (chargement) return <div className="text-center py-4 text-muted">Chargement…</div>;
   if (!detail)    return <div className="text-center py-4 text-danger">Erreur de chargement</div>;

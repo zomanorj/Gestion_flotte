@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Wallet, Download, Pencil, AlertTriangle, Users, TrendingUp, MapPin } from 'lucide-react';
 import api, { telechargerFichier } from '../services/api';
+import { messageErreur } from '../requetes/client';
+import { useEcriture, usePaie } from '../requetes';
 
 const MOIS_FR = ['', 'Janvier','Février','Mars','Avril','Mai','Juin',
                  'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -11,38 +13,27 @@ export default function Paie() {
   const now = new Date();
   const [annee,   setAnnee]   = useState(now.getFullYear());
   const [mois,    setMois]    = useState(now.getMonth() + 1);
-  const [resume,  setResume]  = useState(null);
-  const [chargement, setChargement] = useState(false);
-  const [erreur,  setErreur]  = useState('');
+  const [erreurPdf, setErreurPdf] = useState('');
+  // Le mois précédent reste affiché pendant le chargement du suivant
+  const { data: resume = null, isPending: chargement, isError } = usePaie(annee, mois);
+  const erreur = isError ? 'Impossible de charger la paie' : erreurPdf;
 
   // Modal édition salaire
   const [modalSalaire, setModalSalaire] = useState(null); // { id, nom, prenom, salaire_base, prime_mission }
   const [formSalaire,  setFormSalaire]  = useState({ salaire_base: '', prime_mission: '' });
   const [errSalaire,   setErrSalaire]   = useState('');
-  const [savSalaire,   setSavSalaire]   = useState(false);
-
-  const charger = async () => {
-    setChargement(true); setErreur('');
-    try {
-      const { data } = await api.get(`/paie/${annee}/${mois}`);
-      setResume(data);
-    } catch {
-      setErreur('Impossible de charger la paie');
-    } finally {
-      setChargement(false);
-    }
-  };
-
-  useEffect(() => { charger(); }, [annee, mois]);
+  const salaire = useEcriture('paie', ({ id, valeurs }) => api.patch(`/paie/chauffeur/${id}/salaire`, valeurs));
+  const savSalaire = salaire.isPending;
 
   const telechargerPDF = async (fiche) => {
+    setErreurPdf('');
     try {
       await telechargerFichier(
         `/paie/chauffeur/${fiche.chauffeur_id}/${annee}/${mois}/pdf`,
         `bulletin_${fiche.nom}_${mois}_${annee}.pdf`
       );
     } catch {
-      setErreur('Impossible de télécharger le bulletin');
+      setErreurPdf('Impossible de télécharger le bulletin');
     }
   };
 
@@ -53,14 +44,13 @@ export default function Paie() {
   };
 
   const sauvegarderSalaire = async (e) => {
-    e.preventDefault(); setSavSalaire(true); setErrSalaire('');
+    e.preventDefault(); setErrSalaire('');
     try {
-      await api.patch(`/paie/chauffeur/${modalSalaire.id}/salaire`, formSalaire);
+      await salaire.mutateAsync({ id: modalSalaire.id, valeurs: formSalaire });
       setModalSalaire(null);
-      charger();
     } catch (err) {
-      setErrSalaire(err.response?.data?.message || 'Erreur');
-    } finally { setSavSalaire(false); }
+      setErrSalaire(messageErreur(err, 'Erreur'));
+    }
   };
 
   const annees = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);

@@ -160,11 +160,12 @@ git clone https://github.com/zomanorj/Gestion_flotte.git
 cd Gestion_flotte
 docker compose up --build
 # L'application est disponible sur http://localhost:8080
+# Documentation de l'API (Swagger) : http://localhost:5000/docs
 ```
 
 Au démarrage, l'API crée ou met à jour le schéma de la base (migrations versionnées) puis charge les données de démonstration si la base est vide. nginx sert le client React et relaie `/api` et `/socket.io` vers le backend. Les données MySQL et les fichiers uploadés sont gardés dans des volumes Docker (`docker compose down -v` remet tout à zéro).
 
-Variables optionnelles (dans un fichier `.env` à la racine) : `JWT_SECRET`, `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `APP_PORT` (8080 par défaut), `SEED_DEMO` (1 par défaut : données et comptes de démonstration), `ADMIN_EMAIL` / `ADMIN_PASSWORD` (premier administrateur quand `SEED_DEMO=0`).
+Variables optionnelles (dans un fichier `.env` à la racine) : `JWT_SECRET`, `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `APP_PORT` (8080 par défaut), `API_PORT` (5000 par défaut, Swagger), `SEED_DEMO` (1 par défaut : données et comptes de démonstration), `ADMIN_EMAIL` / `ADMIN_PASSWORD` (premier administrateur quand `SEED_DEMO=0`).
 
 ### Sans Docker
 

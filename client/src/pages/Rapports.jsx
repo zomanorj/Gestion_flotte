@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Loader2, FileDown, Table2 } from 'lucide-react';
-import api from '../services/api';
+import { useMissions } from '../requetes';
 
 const formatDate   = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
 const formatAriary = (n) => n ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '0';
@@ -8,9 +8,12 @@ const formatAriary = (n) => n ? new Intl.NumberFormat('fr-FR').format(Math.round
 export default function Rapports() {
   const [dateDebut,   setDateDebut]   = useState('');
   const [dateFin,     setDateFin]     = useState('');
-  const [missions,    setMissions]    = useState([]);
-  const [chargement,  setChargement]  = useState(false);
-  const [genere,      setGenere]      = useState(false);
+  // Filtres du dernier rapport demandé (null : aucun rapport encore généré)
+  const [filtres,     setFiltres]     = useState(null);
+  const rapport = useMissions(filtres ?? {}, { enabled: !!filtres });
+  const missions   = rapport.data ?? [];
+  const chargement = rapport.isFetching;
+  const genere     = !!filtres && rapport.isSuccess;
   // Bibliothèques d'export (jsPDF, xlsx : ~800 Ko) téléchargées seulement au premier export
   const [exportEnCours, setExportEnCours] = useState(null); // 'pdf' | 'excel' | null
 
@@ -25,20 +28,15 @@ export default function Rapports() {
     }
   };
 
-  const genererRapport = async () => {
-    setChargement(true);
-    try {
-      const params = { statut: 'terminee' };
-      if (dateDebut) params.debut = dateDebut;
-      if (dateFin)   params.fin   = dateFin;
-      const { data } = await api.get('/missions', { params });
-      setMissions(data);
-      setGenere(true);
-    } catch {
-      alert('Erreur lors de la génération du rapport');
-    } finally {
-      setChargement(false);
-    }
+  useEffect(() => {
+    if (rapport.isError) alert('Erreur lors de la génération du rapport');
+  }, [rapport.isError]);
+
+  const genererRapport = () => {
+    const demande = { statut: 'terminee', debut: dateDebut, fin: dateFin };
+    // Mêmes filtres : relecture forcée pour inclure les missions terminées depuis
+    if (JSON.stringify(demande) === JSON.stringify(filtres)) rapport.refetch();
+    else setFiltres(demande);
   };
 
   const totalKm   = missions.reduce((s, m) => s + parseFloat(m.distance_km   || 0), 0);

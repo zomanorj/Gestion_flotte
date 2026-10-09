@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ClipboardList, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import api from '../services/api';
+import { messageErreur } from '../requetes/client';
+import { useChauffeurs, useEcriture, useMissionsChauffeur } from '../requetes';
+import { useDiffere } from '../hooks/useDiffere';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
@@ -29,25 +32,20 @@ const FormulaireChauffeur = ({ chauffeur, onSauvegarder, onAnnuler }) => {
     statut:           chauffeur?.statut           || 'disponible'
   });
   const [erreur,  setErreur]  = useState('');
-  const [loading, setLoading] = useState(false);
+  const enregistrer = useEcriture('chauffeurs', (valeurs) =>
+    chauffeur?.id ? api.put(`/chauffeurs/${chauffeur.id}`, valeurs) : api.post('/chauffeurs', valeurs));
+  const loading = enregistrer.isPending;
 
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setErreur('');
     try {
-      if (chauffeur?.id) {
-        await api.put(`/chauffeurs/${chauffeur.id}`, form);
-      } else {
-        await api.post('/chauffeurs', form);
-      }
+      await enregistrer.mutateAsync(form);
       onSauvegarder();
     } catch (err) {
-      setErreur(err.response?.data?.message || 'Erreur lors de la sauvegarde');
-    } finally {
-      setLoading(false);
+      setErreur(messageErreur(err, 'Erreur lors de la sauvegarde'));
     }
   };
 
@@ -111,14 +109,7 @@ const FormulaireChauffeur = ({ chauffeur, onSauvegarder, onAnnuler }) => {
 };
 
 const HistoriqueMissions = ({ chauffeurId }) => {
-  const [missions,   setMissions]   = useState([]);
-  const [chargement, setChargement] = useState(true);
-
-  useEffect(() => {
-    api.get(`/chauffeurs/${chauffeurId}/missions`)
-      .then(({ data }) => { setMissions(data); setChargement(false); })
-      .catch(() => setChargement(false));
-  }, [chauffeurId]);
+  const { data: missions = [], isPending: chargement } = useMissionsChauffeur(chauffeurId);
 
   if (chargement) return <div className="text-center py-4 text-muted">Chargement…</div>;
   if (missions.length === 0) return <p className="text-center text-muted py-4">Aucune mission enregistrée</p>;
@@ -156,46 +147,32 @@ export default function Chauffeurs() {
   const { user } = useAuth();
   const isAdmin  = ['admin', 'gestionnaire'].includes(user?.role);
 
-  const [chauffeurs,  setChauffeurs]  = useState([]);
-  const [chargement,  setChargement]  = useState(true);
   const [search,      setSearch]      = useState('');
   const [modal,       setModal]       = useState({ ouvert: false, chauffeur: null, mode: 'form' });
   const [confirmSupp, setConfirmSupp] = useState(null);
 
   const [page,      setPage]      = useState(1);
-  const [paginInfo, setPaginInfo] = useState({ total: 0, pages: 1 });
   const LIMIT = 15;
 
-  const chargerChauffeurs = useCallback(async () => {
-    setChargement(true);
-    try {
-      const params = { paginate: 'true', page, limit: LIMIT };
-      if (search) params.search = search;
-      const { data } = await api.get('/chauffeurs', { params });
-      setChauffeurs(data.data);
-      setPaginInfo({ total: data.total, pages: data.pages });
-    } catch {
-      setChauffeurs([]);
-    } finally {
-      setChargement(false);
-    }
-  }, [search, page]);
+  const recherche = useDiffere(search);
+  const { data, isPending: chargement } = useChauffeurs({ page, limit: LIMIT, search: recherche }, { pagine: true });
+  const chauffeurs = data?.data ?? [];
+  const paginInfo  = { total: data?.total ?? 0, pages: data?.pages ?? 1 };
 
-  useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => { chargerChauffeurs(); }, [chargerChauffeurs]);
+  useEffect(() => { setPage(1); }, [recherche]);
 
+  const suppression = useEcriture('chauffeurs', (id) => api.delete(`/chauffeurs/${id}`));
   const supprimer = async (id) => {
     try {
-      await api.delete(`/chauffeurs/${id}`);
+      await suppression.mutateAsync(id);
       setConfirmSupp(null);
-      chargerChauffeurs();
     } catch (err) {
-      alert(err.response?.data?.message || 'Erreur lors de la suppression');
+      alert(messageErreur(err, 'Erreur lors de la suppression'));
     }
   };
 
   const fermerModal      = ()  => setModal({ ouvert: false, chauffeur: null, mode: 'form' });
-  const apresModification = () => { fermerModal(); chargerChauffeurs(); };
+  const apresModification = () => fermerModal();
 
   return (
     <div className="d-flex flex-column gap-3">

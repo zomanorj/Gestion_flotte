@@ -1,7 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Wrench, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, X, Clock } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { messageErreur } from '../requetes/client';
+import { useAlertesMaintenances, useEcriture, useMaintenances, useVehicules } from '../requetes';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
 
@@ -46,49 +48,38 @@ export default function Maintenances() {
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
-  const [maintenances, setMaintenances] = useState([]);
-  const [alertes,      setAlertes]      = useState([]);
-  const [vehicules,    setVehicules]    = useState([]);
-  const [chargement,   setChargement]   = useState(true);
-  const [erreur,       setErreur]       = useState('');
   const [filtreVehicule, setFiltreVehicule] = useState('');
   const [filtreStatut,   setFiltreStatut]   = useState('');
   const [filtrePriorite, setFiltrePriorite] = useState('');
   const [modal,        setModal]        = useState(false);
   const [entiteEditee, setEntiteEditee] = useState(null);
   const [form,         setForm]         = useState(FORM_VIDE);
-  const [sauvegarde,   setSauvegarde]   = useState(false);
   const [errModal,     setErrModal]     = useState('');
   const [modalCloture,   setModalCloture]   = useState(false);
   const [maintenanceClt, setMaintenanceClt] = useState(null);
   const [formCloture,    setFormCloture]    = useState(FORM_CLOTURE);
-  const [sauvegardeClt,  setSauvegardeClt]  = useState(false);
 
   const [page,         setPage]         = useState(1);
-  const [paginInfo,    setPaginInfo]    = useState({ total: 0, pages: 1 });
   const LIMIT = 20;
 
-  const charger = useCallback(async () => {
-    setChargement(true);
-    try {
-      const params = { paginate: 'true', page, limit: LIMIT };
-      if (filtreVehicule) params.vehicule_id = filtreVehicule;
-      if (filtreStatut)   params.statut      = filtreStatut;
-      if (filtrePriorite) params.priorite    = filtrePriorite;
-      const [resM, resA, resV] = await Promise.all([
-        api.get('/maintenances', { params }), api.get('/maintenances/alertes'), api.get('/vehicules')
-      ]);
-      setMaintenances(resM.data.data); setPaginInfo({ total: resM.data.total, pages: resM.data.pages });
-      setAlertes(resA.data); setVehicules(resV.data); setErreur('');
-    } catch {
-      setErreur('Impossible de charger les maintenances');
-    } finally {
-      setChargement(false);
-    }
-  }, [filtreVehicule, filtreStatut, filtrePriorite, page]);
+  const { data: resultat, isPending: chargement, isError } = useMaintenances(
+    { page, limit: LIMIT, vehicule_id: filtreVehicule, statut: filtreStatut, priorite: filtrePriorite },
+    { pagine: true },
+  );
+  const maintenances = resultat?.data ?? [];
+  const paginInfo = { total: resultat?.total ?? 0, pages: resultat?.pages ?? 1 };
+  const alertes   = useAlertesMaintenances().data ?? [];
+  const vehicules = useVehicules().data ?? [];
+  const erreur = isError ? 'Impossible de charger les maintenances' : '';
+
+  const enregistrement = useEcriture('maintenances', ({ id, valeurs }) =>
+    id ? api.put(`/maintenances/${id}`, valeurs) : api.post('/maintenances', valeurs));
+  const cloture = useEcriture('maintenances', ({ id, valeurs }) => api.put(`/maintenances/${id}/terminer`, valeurs));
+  const suppression = useEcriture('maintenances', (id) => api.delete(`/maintenances/${id}`));
+  const sauvegarde    = enregistrement.isPending;
+  const sauvegardeClt = cloture.isPending;
 
   useEffect(() => { setPage(1); }, [filtreVehicule, filtreStatut, filtrePriorite]);
-  useEffect(() => { charger(); }, [charger]);
 
   const ouvrirAjout = () => { setForm(FORM_VIDE); setEntiteEditee(null); setErrModal(''); setModal('ajout'); };
   const ouvrirEdition = (m) => {
@@ -101,42 +92,43 @@ export default function Maintenances() {
   const fermerModal = () => { setModal(false); setEntiteEditee(null); };
 
   const sauvegarder = async (e) => {
-    e.preventDefault(); setSauvegarde(true); setErrModal('');
+    e.preventDefault(); setErrModal('');
     try {
-      if (modal === 'ajout') await api.post('/maintenances', form);
-      else await api.put(`/maintenances/${entiteEditee.id}`, form);
-      fermerModal(); charger();
+      await enregistrement.mutateAsync({ id: modal === 'ajout' ? null : entiteEditee.id, valeurs: form });
+      fermerModal();
     } catch (err) {
-      setErrModal(err.response?.data?.message || 'Erreur lors de la sauvegarde');
-    } finally { setSauvegarde(false); }
+      setErrModal(messageErreur(err, 'Erreur lors de la sauvegarde'));
+    }
   };
 
   const ouvrirCloture = (m) => {
     setMaintenanceClt(m);
-    setFormCloture({ date_realisee: new Date().toISOString().slice(0, 10), cout_reel: '', notes: '' });
+    setFormCloture({ date_realisee: new Date().toLocaleDateString('sv-SE'), cout_reel: '', notes: '' });
     setModalCloture(true);
   };
   const fermerCloture = () => { setModalCloture(false); setMaintenanceClt(null); };
 
   const sauvegarderCloture = async (e) => {
-    e.preventDefault(); setSauvegardeClt(true);
+    e.preventDefault();
     try {
-      await api.put(`/maintenances/${maintenanceClt.id}/terminer`, formCloture);
-      fermerCloture(); charger();
+      await cloture.mutateAsync({ id: maintenanceClt.id, valeurs: formCloture });
+      fermerCloture();
     } catch (err) {
-      alert(err.response?.data?.message || 'Erreur lors de la clôture');
-    } finally { setSauvegardeClt(false); }
+      alert(messageErreur(err, 'Erreur lors de la clôture'));
+    }
   };
 
   const supprimer = async (m) => {
     const ok = await confirmer({ type: 'supprimer', element: `${TYPES[m.type]} — ${m.immatriculation}`,
       consequences: ['La maintenance planifiée sera supprimée', 'Cette action est irréversible'] });
     if (!ok) return;
-    try { await api.delete(`/maintenances/${m.id}`); charger(); }
-    catch (err) { alert(err.response?.data?.message || 'Erreur lors de la suppression'); }
+    try { await suppression.mutateAsync(m.id); }
+    catch (err) { alert(messageErreur(err, 'Erreur lors de la suppression')); }
   };
 
-  const ModalForm = ({ show }) => show ? (
+  // Fonction de rendu, pas un composant : un composant déclaré ici serait recréé à chaque rendu
+  // et les champs perdraient le focus à chaque frappe.
+  const renduFormulaire = () => (
     <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
          style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
       <div className="bg-white rounded-3 shadow-lg w-100 overflow-y-auto" style={{ maxWidth: '32rem', maxHeight: '90vh' }}>
@@ -206,7 +198,7 @@ export default function Maintenances() {
         </form>
       </div>
     </div>
-  ) : null;
+  );
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -216,7 +208,7 @@ export default function Maintenances() {
           <div className="bg-orange-100 rounded-3 p-2"><Wrench size={24} className="text-orange-600" /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Maintenances</h1>
-            <p className="text-muted small mb-0">{maintenances.length} maintenance(s) enregistrée(s)</p>
+            <p className="text-muted small mb-0">{paginInfo.total} maintenance(s) enregistrée(s)</p>
           </div>
         </div>
         {peutModifier && (
@@ -354,7 +346,7 @@ export default function Maintenances() {
                     limit={LIMIT} onChange={setPage} />
       </div>
 
-      <ModalForm show={!!modal} />
+      {modal && renduFormulaire()}
 
       {/* Modal clôturer */}
       {modalCloture && (

@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FileCheck, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, X, Download } from 'lucide-react';
 import api, { telechargerFichier } from '../services/api';
+import { messageErreur } from '../requetes/client';
+import { useAlertesDocuments, useDocuments, useEcriture, useVehicules } from '../requetes';
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
@@ -34,61 +36,46 @@ export default function Documents() {
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
-  const [docs,      setDocs]      = useState([]);
-  const [alertes,   setAlertes]   = useState([]);
-  const [vehicules, setVehicules] = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const [erreur,    setErreur]    = useState('');
+  const [erreurFichier, setErreurFichier] = useState('');
   const [filtreVehicule, setFiltreVehicule] = useState('');
   const [filtreType,     setFiltreType]     = useState('');
   const [modal,     setModal]     = useState(false);
   const [docEdite,  setDocEdite]  = useState(null);
   const [form,      setForm]      = useState(FORM_VIDE);
-  const [sauvegarde, setSauvegarde] = useState(false);
   const [errModal,  setErrModal]  = useState('');
 
   const [page,         setPage]         = useState(1);
-  const [paginInfo,    setPaginInfo]    = useState({ total: 0, pages: 1 });
   const [fichierUpload, setFichierUpload] = useState(null);
   const [uploadDocId,   setUploadDocId]   = useState(null);
   const LIMIT = 20;
 
-  const charger = useCallback(async () => {
-    setChargement(true);
-    try {
-      const params = { paginate: 'true', page, limit: LIMIT };
-      if (filtreVehicule) params.vehicule_id = filtreVehicule;
-      if (filtreType)     params.type        = filtreType;
-      const [resDocs, resAlertes, resVehicules] = await Promise.all([
-        api.get('/documents', { params }),
-        api.get('/documents/alertes'),
-        api.get('/vehicules')
-      ]);
-      setDocs(resDocs.data.data); setPaginInfo({ total: resDocs.data.total, pages: resDocs.data.pages });
-      setAlertes(resAlertes.data); setVehicules(resVehicules.data);
-      setErreur('');
-    } catch {
-      setErreur('Impossible de charger les documents');
-    } finally {
-      setChargement(false);
-    }
-  }, [filtreVehicule, filtreType, page]);
+  const liste = useDocuments({ page, limit: LIMIT, vehicule_id: filtreVehicule, type: filtreType }, { pagine: true });
+  const { data: alertes = [] }   = useAlertesDocuments();
+  const { data: vehicules = [] } = useVehicules();
+  const docs       = liste.data?.data ?? [];
+  const paginInfo  = { total: liste.data?.total ?? 0, pages: liste.data?.pages ?? 1 };
+  const chargement = liste.isPending;
+  const erreur     = liste.isError ? 'Impossible de charger les documents' : erreurFichier;
 
   useEffect(() => { setPage(1); }, [filtreVehicule, filtreType]);
-  useEffect(() => { charger(); }, [charger]);
+
+  const envoi = useEcriture('documents', ({ docId, fichier }) => {
+    const formData = new FormData();
+    formData.append('fichier', fichier);
+    return api.post(`/documents/${docId}/fichier`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  });
+  const enregistrement = useEcriture('documents', ({ id, valeurs }) =>
+    id ? api.put(`/documents/${id}`, valeurs) : api.post('/documents', valeurs));
+  const suppression = useEcriture('documents', (id) => api.delete(`/documents/${id}`));
+  const sauvegarde = enregistrement.isPending;
 
   const uploadFichier = async (docId) => {
     if (!fichierUpload) return;
-    const formData = new FormData();
-    formData.append('fichier', fichierUpload);
     try {
-      await api.post(`/documents/${docId}/fichier`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await envoi.mutateAsync({ docId, fichier: fichierUpload });
       setFichierUpload(null); setUploadDocId(null);
-      charger();
     } catch (err) {
-      alert(err.response?.data?.message || 'Erreur lors de l\'upload');
+      alert(messageErreur(err, "Erreur lors de l'upload"));
     }
   };
 
@@ -102,14 +89,13 @@ export default function Documents() {
   const fermerModal = () => { setModal(false); setDocEdite(null); };
 
   const sauvegarder = async (e) => {
-    e.preventDefault(); setSauvegarde(true); setErrModal('');
+    e.preventDefault(); setErrModal('');
     try {
-      if (modal === 'ajout') await api.post('/documents', form);
-      else await api.put(`/documents/${docEdite.id}`, form);
-      fermerModal(); charger();
+      await enregistrement.mutateAsync({ id: modal === 'ajout' ? null : docEdite.id, valeurs: form });
+      fermerModal();
     } catch (err) {
-      setErrModal(err.response?.data?.message || 'Erreur lors de la sauvegarde');
-    } finally { setSauvegarde(false); }
+      setErrModal(messageErreur(err, 'Erreur lors de la sauvegarde'));
+    }
   };
 
   const telechargerDocument = async (doc) => {
@@ -117,7 +103,7 @@ export default function Documents() {
       // fichier_url = "/uploads/documents/…", servi par l'API sous /api/uploads/…
       await telechargerFichier(doc.fichier_url, doc.fichier_nom || doc.fichier_url.split('/').pop());
     } catch {
-      setErreur('Impossible de télécharger le fichier');
+      setErreurFichier('Impossible de télécharger le fichier');
     }
   };
 
@@ -125,8 +111,8 @@ export default function Documents() {
     const ok = await confirmer({ type: 'supprimer', element: `${TYPES[doc.type]} — ${doc.immatriculation}`,
       consequences: ['Le document sera définitivement supprimé', 'Cette action est irréversible'] });
     if (!ok) return;
-    try { await api.delete(`/documents/${doc.id}`); charger(); }
-    catch (err) { alert(err.response?.data?.message || 'Erreur lors de la suppression'); }
+    try { await suppression.mutateAsync(doc.id); }
+    catch (err) { alert(messageErreur(err, 'Erreur lors de la suppression')); }
   };
 
   return (
@@ -137,7 +123,7 @@ export default function Documents() {
           <div className="bg-blue-100 rounded-3 p-2"><FileCheck size={24} className="text-blue-600" /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Documents</h1>
-            <p className="text-muted small mb-0">{docs.length} document(s) enregistré(s)</p>
+            <p className="text-muted small mb-0">{paginInfo.total} document(s) enregistré(s)</p>
           </div>
         </div>
         {peutModifier && (

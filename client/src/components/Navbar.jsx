@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Bell, CheckCheck, AlertTriangle, Wrench, FileText, MapPin, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api, { creerSocket } from '../services/api';
+import { useEcriture, useNotifications, useRafraichir } from '../requetes';
 
 const TITRES = {
   '/':             'Tableau de bord — Flotte de Camions',
@@ -44,27 +45,30 @@ export default function Navbar() {
   const { pathname } = useLocation();
   const { user }     = useAuth();
 
-  const [notifs,    setNotifs]   = useState([]);
-  const [nonLues,   setNonLues]  = useState(0);
   const [ouvert,    setOuvert]   = useState(false);
   const dropdownRef = useRef(null);
   const socketRef   = useRef(null);
 
-  const chargerNotifs = async () => {
-    try {
-      const { data } = await api.get('/notifications');
-      setNotifs(data.notifications || []);
-      setNonLues(data.non_lues || 0);
-    } catch { /* silencieux */ }
-  };
+  const { data } = useNotifications();
+  const notifs  = data?.notifications ?? [];
+  const nonLues = data?.non_lues ?? 0;
+  const rafraichir = useRafraichir();
+
+  const lire      = useEcriture('notifications', (id) => api.patch(`/notifications/${id}/read`));
+  const toutLire  = useEcriture('notifications', () => api.patch('/notifications/read-all'));
+  const masquer   = useEcriture('notifications', (id) => api.delete(`/notifications/${id}`));
 
   useEffect(() => {
-    chargerNotifs();
-
+    // Événements temps réel : les données concernées sont rechargées depuis l'API, si bien
+    // que toutes les pages ouvertes et les badges restent à jour, y compris quand la
+    // modification vient d'un autre utilisateur.
     socketRef.current = creerSocket();
-    socketRef.current.on('notification:nouvelle', (notif) => {
-      setNotifs(prev => [notif, ...prev].slice(0, 50));
-      setNonLues(prev => prev + 1);
+    socketRef.current.on('notification:nouvelle', () => {
+      rafraichir('notifications', 'documents', 'maintenances', 'vehicules');
+    });
+    socketRef.current.on('mission:nouvelle', () => rafraichir('missions', 'planning', 'tableau-de-bord'));
+    socketRef.current.on('mission:statut', () => {
+      rafraichir('missions', 'planning', 'vehicules', 'chauffeurs', 'tableau-de-bord', 'paie', 'simulations');
     });
 
     const handleOutside = (e) => {
@@ -78,29 +82,15 @@ export default function Navbar() {
     };
   }, []);
 
-  const marquerLue = async (notif) => {
-    if (notif.est_lue) return;
-    try {
-      await api.patch(`/notifications/${notif.id}/read`);
-      setNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, est_lue: true } : n));
-      setNonLues(prev => Math.max(0, prev - 1));
-    } catch { /* silencieux */ }
+  const marquerLue = (notif) => {
+    if (!notif.est_lue) lire.mutate(notif.id);
   };
 
-  const marquerToutesLues = async () => {
-    try {
-      await api.patch('/notifications/read-all');
-      setNotifs(prev => prev.map(n => ({ ...n, est_lue: true })));
-      setNonLues(0);
-    } catch { /* silencieux */ }
-  };
+  const marquerToutesLues = () => toutLire.mutate();
 
-  const supprimerNotif = async (e, id) => {
+  const supprimerNotif = (e, id) => {
     e.stopPropagation();
-    try {
-      await api.delete(`/notifications/${id}`);
-      setNotifs(prev => prev.filter(n => n.id !== id));
-    } catch { /* silencieux */ }
+    masquer.mutate(id);
   };
 
   return (

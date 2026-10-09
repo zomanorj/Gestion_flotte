@@ -5,7 +5,7 @@ import timeGridPlugin   from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Calendar, X, MapPin, Truck, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { usePlanning } from '../requetes';
 
 const STATUT_CFG = {
   planifiee: { label: 'Planifiée',  cls: 'bg-yellow-100 text-yellow-700' },
@@ -27,10 +27,9 @@ export default function Planning() {
   const [popup,    setPopup]    = useState(null);
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
 
-  const chargerEvenements = async () => {
-    const { data } = await api.get('/missions/planning');
-    return data;
-  };
+  // Missions mises en cache : le calendrier se met à jour après une modification ou un
+  // changement de statut reçu en temps réel
+  const { data: evenements = [] } = usePlanning();
 
   const onEventClick = (info) => {
     const rect = info.el.getBoundingClientRect();
@@ -75,7 +74,7 @@ export default function Planning() {
             locale="fr"
             headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
             buttonText={{ today: "Aujourd'hui", month: 'Mois', week: 'Semaine', day: 'Jour' }}
-            events={chargerEvenements}
+            events={evenements}
             eventClick={onEventClick}
             dateClick={() => navigate('/missions')}
             eventDisplay="block"

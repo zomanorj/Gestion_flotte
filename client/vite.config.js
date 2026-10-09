@@ -10,6 +10,7 @@ const GROUPES = {
   // Partagés par plusieurs pages : un fichier commun plutôt qu'hébergés dans la première page qui les utilise
   'graphiques':  ['chart.js', 'react-chartjs-2', '@kurkle/color'],
   'icones':      ['lucide-react'],
+  'donnees':     ['@tanstack/react-query', '@tanstack/query-core'],
 };
 
 function decouperEnFichiers(id) {

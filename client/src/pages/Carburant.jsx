@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Fuel, Plus, Pencil, Trash2, AlertTriangle, X, Droplets, DollarSign, Gauge, TrendingDown } from 'lucide-react';
 import api from '../services/api';
+import { messageErreur } from '../requetes/client';
+import { useEcriture, useParametres, usePleins, useStatsCarburant, useVehicules } from '../requetes';
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
@@ -34,49 +36,40 @@ export default function Carburant() {
   const peutModifier = user?.role === 'admin' || user?.role === 'gestionnaire';
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
-  const [pleins,    setPleins]    = useState([]);
   const [page,      setPage]      = useState(1);
-  const [paginInfo, setPaginInfo] = useState({ total: 0, pages: 1 });
   const LIMIT = 20;
-  const [stats,     setStats]     = useState(null);
-  const [vehicules, setVehicules] = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const [erreur,    setErreur]    = useState('');
   const [filtreVehicule, setFiltreVehicule] = useState('');
   const [filtreDebut,    setFiltreDebut]    = useState('');
   const [filtreFin,      setFiltreFin]      = useState('');
   const [modal,      setModal]      = useState(false);
   const [pleinEdite, setPleinEdite] = useState(null);
   const [form,       setForm]       = useState(FORM_VIDE);
-  const [sauvegarde, setSauvegarde] = useState(false);
   const [errModal,   setErrModal]   = useState('');
 
-  const charger = useCallback(async () => {
-    setChargement(true);
-    try {
-      const params = { paginate: 'true', page, limit: LIMIT };
-      if (filtreVehicule) params.vehicule_id = filtreVehicule;
-      if (filtreDebut)    params.debut = filtreDebut;
-      if (filtreFin)      params.fin   = filtreFin;
-      const [resPleins, resStats, resVehicules] = await Promise.all([
-        api.get('/carburant', { params }),
-        api.get('/carburant/stats'),
-        api.get('/vehicules')
-      ]);
-      setPleins(resPleins.data.data); setPaginInfo({ total: resPleins.data.total, pages: resPleins.data.pages });
-      setStats(resStats.data); setVehicules(resVehicules.data);
-      setErreur('');
-    } catch {
-      setErreur('Impossible de charger les données carburant');
-    } finally {
-      setChargement(false);
-    }
-  }, [filtreVehicule, filtreDebut, filtreFin, page]);
+  const liste = usePleins({ page, limit: LIMIT, vehicule_id: filtreVehicule, debut: filtreDebut, fin: filtreFin },
+                          { pagine: true });
+  const { data: stats = null }   = useStatsCarburant();
+  const { data: vehicules = [] } = useVehicules();
+  // Prix proposé pour un nouveau plein : le prix du gasoil en vigueur (paramètres, gestion uniquement)
+  const { data: parametres } = useParametres({ enabled: peutModifier });
+  const prixEnVigueur = parametres?.find(p => p.cle === 'prix_litre_gasoil')?.valeur;
+
+  const pleins     = liste.data?.data ?? [];
+  const paginInfo  = { total: liste.data?.total ?? 0, pages: liste.data?.pages ?? 1 };
+  const chargement = liste.isPending;
+  const erreur     = liste.isError ? 'Impossible de charger les données carburant' : '';
 
   useEffect(() => { setPage(1); }, [filtreVehicule, filtreDebut, filtreFin]);
-  useEffect(() => { charger(); }, [charger]);
 
-  const ouvrirAjout = () => { setForm(FORM_VIDE); setPleinEdite(null); setErrModal(''); setModal('ajout'); };
+  const enregistrement = useEcriture('carburant', ({ id, valeurs }) =>
+    id ? api.put(`/carburant/${id}`, valeurs) : api.post('/carburant', valeurs));
+  const suppression = useEcriture('carburant', (id) => api.delete(`/carburant/${id}`));
+  const sauvegarde = enregistrement.isPending;
+
+  const ouvrirAjout = () => {
+    setForm({ ...FORM_VIDE, prix_litre: prixEnVigueur != null ? String(prixEnVigueur) : FORM_VIDE.prix_litre });
+    setPleinEdite(null); setErrModal(''); setModal('ajout');
+  };
   const ouvrirEdition = (plein) => {
     setForm({
       vehicule_id: plein.vehicule_id, date_plein: plein.date_plein?.slice(0, 10) || '',
@@ -91,14 +84,13 @@ export default function Carburant() {
   const fermerModal = () => { setModal(false); setPleinEdite(null); };
 
   const sauvegarder = async (e) => {
-    e.preventDefault(); setSauvegarde(true); setErrModal('');
+    e.preventDefault(); setErrModal('');
     try {
-      if (modal === 'ajout') await api.post('/carburant', form);
-      else await api.put(`/carburant/${pleinEdite.id}`, form);
-      fermerModal(); charger();
+      await enregistrement.mutateAsync({ id: modal === 'ajout' ? null : pleinEdite.id, valeurs: form });
+      fermerModal();
     } catch (err) {
-      setErrModal(err.response?.data?.message || 'Erreur lors de la sauvegarde');
-    } finally { setSauvegarde(false); }
+      setErrModal(messageErreur(err, 'Erreur lors de la sauvegarde'));
+    }
   };
 
   const supprimer = async (plein) => {
@@ -108,8 +100,8 @@ export default function Carburant() {
       consequences: ['Cette action est irréversible', `${plein.litres} L — ${fmtMontant(plein.cout_total)}`]
     });
     if (!ok) return;
-    try { await api.delete(`/carburant/${plein.id}`); charger(); }
-    catch (err) { alert(err.response?.data?.message || 'Erreur lors de la suppression'); }
+    try { await suppression.mutateAsync(plein.id); }
+    catch (err) { alert(messageErreur(err, 'Erreur lors de la suppression')); }
   };
 
   return (

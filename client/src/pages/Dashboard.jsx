@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
@@ -7,7 +7,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { Truck, MapPin, Calendar, AlertTriangle, CheckCircle2, Map, FileCheck } from 'lucide-react';
-import api from '../services/api';
+import { useTableauDeBord } from '../requetes';
 import StatCard    from '../components/StatCard';
 import AlerteBadge from '../components/AlerteBadge';
 
@@ -17,22 +17,8 @@ const formatAriary = (n) =>
   new Intl.NumberFormat('fr-MG').format(Math.round(n)) + ' Ar';
 
 export default function Dashboard() {
-  const [stats,      setStats]      = useState(null);
-  const [chargement, setChargement] = useState(true);
-  const [erreur,     setErreur]     = useState('');
-
-  useEffect(() => {
-    const controller = new AbortController();
-    api.get('/dashboard/stats', { signal: controller.signal })
-      .then(({ data }) => { setStats(data); setChargement(false); })
-      .catch((err) => {
-        if (err.name !== 'CanceledError') {
-          setErreur('Impossible de charger les statistiques');
-          setChargement(false);
-        }
-      });
-    return () => controller.abort();
-  }, []);
+  const { data: stats, isPending: chargement, isError } = useTableauDeBord();
+  const erreur = isError ? 'Impossible de charger les statistiques' : '';
 
   if (chargement) {
     return (

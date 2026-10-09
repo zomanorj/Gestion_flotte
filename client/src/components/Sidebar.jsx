@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Truck, LayoutDashboard, Users, MapPin,
@@ -6,7 +6,7 @@ import {
   Wallet, UserCog, SlidersHorizontal
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import { useAlertesDocuments, useAlertesMaintenances, useAlertesVehicules } from '../requetes';
 import { precharger } from '../pages/registre';
 
 const initiales = (nom) =>
@@ -36,15 +36,10 @@ const NavItem = ({ to, Icon, label, badge }) => (
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate          = useNavigate();
-  const [nbAlertes,        setNbAlertes]        = useState(0);
-  const [nbDocsExpires,    setNbDocsExpires]    = useState(0);
-  const [nbMaintUrgentes,  setNbMaintUrgentes]  = useState(0);
-
-  useEffect(() => {
-    api.get('/vehicules/alertes').then(({ data }) => setNbAlertes(data.length)).catch(() => {});
-    api.get('/documents/alertes').then(({ data }) => setNbDocsExpires(data.length)).catch(() => {});
-    api.get('/maintenances/alertes').then(({ data }) => setNbMaintUrgentes(data.length)).catch(() => {});
-  }, []);
+  // Badges d'alerte : partagés avec les pages via le cache, rafraîchis après chaque modification
+  const nbAlertes       = useAlertesVehicules().data?.length ?? 0;
+  const nbDocsExpires   = useAlertesDocuments().data?.length ?? 0;
+  const nbMaintUrgentes = useAlertesMaintenances().data?.length ?? 0;
 
   const handleLogout = () => {
     logout();

@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SlidersHorizontal, Save, RotateCcw, History, AlertTriangle, Lock } from 'lucide-react';
 import api from '../services/api';
+import { messageErreur } from '../requetes/client';
+import { useEcriture, useHistoriqueParametres, useParametres } from '../requetes';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 
@@ -15,38 +17,24 @@ export default function Parametres() {
   const estAdmin = user?.role === 'admin';
   const { ajouterToast, ToastContainer } = useToast();
 
-  const [parametres,  setParametres]  = useState([]);
   const [saisies,     setSaisies]     = useState({}); // { cle: texte saisi } pour les champs modifiés
-  const [chargement,  setChargement]  = useState(true);
-  const [erreur,      setErreur]      = useState('');
-  const [sauvegarde,  setSauvegarde]  = useState(false);
-  const [historique,  setHistorique]  = useState(null); // null : pas encore chargé
+  const [voirHistorique, setVoirHistorique] = useState(false);
 
-  const appliquer = (liste) => { setParametres(liste); setSaisies({}); };
+  const { data: parametres = [], isPending: chargement, isError } = useParametres();
+  const erreur = isError ? 'Impossible de charger les paramètres' : '';
+  const hist = useHistoriqueParametres(voirHistorique);
+  const historique = voirHistorique ? hist.data ?? null : null; // null : pas encore chargé
 
-  const charger = useCallback(async () => {
-    setChargement(true);
-    try {
-      const { data } = await api.get('/parametres');
-      appliquer(data);
-      setErreur('');
-    } catch {
-      setErreur('Impossible de charger les paramètres');
-    } finally {
-      setChargement(false);
-    }
-  }, []);
+  useEffect(() => {
+    if (!hist.isError) return;
+    ajouterToast('Erreur', "Impossible de charger l'historique", true);
+    setVoirHistorique(false);
+  }, [hist.isError]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { charger(); }, [charger]);
-
-  const chargerHistorique = async () => {
-    try {
-      const { data } = await api.get('/parametres/historique');
-      setHistorique(data);
-    } catch {
-      ajouterToast('Erreur', "Impossible de charger l'historique", true);
-    }
-  };
+  // L'écriture rafraîchit aussi l'historique et les données calculées avec ces paramètres
+  const modification = useEcriture('parametres', (valeurs) => api.put('/parametres', { valeurs }));
+  const retablissement = useEcriture('parametres', (cle) => api.delete(`/parametres/${cle}`));
+  const sauvegarde = modification.isPending;
 
   // Champs dont la saisie diffère de la valeur en vigueur
   const modifications = Object.fromEntries(
@@ -57,27 +45,22 @@ export default function Parametres() {
   const nbModifications = Object.keys(modifications).length;
 
   const enregistrer = async () => {
-    setSauvegarde(true);
     try {
-      const { data } = await api.put('/parametres', { valeurs: modifications });
-      appliquer(data);
+      await modification.mutateAsync(modifications);
+      setSaisies({});
       ajouterToast('Paramètres enregistrés', `${nbModifications} valeur(s) modifiée(s)`);
-      if (historique) chargerHistorique();
     } catch (err) {
-      ajouterToast('Enregistrement refusé', err.response?.data?.message || 'Erreur', true);
-    } finally {
-      setSauvegarde(false);
+      ajouterToast('Enregistrement refusé', messageErreur(err, 'Erreur'), true);
     }
   };
 
   const reinitialiser = async (p) => {
     try {
-      const { data } = await api.delete(`/parametres/${p.cle}`);
-      appliquer(data);
+      await retablissement.mutateAsync(p.cle);
+      setSaisies(({ [p.cle]: _, ...autres }) => autres);
       ajouterToast('Valeur par défaut rétablie', `${p.libelle} : ${fmtNombre(p.defaut)} ${p.unite}`);
-      if (historique) chargerHistorique();
     } catch (err) {
-      ajouterToast('Erreur', err.response?.data?.message || 'Erreur', true);
+      ajouterToast('Erreur', messageErreur(err, 'Erreur'), true);
     }
   };
 
@@ -176,8 +159,8 @@ export default function Parametres() {
         <div className="card border rounded-3 overflow-hidden">
           <div className="card-header bg-light d-flex align-items-center justify-content-between">
             <span className="fw-semibold d-flex align-items-center gap-2"><History size={16} /> Historique</span>
-            {historique === null && (
-              <button onClick={chargerHistorique} className="btn btn-sm btn-outline-primary">Afficher</button>
+            {!voirHistorique && (
+              <button onClick={() => setVoirHistorique(true)} className="btn btn-sm btn-outline-primary">Afficher</button>
             )}
           </div>
           {historique !== null && (

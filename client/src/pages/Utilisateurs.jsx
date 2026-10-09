@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { Users, Plus, Pencil, Trash2, AlertTriangle, KeyRound, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { messageErreur } from '../requetes/client';
+import { useEcriture, useUtilisateurs } from '../requetes';
 import { useConfirm } from '../components/ConfirmModal';
 
 const ROLES = { admin: 'Admin', gestionnaire: 'Gestionnaire', chauffeur: 'Chauffeur' };
@@ -17,15 +20,13 @@ export default function Utilisateurs() {
   const { user: moi, majToken } = useAuth();
   const { confirmer, ConfirmModalComponent } = useConfirm();
 
-  const [utilisateurs, setUtilisateurs] = useState([]);
-  const [chargement,   setChargement]   = useState(true);
-  const [erreur,       setErreur]       = useState('');
+  const { data: utilisateurs = [], isPending: chargement, isError } = useUtilisateurs();
+  const erreur = isError ? 'Impossible de charger les utilisateurs' : '';
 
   // Modal CRUD
   const [modal,      setModal]      = useState(false);
   const [userEdite,  setUserEdite]  = useState(null);
   const [form,       setForm]       = useState(FORM_VIDE);
-  const [sauvegarde, setSauvegarde] = useState(false);
   const [errModal,   setErrModal]   = useState('');
 
   // Modal changement de mot de passe
@@ -33,20 +34,14 @@ export default function Utilisateurs() {
   const [nouveauMdp, setNouveauMdp] = useState('');
   const [errMdp,     setErrMdp]     = useState('');
 
-  const charger = useCallback(async () => {
-    setChargement(true);
-    try {
-      const { data } = await api.get('/users');
-      setUtilisateurs(data);
-      setErreur('');
-    } catch {
-      setErreur('Impossible de charger les utilisateurs');
-    } finally {
-      setChargement(false);
-    }
-  }, []);
-
-  useEffect(() => { charger(); }, [charger]);
+  const enregistrement = useEcriture('utilisateurs', ({ id, valeurs }) =>
+    id ? api.put(`/users/${id}`, valeurs) : api.post('/users', valeurs));
+  const sauvegarde = enregistrement.isPending;
+  // Sans rafraîchissement : l'API révoque les sessions du compte, une relecture avec l'ancien
+  // token avant majToken() déconnecterait l'utilisateur qui change son propre mot de passe.
+  const motDePasse = useMutation({
+    mutationFn: ({ id, password }) => api.patch(`/users/${id}/password`, { password }).then(({ data }) => data),
+  });
 
   const ouvrirAjout = () => { setForm(FORM_VIDE); setUserEdite(null); setErrModal(''); setModal(true); };
   const ouvrirEdition = (u) => {
@@ -56,19 +51,15 @@ export default function Utilisateurs() {
   const fermerModal = () => { setModal(false); setUserEdite(null); };
 
   const sauvegarder = async (e) => {
-    e.preventDefault(); setSauvegarde(true); setErrModal('');
+    e.preventDefault(); setErrModal('');
     try {
-      const payload = { nom: form.nom, email: form.email, role: form.role };
-      if (!userEdite) {
-        payload.password = form.password;
-        await api.post('/users', payload);
-      } else {
-        await api.put(`/users/${userEdite.id}`, payload);
-      }
-      fermerModal(); charger();
+      const valeurs = { nom: form.nom, email: form.email, role: form.role };
+      if (!userEdite) valeurs.password = form.password;
+      await enregistrement.mutateAsync({ id: userEdite?.id, valeurs });
+      fermerModal();
     } catch (err) {
-      setErrModal(err.response?.data?.message || 'Erreur lors de la sauvegarde');
-    } finally { setSauvegarde(false); }
+      setErrModal(messageErreur(err, 'Erreur lors de la sauvegarde'));
+    }
   };
 
   const toggleActif = async (u) => {
@@ -82,10 +73,9 @@ export default function Utilisateurs() {
     });
     if (!ok) return;
     try {
-      await api.put(`/users/${u.id}`, { is_active: u.is_active ? 0 : 1 });
-      charger();
+      await enregistrement.mutateAsync({ id: u.id, valeurs: { is_active: u.is_active ? 0 : 1 } });
     } catch (err) {
-      alert(err.response?.data?.message || 'Erreur');
+      alert(messageErreur(err, 'Erreur'));
     }
   };
 
@@ -93,12 +83,12 @@ export default function Utilisateurs() {
     e.preventDefault();
     setErrMdp('');
     try {
-      const { data } = await api.patch(`/users/${modalMdp}/password`, { password: nouveauMdp });
+      const data = await motDePasse.mutateAsync({ id: modalMdp, password: nouveauMdp });
       // Les sessions du compte sont révoquées : pour son propre compte, l'API renvoie un nouveau token
       if (data.token) majToken(data.token);
       setModalMdp(null); setNouveauMdp('');
     } catch (err) {
-      setErrMdp(err.response?.data?.message || 'Erreur');
+      setErrMdp(messageErreur(err, 'Erreur'));
     }
   };
 

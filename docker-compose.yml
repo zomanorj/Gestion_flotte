@@ -38,6 +38,10 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       # nginx est le seul proxy devant l'API sur le réseau Docker
       FORWARDED_ALLOW_IPS: "*"
+    # Accès direct à l'API pour la documentation Swagger (http://localhost:5000/docs).
+    # Limité à la machine locale : les autres postes passent par nginx.
+    ports:
+      - "127.0.0.1:${API_PORT:-5000}:5000"
     volumes:
       - uploads:/app/uploads
     depends_on:

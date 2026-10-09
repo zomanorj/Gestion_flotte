@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import api from '../services/api';
+import { clientRequetes } from '../requetes/client';
 
 const AuthContext = createContext(null);
 
@@ -22,6 +23,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const { data } = await api.post('/auth/login', { email, password });
+      // Aucune donnée d'un compte précédent ne doit rester en cache
+      clientRequetes.clear();
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('token', data.token);
@@ -40,6 +43,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    clientRequetes.clear();
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
