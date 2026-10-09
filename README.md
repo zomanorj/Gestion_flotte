@@ -109,19 +109,18 @@ flotte-app/
 │   ├── requirements.txt
 │   ├── Procfile                       # Commande de démarrage (Railway)
 │   └── app/
-│       ├── db.py                      # Pool aiomysql (MYSQL_URL ou variables DB_*)
+│       ├── db.py                      # Pool aiomysql, transactions (MYSQL_URL ou variables DB_*)
 │       ├── migrations.py              # Migrations idempotentes appliquées au démarrage
-│       ├── auth.py                    # verifier_token + verifier_role (JWT)
-│       ├── erreurs.py                 # Format d'erreur { message } attendu par le client
-│       ├── socket.py                  # Serveur Socket.io partagé
-│       ├── routers/                   # Un router par module (vehicules, missions, paie…)
-│       └── services/
-│           ├── simulation.py          # Simulation GPS temps réel (tâches asyncio)
-│           ├── route.py               # Calcul d'itinéraire OSRM
-│           ├── evenement.py           # Événements aléatoires (pauses, incidents)
-│           ├── paie.py                # Calcul salaire, primes, CNAPS + bulletin PDF
-│           ├── bon_livraison.py       # Bon de livraison PDF
-│           └── notifications.py       # Notifications + vérification périodique des alertes
+│       ├── auth.py                    # JWT, vérification du compte à chaque requête, rôles
+│       ├── exceptions.py              # Exceptions métier (introuvable, conflit, accès refusé…)
+│       ├── erreurs.py                 # Traduction en réponses HTTP { message }
+│       ├── schemas/                   # Modèles Pydantic des requêtes et réponses
+│       ├── routers/                   # Couche HTTP : un router par module, sans SQL
+│       ├── services/                  # Règles métier : missions, paie, documents, comptes…
+│       ├── repositories/              # Accès aux données : uniquement du SQL
+│       ├── pdf/                       # Rendu des bons de livraison et bulletins de paie
+│       ├── socket.py                  # Socket.io authentifié (rooms par utilisateur et rôle)
+│       └── stockage.py                # Fichiers uploadés : disque ou S3
 │
 └── client/                            # Application React 18 + Vite + Bootstrap 5
     └── src/
@@ -256,7 +255,7 @@ Toutes les entrées sont validées (types, valeurs autorisées, longueurs, cohé
 
 Le backend est couvert par plus de 300 tests (`server/tests/`) :
 
-- **unitaires** : règles métier (cycle de vie des missions, paie, simulation), sécurité (limitation des connexions, stockage), utilitaires ;
+- **unitaires** : règles métier testées sans base de données (cycle de vie des missions, paie, coûts, confidentialité des salaires), sécurité, schémas, et règles d'architecture (un router ne contient pas de SQL, un service ignore HTTP) ;
 - **intégration** : l'API complète appelée en HTTP et Socket.io sur une base MySQL jetable initialisée avec les scripts du dépôt (droits par rôle, chevauchement des missions y compris en concurrence, révocation des sessions, notifications, fichiers, paie).
 
 ```bash

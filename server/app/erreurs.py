@@ -1,5 +1,6 @@
-# Gestion des erreurs — toutes les réponses d'erreur ont le format { "message": ... }
+# Traduction des erreurs en réponses HTTP — toutes ont le format { "message": ... }
 # (plus "erreurs": [{champ, message}] pour les erreurs de validation), lu tel quel par le client React.
+# Les services lèvent des exceptions métier (app/exceptions.py) ; leur code HTTP est décidé ici.
 import traceback
 
 from fastapi import FastAPI, Request
@@ -7,15 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-
-class ErreurApi(Exception):
-    """Erreur métier renvoyée telle quelle au client."""
-
-    def __init__(self, status: int, message: str, headers: dict | None = None):
-        self.status = status
-        self.message = message
-        self.headers = headers
-
+from .exceptions import ErreurMetier
 
 ORIGINES = ("body", "query", "path", "header")
 
@@ -68,9 +61,9 @@ def message_validation(erreur: dict) -> str:
 
 
 def installer_gestionnaires(app: FastAPI) -> None:
-    @app.exception_handler(ErreurApi)
-    async def _erreur_api(_req: Request, exc: ErreurApi):
-        return JSONResponse(status_code=exc.status, content={"message": exc.message}, headers=exc.headers)
+    @app.exception_handler(ErreurMetier)
+    async def _erreur_metier(_req: Request, exc: ErreurMetier):
+        return JSONResponse(status_code=exc.status, content={"message": exc.message}, headers=exc.entetes)
 
     @app.exception_handler(StarletteHTTPException)
     async def _http(_req: Request, exc: StarletteHTTPException):

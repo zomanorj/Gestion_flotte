@@ -26,7 +26,8 @@ from fastapi.responses import JSONResponse, Response
 
 from app import db
 from app.auth import Connecte
-from app.erreurs import ErreurApi, installer_gestionnaires
+from app.erreurs import installer_gestionnaires
+from app.exceptions import Introuvable
 from app.migrations import appliquer_migrations, initialiser_admin
 from app.routers import (
     auth,
@@ -157,7 +158,7 @@ async def fichier_uploade(chemin: str):
     try:
         contenu = await stockage.lire(chemin)
     except FichierIntrouvable:
-        raise ErreurApi(404, "Fichier introuvable") from None
+        raise Introuvable("Fichier introuvable") from None
     return Response(
         content=contenu,
         media_type=mimetypes.guess_type(chemin)[0] or "application/octet-stream",

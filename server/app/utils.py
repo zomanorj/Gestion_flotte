@@ -1,7 +1,8 @@
-# Utilitaires des routers : pagination, routeur, petites aides SQL
+# Utilitaires des routers : pagination et routeur
 from fastapi import APIRouter, Query
+from fastapi.responses import Response
 
-from .erreurs import ErreurApi
+from .repositories.base import Plage, Resultat
 
 
 class Pagination:
@@ -22,6 +23,15 @@ class Pagination:
         self.page = page
         self.limit = min(limit, self.LIMITE_MAX)
         self.offset = (page - 1) * self.limit
+
+    @property
+    def plage(self) -> Plage | None:
+        """Fenêtre à demander au service (None : liste complète)."""
+        return Plage(self.limit, self.offset) if self.actif else None
+
+    def formater(self, resultat: Resultat) -> list[dict] | dict:
+        """Tableau simple, ou {data, total, page, pages, limit} si la pagination est active."""
+        return self.reponse(resultat.lignes, resultat.total) if self.actif else resultat.lignes
 
     def reponse(self, rows: list, total) -> dict:
         total = int(total)
@@ -47,16 +57,9 @@ class Routeur(APIRouter):
         return super().add_api_route(path, endpoint, **kwargs)
 
 
-def ligne_ou_404(ligne: dict | None, message: str) -> dict:
-    if not ligne:
-        raise ErreurApi(404, message)
-    return ligne
+REPONSE_PDF = {200: {"content": {"application/pdf": {}}, "description": "Fichier PDF"}}
 
 
-def clause_set(champs: dict) -> tuple[str, list]:
-    """
-    "col1 = %s, col2 = %s" et ses valeurs, pour un UPDATE partiel.
-    Les clés doivent venir des champs d'un schéma Pydantic (jamais directement de la requête) :
-    ce sont des noms de colonnes insérés dans le SQL.
-    """
-    return ", ".join(f"{colonne} = %s" for colonne in champs), list(champs.values())
+def reponse_pdf(contenu: bytes, nom_fichier: str) -> Response:
+    return Response(content=contenu, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{nom_fichier}"'})

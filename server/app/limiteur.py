@@ -9,7 +9,7 @@
 import time
 from collections import deque
 
-from .erreurs import ErreurApi
+from .exceptions import TropDeTentatives
 
 FENETRE_SECONDES  = 15 * 60
 MAX_ECHECS_EMAIL  = 5
@@ -39,10 +39,9 @@ class LimiteurConnexion:
             if len(file) >= maximum:
                 attente = int(file[0] + FENETRE_SECONDES - maintenant) + 1
                 minutes = -(-attente // 60)
-                raise ErreurApi(
-                    429,
+                raise TropDeTentatives(
                     f"Trop de tentatives de connexion. Réessayez dans {minutes} minute(s).",
-                    headers={"Retry-After": str(attente)},
+                    entetes={"Retry-After": str(attente)},
                 )
 
     def enregistrer_echec(self, ip: str, email: str) -> None:

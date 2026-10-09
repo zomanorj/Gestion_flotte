@@ -2,9 +2,13 @@
 
 ```
 tests/
-├── unit/          Règles métier et utilitaires purs : ni base ni réseau (< 1 s)
+├── unit/          Sans base ni réseau (< 2 s) : règles métier, services avec repositories simulés,
+│                  schémas, sécurité, et règles d'architecture entre couches
 └── integration/   L'API complète, appelée en HTTP et en Socket.io
 ```
+
+`unit/test_architecture.py` analyse les imports du code : un router qui importe `db` ou un
+repository, un service qui importe FastAPI, ou du SQL hors des repositories fait échouer la CI.
 
 Les tests d'intégration créent une base MySQL jetable, y exécutent les scripts du dépôt
 (`database/schema.sql`, migrations, `seed_demo.sql`), lancent l'API dans un sous-processus,

@@ -5,7 +5,7 @@ import pytest
 
 from app import limiteur as module_limiteur
 from app.auth import hacher_mdp, verifier_mdp
-from app.erreurs import ErreurApi
+from app.exceptions import TropDeTentatives
 from app.limiteur import MAX_ECHECS_EMAIL, MAX_ECHECS_IP, LimiteurConnexion
 from app.stockage import FichierIntrouvable, StockageLocal, cle_depuis_url
 
@@ -31,10 +31,10 @@ class TestLimiteurConnexion:
         for _ in range(MAX_ECHECS_EMAIL):
             lim.verifier("1.1.1.1", "a@x.mg")
             lim.enregistrer_echec("1.1.1.1", "a@x.mg")
-        with pytest.raises(ErreurApi) as exc:
+        with pytest.raises(TropDeTentatives) as exc:
             lim.verifier("2.2.2.2", "a@x.mg")  # même compte, autre IP : toujours bloqué
         assert exc.value.status == 429
-        assert int(exc.value.headers["Retry-After"]) > 0
+        assert int(exc.value.entetes["Retry-After"]) > 0
 
     def test_autre_email_non_bloque(self, horloge):
         lim = LimiteurConnexion()
@@ -46,7 +46,7 @@ class TestLimiteurConnexion:
         lim = LimiteurConnexion()
         for i in range(MAX_ECHECS_IP):
             lim.enregistrer_echec("9.9.9.9", f"compte{i}@x.mg")
-        with pytest.raises(ErreurApi):
+        with pytest.raises(TropDeTentatives):
             lim.verifier("9.9.9.9", "nouveau@x.mg")
         lim.verifier("8.8.8.8", "nouveau@x.mg")
 

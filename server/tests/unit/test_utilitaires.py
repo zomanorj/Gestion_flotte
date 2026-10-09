@@ -3,11 +3,12 @@ import random
 
 import pytest
 
+from app.pdf.base import montant_fr, tronquer
+from app.repositories.base import Conditions, Plage, Resultat
 from app.services.evenement import generer_evenements
-from app.services.pdf import montant_fr, tronquer
 from app.services.route import VILLES_MADAGASCAR, calculer_distance, decimer_points, route_ligne_droite
 from app.temps import decalage_mysql
-from app.utils import Pagination, clause_set
+from app.utils import Pagination
 from tests.conftest import instructions_sql
 
 
@@ -24,8 +25,26 @@ class TestPagination:
         assert Pagination(paginate=True, page=1, limit=20).reponse([], 0)["pages"] == 0
 
 
-def test_clause_set():
-    assert clause_set({"nom": "a", "ville": None}) == ("nom = %s, ville = %s", ["a", None])
+class TestConditions:
+    def test_filtres_vides_ignores(self):
+        c = Conditions().si("statut = %s", None).si("type = %s", "").si("vehicule_id = %s", 3)
+        assert (c.where, c.params) == (" WHERE vehicule_id = %s", [3])
+
+    def test_plusieurs_valeurs(self):
+        c = Conditions().si("(a LIKE %s OR b LIKE %s)", "%x%", "%x%").si("d >= %s", 0)
+        assert c.where == " WHERE (a LIKE %s OR b LIKE %s) AND d >= %s"
+        assert c.params == ["%x%", "%x%", 0]
+
+    def test_aucun_filtre(self):
+        assert Conditions().where == ""
+
+
+def test_pagination_vers_plage_et_formatage():
+    assert Pagination(paginate=False, page=1, limit=20).plage is None
+    pg = Pagination(paginate=True, page=2, limit=10)
+    assert pg.plage == Plage(10, 10)
+    assert pg.formater(Resultat([{"id": 1}], 11))["pages"] == 2
+    assert Pagination(paginate=False, page=1, limit=20).formater(Resultat([{"id": 1}])) == [{"id": 1}]
 
 
 @pytest.mark.parametrize("valeur,attendu", [(0, "0"), (1234, "1 234"), (841500.4, "841 500"), (-8500, "-8 500")])

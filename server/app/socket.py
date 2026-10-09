@@ -9,7 +9,7 @@ import os
 import socketio
 
 from .auth import utilisateur_depuis_token
-from .erreurs import ErreurApi
+from .exceptions import ErreurMetier
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
@@ -22,7 +22,7 @@ async def connect(sid, _environ, auth):
     token = auth.get("token") if isinstance(auth, dict) else None
     try:
         user = await utilisateur_depuis_token(token)
-    except ErreurApi as err:
+    except ErreurMetier as err:
         # Refus explicite : le client reçoit connect_error avec ce message
         raise socketio.exceptions.ConnectionRefusedError(err.message) from None
 

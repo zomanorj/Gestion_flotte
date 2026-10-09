@@ -1,18 +1,33 @@
-# Règles métier des missions : disponibilité des ressources et cycle de vie du statut
+# Règles métier : missions (disponibilité des ressources, cycle de vie, coût, planning)
 #
 # Disponibilité : un camion ou un chauffeur ne peut pas être affecté à deux missions actives
 # (planifiée ou en cours) dont les périodes se chevauchent. Une mission en cours qui dépasse
 # son retour prévu est considérée comme occupant la ressource jusqu'à maintenant.
 #
-# Concurrence : les fonctions de ce module s'exécutent dans une transaction et verrouillent
-# (SELECT ... FOR UPDATE) le camion et le chauffeur concernés. Deux créations simultanées sur
-# la même ressource sont donc sérialisées : la seconde voit la mission de la première.
+# Concurrence : les écritures se font en transaction et verrouillent (SELECT ... FOR UPDATE) la
+# mission, le camion et le chauffeur concernés. Deux créations simultanées sur la même ressource
+# sont donc sérialisées : la seconde voit la mission de la première.
 from datetime import datetime
 
-from ..db import Connexion
-from ..erreurs import ErreurApi
+from .. import db
+from ..db import Executeur
+from ..exceptions import Conflit, Introuvable, trouve
+from ..pdf.bon_livraison import generer_bon_livraison
+from ..repositories import chauffeurs as depot_chauffeurs
+from ..repositories import missions as depot
+from ..repositories import operations as depot_operations
+from ..repositories import vehicules as depot_vehicules
+from ..repositories.base import Plage, Resultat
+from ..schemas.flotte import MissionCreation
+from ..socket import sio
+from . import simulation
 
-STATUTS_ACTIFS = ("planifiee", "en_cours")
+INTROUVABLE = "Mission introuvable"
+
+# Prix du carburant en Ariary par litre (données marché Madagascar 2024)
+PRIX_LITRE_ARIARY = 5200
+# Consommation retenue si le camion n'en a pas (L/km)
+CONSOMMATION_PAR_DEFAUT = 0.08
 
 # Transitions autorisées : statut actuel → nouveaux statuts possibles
 TRANSITIONS = {
@@ -29,100 +44,185 @@ LIBELLES_STATUT = {
 VEHICULE_INDISPONIBLE  = ("en_panne", "maintenance")
 CHAUFFEUR_INDISPONIBLE = ("conge",)
 
+COULEURS_PLANNING = {
+    "planifiee": "#f59e0b",
+    "en_cours":  "#3b82f6",
+    "terminee":  "#22c55e",
+    "annulee":   "#9ca3af",
+}
+
+
+# ── Règles pures ───────────────────────────────────────────────────────────────
+
+def cout_carburant(distance_km: float | None, consommation_litre_km: float | None,
+                   prix_litre: float = PRIX_LITRE_ARIARY) -> float:
+    """Distance × consommation × prix au litre, en Ariary, arrondi au centime."""
+    return round((distance_km or 0) * (consommation_litre_km or CONSOMMATION_PAR_DEFAUT) * prix_litre, 2)
+
+
+def verifier_transition(actuel: str, nouveau: str) -> None:
+    if nouveau not in TRANSITIONS.get(actuel, set()):
+        raise Conflit(
+            f"Impossible de passer une mission {LIBELLES_STATUT.get(actuel, actuel)} "
+            f"à l'état {LIBELLES_STATUT.get(nouveau, nouveau)}"
+        )
+
+
+def evenement_planning(m: dict) -> dict:
+    """Mission (avec immatriculation, marque et nom du chauffeur) au format FullCalendar."""
+    return {
+        "id":    m["id"],
+        "title": f"{m['immatriculation']} — {m['titre']}",
+        "start": m["date_depart"],
+        "end":   m["date_retour_prevue"],
+        "color": COULEURS_PLANNING.get(m["statut"], "#9ca3af"),
+        "extendedProps": {
+            "statut":           m["statut"],
+            "chauffeur":        f"{m['chauffeur_prenom']} {m['chauffeur_nom']}",
+            "vehicule":         f"{m['immatriculation']} {m['marque']}",
+            "lieu_depart":      m["lieu_depart"],
+            "lieu_destination": m["lieu_destination"],
+            "distance_km":      m["distance_km"],
+            "poids_charge":     m["poids_charge"],
+        },
+    }
+
 
 def _periode(debut: datetime, fin: datetime) -> str:
     return f"du {debut:%d/%m/%Y %H:%M} au {fin:%d/%m/%Y %H:%M}"
 
 
-async def _mission_en_conflit(tx: Connexion, colonne: str, ressource_id: int,
-                              debut: datetime, fin: datetime, exclure_id: int | None) -> dict | None:
-    """Première mission active de la ressource dont la période chevauche [debut, fin[."""
-    return await tx.query_one(
-        f"""SELECT id, titre, date_depart, date_retour_prevue
-            FROM missions
-            WHERE {colonne} = %s
-              AND statut IN ('planifiee', 'en_cours')
-              AND id <> %s
-              AND date_depart < %s
-              AND (CASE WHEN statut = 'en_cours' THEN GREATEST(date_retour_prevue, NOW())
-                        ELSE date_retour_prevue END) > %s
-            ORDER BY date_depart
-            LIMIT 1""",
-        [ressource_id, exclure_id or 0, fin, debut],
-    )
+# ── Ressources (dans une transaction) ──────────────────────────────────────────
 
-
-async def verifier_disponibilite(tx: Connexion, vehicule_id, chauffeur_id,
+async def verifier_disponibilite(tx: Executeur, vehicule_id: int, chauffeur_id: int,
                                  debut: datetime, fin: datetime, exclure_id: int | None = None) -> None:
-    """Verrouille camion et chauffeur, puis lève 404/409 s'ils ne sont pas disponibles sur la période."""
+    """Verrouille camion et chauffeur, puis lève une erreur s'ils ne sont pas disponibles sur la période."""
     if fin <= debut:
-        raise ErreurApi(400, "La date de retour prévue doit être postérieure à la date de départ")
+        raise Conflit("La date de retour prévue doit être postérieure à la date de départ")
 
-    vehicule = await tx.query_one(
-        "SELECT id, immatriculation, statut FROM vehicules WHERE id = %s FOR UPDATE", [vehicule_id]
-    )
-    if not vehicule:
-        raise ErreurApi(404, "Camion introuvable")
+    vehicule = trouve(await depot_vehicules.obtenir(vehicule_id, tx, verrou=True), "Camion introuvable")
     if vehicule["statut"] in VEHICULE_INDISPONIBLE:
-        raise ErreurApi(409, f"Le camion n'est pas disponible (statut : {vehicule['statut']})")
+        raise Conflit(f"Le camion n'est pas disponible (statut : {vehicule['statut']})")
 
-    chauffeur = await tx.query_one(
-        "SELECT id, nom, prenom, statut FROM chauffeurs WHERE id = %s FOR UPDATE", [chauffeur_id]
-    )
-    if not chauffeur:
-        raise ErreurApi(404, "Chauffeur introuvable")
+    chauffeur = trouve(await depot_chauffeurs.obtenir(chauffeur_id, tx, verrou=True), "Chauffeur introuvable")
     if chauffeur["statut"] in CHAUFFEUR_INDISPONIBLE:
-        raise ErreurApi(409, f"Le chauffeur n'est pas disponible (statut : {chauffeur['statut']})")
+        raise Conflit(f"Le chauffeur n'est pas disponible (statut : {chauffeur['statut']})")
 
-    conflit = await _mission_en_conflit(tx, "vehicule_id", vehicule["id"], debut, fin, exclure_id)
+    conflit = await depot.premiere_en_conflit(tx, "vehicule_id", vehicule_id, debut, fin, exclure_id)
     if conflit:
-        raise ErreurApi(
-            409,
+        raise Conflit(
             f"Le camion {vehicule['immatriculation']} est déjà affecté à la mission « {conflit['titre']} » "
-            f"{_periode(conflit['date_depart'], conflit['date_retour_prevue'])}",
+            f"{_periode(conflit['date_depart'], conflit['date_retour_prevue'])}"
         )
 
-    conflit = await _mission_en_conflit(tx, "chauffeur_id", chauffeur["id"], debut, fin, exclure_id)
+    conflit = await depot.premiere_en_conflit(tx, "chauffeur_id", chauffeur_id, debut, fin, exclure_id)
     if conflit:
-        raise ErreurApi(
-            409,
+        raise Conflit(
             f"Le chauffeur {chauffeur['prenom']} {chauffeur['nom']} est déjà affecté à la mission "
-            f"« {conflit['titre']} » {_periode(conflit['date_depart'], conflit['date_retour_prevue'])}",
+            f"« {conflit['titre']} » {_periode(conflit['date_depart'], conflit['date_retour_prevue'])}"
         )
 
 
-def verifier_transition(actuel: str, nouveau: str) -> None:
-    if nouveau not in TRANSITIONS.get(actuel, set()):
-        raise ErreurApi(
-            409,
-            f"Impossible de passer une mission {LIBELLES_STATUT.get(actuel, actuel)} "
-            f"à l'état {LIBELLES_STATUT.get(nouveau, nouveau)}",
-        )
-
-
-async def occuper_ressources(tx: Connexion, mission: dict) -> None:
+async def occuper_ressources(tx: Executeur, mission: dict) -> None:
     """Départ de mission : camion et chauffeur passent en mission (s'ils sont utilisables)."""
-    vehicule = await tx.query_one("SELECT statut FROM vehicules WHERE id = %s FOR UPDATE", [mission["vehicule_id"]])
+    vehicule = await depot_vehicules.obtenir(mission["vehicule_id"], tx, verrou=True)
     if vehicule and vehicule["statut"] in VEHICULE_INDISPONIBLE:
-        raise ErreurApi(409, f"Le camion n'est pas disponible (statut : {vehicule['statut']})")
-    chauffeur = await tx.query_one("SELECT statut FROM chauffeurs WHERE id = %s FOR UPDATE", [mission["chauffeur_id"]])
+        raise Conflit(f"Le camion n'est pas disponible (statut : {vehicule['statut']})")
+    chauffeur = await depot_chauffeurs.obtenir(mission["chauffeur_id"], tx, verrou=True)
     if chauffeur and chauffeur["statut"] in CHAUFFEUR_INDISPONIBLE:
-        raise ErreurApi(409, f"Le chauffeur n'est pas disponible (statut : {chauffeur['statut']})")
+        raise Conflit(f"Le chauffeur n'est pas disponible (statut : {chauffeur['statut']})")
 
-    await tx.execute("UPDATE vehicules  SET statut = 'en_mission' WHERE id = %s", [mission["vehicule_id"]])
-    await tx.execute("UPDATE chauffeurs SET statut = 'en_mission' WHERE id = %s", [mission["chauffeur_id"]])
+    await depot_vehicules.definir_statut(mission["vehicule_id"], "en_mission", tx)
+    await depot_chauffeurs.definir_statut(mission["chauffeur_id"], "en_mission", tx)
 
 
-async def liberer_ressources(tx: Connexion, mission: dict) -> None:
+async def liberer_ressources(tx: Executeur, mission: dict) -> None:
     """
     Fin ou annulation d'une mission en cours : camion et chauffeur redeviennent disponibles.
     Un statut posé manuellement entre-temps (panne, maintenance, congé) est conservé.
     """
-    await tx.execute(
-        "UPDATE vehicules  SET statut = 'disponible' WHERE id = %s AND statut = 'en_mission'",
-        [mission["vehicule_id"]],
-    )
-    await tx.execute(
-        "UPDATE chauffeurs SET statut = 'disponible' WHERE id = %s AND statut = 'en_mission'",
-        [mission["chauffeur_id"]],
-    )
+    await depot_vehicules.definir_statut(mission["vehicule_id"], "disponible", tx, seulement_si="en_mission")
+    await depot_chauffeurs.definir_statut(mission["chauffeur_id"], "disponible", tx, seulement_si="en_mission")
+
+
+# ── Opérations ─────────────────────────────────────────────────────────────────
+
+async def lister(statut: str | None, debut, fin, plage: Plage | None) -> Resultat:
+    return await depot.lister(statut, debut, fin, plage)
+
+
+async def planning() -> list[dict]:
+    return [evenement_planning(m) for m in await depot.pour_planning()]
+
+
+async def bon_de_livraison(id: int) -> tuple[bytes, str]:
+    """(contenu PDF, nom de fichier)."""
+    mission = trouve(await depot.pour_bon_livraison(id), INTROUVABLE)
+    return generer_bon_livraison(mission), f"bon-livraison-{mission['id']}.pdf"
+
+
+async def creer(donnees: MissionCreation) -> dict:
+    """Mission planifiée ; ressources vérifiées et verrouillées dans la même transaction."""
+    async with db.transaction() as tx:
+        await verifier_disponibilite(tx, donnees.vehicule_id, donnees.chauffeur_id,
+                                     donnees.date_depart, donnees.date_retour_prevue)
+        if donnees.client_id and not await depot_operations.obtenir_client(donnees.client_id, tx):
+            raise Introuvable("Client introuvable")
+        nouvel_id = await depot.creer(
+            {**donnees.model_dump(), "distance_km": donnees.distance_km or 0, "statut": "planifiee"}, tx
+        )
+
+    # Émis après le commit : les autres clients rechargent des données déjà visibles
+    await sio.emit("mission:nouvelle", {"id": nouvel_id, "titre": donnees.titre})
+    return await depot.resume(nouvel_id)
+
+
+async def changer_statut(id: int, statut: str) -> dict:
+    """
+    Cycle de vie : planifiee → en_cours | annulee, en_cours → terminee | annulee.
+    Synchronise camion + chauffeur et calcule le coût carburant à la clôture.
+    """
+    async with db.transaction() as tx:
+        mission = trouve(await depot.obtenir(id, tx, verrou=True), INTROUVABLE)
+        verifier_transition(mission["statut"], statut)
+
+        if statut == "terminee":
+            vehicule = await depot_vehicules.obtenir(mission["vehicule_id"], tx)
+            cout = cout_carburant(mission["distance_km"], (vehicule or {}).get("consommation_litre_km"))
+            await depot.cloturer(id, cout, tx)
+        else:
+            await depot.modifier(id, {"statut": statut}, tx)
+
+        if statut == "en_cours":
+            await occuper_ressources(tx, mission)
+        elif mission["statut"] == "en_cours":
+            # terminee / annulee depuis en_cours : les ressources étaient occupées
+            await liberer_ressources(tx, mission)
+
+    if statut != "en_cours":
+        simulation.arreter_simulation(str(id))
+    await sio.emit("mission:statut", {"id": id, "statut": statut})
+    return await depot.resume(id)
+
+
+async def supprimer(id: int) -> None:
+    """Une mission en cours libère son camion et son chauffeur, et sa simulation est arrêtée."""
+    async with db.transaction() as tx:
+        mission = trouve(await depot.obtenir(id, tx, verrou=True), INTROUVABLE)
+        if mission["statut"] == "en_cours":
+            await liberer_ressources(tx, mission)
+        await depot.supprimer(id, tx)
+    simulation.arreter_simulation(str(id))
+
+
+async def demarrer_simulation(id: int) -> dict:
+    """Passe la mission planifiée en cours, puis lance sa simulation GPS. Retourne la mission."""
+    async with db.transaction() as tx:
+        # Verrou sur la mission : deux démarrages simultanés ne peuvent pas réussir tous les deux
+        mission = trouve(await depot.pour_simulation(id, tx), INTROUVABLE)
+        verifier_transition(mission["statut"], "en_cours")
+        await depot.modifier(id, {"statut": "en_cours"}, tx)
+        await occuper_ressources(tx, mission)
+
+    await simulation.demarrer_simulation(str(id), mission)
+    return mission

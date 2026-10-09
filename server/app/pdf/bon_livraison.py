@@ -1,6 +1,6 @@
-# Service de génération du bon de livraison PDF
+# Rendu PDF du bon de livraison
 from ..temps import aujourdhui
-from .pdf import Pdf, date_fr
+from .base import Pdf, date_fr
 
 BLEU  = "#1e3a5f"
 GRIS  = "#6b7280"

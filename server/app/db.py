@@ -8,6 +8,7 @@
 import os
 from contextlib import asynccontextmanager
 from decimal import Decimal
+from typing import Protocol
 from urllib.parse import unquote, urlparse
 
 import aiomysql
@@ -63,6 +64,19 @@ async def fermer() -> None:
 def _normaliser(row: dict) -> dict:
     # DECIMAL → float pour pouvoir calculer directement et sérialiser en nombre JSON
     return {k: float(v) if isinstance(v, Decimal) else v for k, v in row.items()}
+
+
+class Executeur(Protocol):
+    """
+    Ce qui exécute du SQL : le module db lui-même (une connexion du pool par requête, en
+    autocommit) ou la Connexion d'une transaction. Les repositories acceptent l'un ou l'autre.
+    """
+
+    async def query(self, sql: str, params: list | tuple | None = None) -> list[dict]: ...
+
+    async def query_one(self, sql: str, params: list | tuple | None = None) -> dict | None: ...
+
+    async def execute(self, sql: str, params: list | tuple | None = None) -> int: ...
 
 
 class Connexion:

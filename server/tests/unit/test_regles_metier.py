@@ -1,8 +1,8 @@
 """Règles métier pures : cycle de vie des missions, statut des documents, simulation."""
 import pytest
 
-from app.erreurs import ErreurApi
-from app.routers.documents import statut_depuis_jours
+from app.exceptions import Conflit
+from app.services.documents import statut_depuis_jours
 from app.services.missions import TRANSITIONS, verifier_transition
 from app.services.simulation import calculer_delai, calculer_pause_evenement
 
@@ -26,7 +26,7 @@ class TestTransitionsMission:
         ("annulee", "planifiee"),
     ])
     def test_transitions_interdites(self, actuel, nouveau):
-        with pytest.raises(ErreurApi) as exc:
+        with pytest.raises(Conflit) as exc:
             verifier_transition(actuel, nouveau)
         assert exc.value.status == 409
 
@@ -35,7 +35,7 @@ class TestTransitionsMission:
         assert TRANSITIONS["annulee"] == set()
 
     def test_statut_inconnu_refuse(self):
-        with pytest.raises(ErreurApi):
+        with pytest.raises(Conflit):
             verifier_transition("inconnu", "en_cours")
 
 

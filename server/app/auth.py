@@ -14,8 +14,8 @@ import jwt
 from fastapi import Depends, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from . import db
-from .erreurs import ErreurApi
+from .exceptions import AccesRefuse, NonAuthentifie
+from .repositories import comptes as depot_comptes
 
 DUREE_TOKEN = timedelta(hours=24)
 ROLES_GESTION = ("admin", "gestionnaire")
@@ -39,22 +39,19 @@ def generer_token(user: dict) -> str:
 async def utilisateur_depuis_token(token: str | None) -> dict:
     """Décode le token et vérifie que le compte est toujours actif et le token non révoqué."""
     if not token:
-        raise ErreurApi(401, "Token manquant ou mal formaté")
+        raise NonAuthentifie("Token manquant ou mal formaté")
     try:
         payload = jwt.decode(token, os.environ["JWT_SECRET"], algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
-        raise ErreurApi(401, "Session expirée, veuillez vous reconnecter") from None
+        raise NonAuthentifie("Session expirée, veuillez vous reconnecter") from None
     except jwt.InvalidTokenError:
-        raise ErreurApi(401, "Token invalide") from None
+        raise NonAuthentifie("Token invalide") from None
 
-    user = await db.query_one(
-        "SELECT id, nom, email, role, is_active, token_version FROM users WHERE id = %s",
-        [payload.get("id")],
-    )
+    user = await depot_comptes.etat_session(payload.get("id"))
     if not user or not user["is_active"]:
-        raise ErreurApi(401, "Compte désactivé ou supprimé")
+        raise NonAuthentifie("Compte désactivé ou supprimé")
     if payload.get("tv", 0) != user["token_version"]:
-        raise ErreurApi(401, "Session expirée, veuillez vous reconnecter")
+        raise NonAuthentifie("Session expirée, veuillez vous reconnecter")
     return {"id": user["id"], "nom": user["nom"], "email": user["email"], "role": user["role"]}
 
 
@@ -68,7 +65,7 @@ async def verifier_token(
 ) -> dict:
     """Dépendance : utilisateur authentifié via le header Authorization ("Bearer <token>")."""
     if identifiants is None or identifiants.scheme.lower() != "bearer":
-        raise ErreurApi(401, "Token manquant ou mal formaté")
+        raise NonAuthentifie("Token manquant ou mal formaté")
     return await utilisateur_depuis_token(identifiants.credentials)
 
 
@@ -77,7 +74,7 @@ def verifier_role(*roles: str):
 
     async def _dep(user: dict = Depends(verifier_token)) -> dict:
         if user["role"] not in roles:
-            raise ErreurApi(403, f"Accès refusé. Rôles autorisés : {', '.join(roles)}")
+            raise AccesRefuse(f"Accès refusé. Rôles autorisés : {', '.join(roles)}")
         return user
 
     return _dep
@@ -87,11 +84,6 @@ def verifier_role(*roles: str):
 Connecte     = Depends(verifier_token)
 Gestionnaire = Depends(verifier_role(*ROLES_GESTION))
 Admin        = Depends(verifier_role("admin"))
-
-
-async def revoquer_tokens(conn, user_id: int) -> None:
-    """Invalide tous les tokens émis pour cet utilisateur (conn : db ou transaction)."""
-    await conn.execute("UPDATE users SET token_version = token_version + 1 WHERE id = %s", [user_id])
 
 
 # bcrypt est volontairement lent (~100 ms) : exécuté hors de la boucle async pour ne pas
