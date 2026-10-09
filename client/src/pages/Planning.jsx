@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin    from '@fullcalendar/daygrid';
 import timeGridPlugin   from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Calendar, X, MapPin, Truck, User, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Truck, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ECRAN_ETROIT, useMediaQuery } from '../hooks/useMediaQuery';
 import { usePlanning } from '../requetes';

@@ -265,7 +265,7 @@ Toutes les entrées sont validées (types, valeurs autorisées, longueurs, cohé
 
 ## Tests et intégration continue
 
-Le backend est couvert par plus de 300 tests (`server/tests/`) :
+Le backend est couvert par plus de 500 tests (`server/tests/`) :
 
 - **unitaires** : règles métier testées sans base de données (cycle de vie des missions, paie, coûts, confidentialité des salaires), sécurité, schémas, et règles d'architecture (un router ne contient pas de SQL, un service ignore HTTP) ;
 - **intégration** : l'API complète appelée en HTTP et Socket.io sur une base MySQL jetable initialisée avec les scripts du dépôt (droits par rôle, chevauchement des missions y compris en concurrence, révocation des sessions, notifications, fichiers, paie).
@@ -277,7 +277,17 @@ docker run -d --name flotte-test-db -e MYSQL_ROOT_PASSWORD=test -p 3307:3306 --t
 .venv/bin/pytest
 ```
 
-Détails dans `server/tests/README.md`. À chaque push et pull request, GitHub Actions (`.github/workflows/ci.yml`) exécute le lint (ruff), les tests, le build du frontend, puis construit et démarre la stack Docker complète.
+Détails dans `server/tests/README.md`.
+
+Le frontend a son lint (ESLint : règles React et hooks, aucun avertissement toléré) et ses tests (Vitest + Testing Library, sans serveur : l'API est simulée). Ils couvrent les formats, la couche de données (quelles données sont rafraîchies après une écriture), la connexion temps réel, l'authentification, la vue « Mes missions », la barre latérale, et des tests de non-régression sur des défauts corrigés (saisie qui perd le focus, réponse d'itinéraire arrivée en retard, toast qui ne se ferme pas).
+
+```bash
+cd client
+npm run lint
+npm test              # ou npm run test:watch pendant le développement
+```
+
+À chaque push et pull request, GitHub Actions (`.github/workflows/ci.yml`) exécute le lint et les tests du backend et du frontend, le build du frontend avec son budget de taille, puis construit et démarre la stack Docker complète.
 
 ---
 

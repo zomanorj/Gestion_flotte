@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Loader2, FileDown, Table2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Search, FileDown, Table2 } from 'lucide-react';
 import { useMissions } from '../requetes';
 import { dateDuJour, formaterDate, formaterKm, formaterMontant, pourPdf } from '../utils/format';
 

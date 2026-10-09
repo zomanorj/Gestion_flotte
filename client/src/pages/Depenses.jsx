@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Receipt, Plus, Pencil, Trash2, AlertTriangle, X, CalendarDays, TrendingUp, ListChecks } from 'lucide-react';
 import api from '../services/api';
 import { messageErreur } from '../requetes/client';

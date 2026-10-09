@@ -20,6 +20,9 @@ cd server && .venv/bin/uvicorn main:app --reload --port 5000
 # Frontend (port 5173); Vite proxies /api and /socket.io to localhost:5000
 cd client && npm install && npm run dev
 cd client && npm run build                  # outputs client/dist
+cd client && npm run lint                   # ESLint, zero warnings allowed
+cd client && npm test                       # Vitest (jsdom), no server needed; npm run test:watch
+cd client && npx vitest run src/pages/MesMissions.test.jsx -t "historique"   # single file / test
 
 # Full stack in Docker (MySQL 8 + API + nginx client) → http://localhost:8080, Swagger on http://localhost:5000/docs
 docker compose up --build
@@ -37,7 +40,9 @@ docker run -d --name flotte-test-db -e MYSQL_ROOT_PASSWORD=test -p 3307:3306 --t
 .venv/bin/ruff check .
 ```
 
-Integration tests create an empty throwaway database, start uvicorn (which builds the schema with the Alembic migrations and loads the demo data, so migrations are tested on every run) in a subprocess with `--proxy-headers`, and call it over HTTP/Socket.io. Tests must create their own data through the fixtures in `tests/conftest.py` (`unique()` ids) and never depend on order; tests that trigger failed logins use their own account. CI (`.github/workflows/ci.yml`) runs ruff, pytest, the frontend build and a Docker stack smoke test. No frontend tests or linter yet. Swagger is at `/docs`.
+Integration tests create an empty throwaway database, start uvicorn (which builds the schema with the Alembic migrations and loads the demo data, so migrations are tested on every run) in a subprocess with `--proxy-headers`, and call it over HTTP/Socket.io. Tests must create their own data through the fixtures in `tests/conftest.py` (`unique()` ids) and never depend on order; tests that trigger failed logins use their own account. CI (`.github/workflows/ci.yml`) runs ruff and pytest, then ESLint, Vitest, the frontend build and its size budget, then a Docker stack smoke test. Swagger is at `/docs`.
+
+Frontend tests (`client/src/**/*.test.{js,jsx}`, config in `vite.config.js` `test`, setup in `src/test/setup.js`) mock the API with `vi.mock('../services/api', …)` and answer `api.get` by path with `repondre(api.get, { '/chemin': données })`; `rendre(ui, { route })` from `src/test/outils.jsx` wraps a component with a fresh QueryClient (no retry), a MemoryRouter and `AuthProvider`, and `connecter(user)` puts a session in localStorage. Labels are not linked to inputs in most forms, so query by placeholder, role or `name`. A bug fix gets a test that fails on the old code (see `pages/formulaires.test.jsx`). ESLint (`eslint.config.js`) enforces `react-hooks` and `react/no-unstable-nested-components` (a component declared inside another remounts on every render); no `eslint-disable` without a reason.
 
 Demo accounts (`admin@`, `gestionnaire@`, `chauffeur@flotte.mg`, all `password123`) exist only when the API starts with `SEED_DEMO=1` on a database with no user: it then loads `server/donnees/demo.sql` (`app/demarrage.py`; Docker Compose sets `SEED_DEMO=1` by default). Without demo data, the first admin is created at startup from `ADMIN_EMAIL` / `ADMIN_PASSWORD` (`initialiser_admin`).
 

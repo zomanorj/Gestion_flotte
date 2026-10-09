@@ -25,6 +25,14 @@ export default defineConfig({
       output: { manualChunks: decouperEnFichiers }
     }
   },
+  // Tests (Vitest) : DOM simulé par jsdom, fichiers *.test.js(x) à côté du code testé
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.js'],
+    include: ['src/**/*.test.{js,jsx}'],
+    css: false,
+    restoreMocks: true,
+  },
   server: {
     port: 5173,
     proxy: {

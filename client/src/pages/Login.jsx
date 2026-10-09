@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Truck, AlertTriangle, Mail, KeyRound, Loader2 } from 'lucide-react';
+import { Truck, AlertTriangle, Mail, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {

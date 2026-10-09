@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import api from '../services/api';
 import { messageErreur } from '../requetes/client';
@@ -58,9 +58,7 @@ const FormulaireCamion = ({ camion, onSauvegarder, onAnnuler }) => {
       await enregistrer.mutateAsync(form);
       onSauvegarder();
     } catch (err) {
-      setErreur(err.response?.data?.message || 'Erreur lors de la sauvegarde');
-    } finally {
-      setLoading(false);
+      setErreur(messageErreur(err, 'Erreur lors de la sauvegarde'));
     }
   };
 

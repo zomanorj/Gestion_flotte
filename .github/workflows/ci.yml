@@ -1,4 +1,4 @@
-# Intégration continue : lint + tests backend, build frontend, build et démarrage de la stack Docker.
+# Intégration continue : lint + tests backend, lint + tests + build frontend, build et démarrage de la stack Docker.
 name: CI
 
 on:
@@ -65,7 +65,7 @@ jobs:
           path: server/rapport-tests.xml
 
   frontend:
-    name: Frontend (build)
+    name: Frontend (lint + tests + build)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -81,6 +81,20 @@ jobs:
           cache-dependency-path: client/package-lock.json
 
       - run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Tests (Vitest)
+        run: npm test -- --reporter=default --reporter=junit --outputFile.junit=rapport-tests.xml
+
+      - name: Rapport de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-tests-frontend
+          path: client/rapport-tests.xml
+
       - run: npm run build
       - name: Budget de taille du premier chargement
         run: npm run verifier:taille

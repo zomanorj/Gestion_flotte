@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Users, Plus, Pencil, Trash2, AlertTriangle, KeyRound, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Users, Plus, Pencil, KeyRound, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { messageErreur } from '../requetes/client';

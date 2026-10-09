@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, Loader2, FileDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, X, Check, Eye, Trash2, AlertTriangle, Plus, FileDown } from 'lucide-react';
 import api, { telechargerFichier } from '../services/api';
 import { messageErreur } from '../requetes/client';
 import { useChauffeurs, useClients, useEcriture, useMissions, useParametres, useVehicules, useVilles } from '../requetes';
@@ -48,29 +48,27 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
   const creer = useEcriture('missions', (valeurs) => api.post('/missions', valeurs));
   const loading = creer.isPending;
 
+  // Distance et durée recalculées à chaque changement de villes. Une réponse arrivée après un
+  // nouveau changement est ignorée : sinon l'itinéraire précédent pourrait l'emporter.
+  const { lieu_depart: depart, lieu_destination: destination } = form;
   useEffect(() => {
-    if (form.lieu_depart && form.lieu_destination && form.lieu_depart !== form.lieu_destination) {
-      calculerDistance();
-    } else {
+    if (!depart || !destination || depart === destination) {
       setForm(p => ({ ...p, distance_km: '' }));
       setDureeEstimee(null);
+      return undefined;
     }
-  }, [form.lieu_depart, form.lieu_destination]);
-
-  const calculerDistance = async () => {
+    let perimee = false;
     setCalculEnCours(true);
-    try {
-      const { data } = await api.post('/simulation/route', {
-        villeDepart: form.lieu_depart, villeArrivee: form.lieu_destination
-      });
-      setForm(p => ({ ...p, distance_km: data.distanceKm }));
-      setDureeEstimee(data.dureeMin);
-    } catch (e) {
-      console.error('Erreur calcul route:', e);
-    } finally {
-      setCalculEnCours(false);
-    }
-  };
+    api.post('/simulation/route', { villeDepart: depart, villeArrivee: destination })
+      .then(({ data }) => {
+        if (perimee) return;
+        setForm(p => ({ ...p, distance_km: data.distanceKm }));
+        setDureeEstimee(data.dureeMin);
+      })
+      .catch((e) => { if (!perimee) console.error('Erreur calcul route:', e); })
+      .finally(() => { if (!perimee) setCalculEnCours(false); });
+    return () => { perimee = true; };
+  }, [depart, destination]);
 
   const handleChange = (e) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 

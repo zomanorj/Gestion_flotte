@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Building2, Plus, Pencil, Trash2, AlertTriangle, X, Phone, Mail, MapPin, History, ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
+import { Building2, Plus, Pencil, Trash2, AlertTriangle, Phone, MapPin, History, ArrowLeft } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { messageErreur } from '../requetes/client';

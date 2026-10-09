@@ -31,12 +31,6 @@ function CentrerSur({ cible }) {
   return null;
 }
 
-function formatTemps(sec) {
-  if (sec < 60)   return `${sec}s`;
-  if (sec < 3600) return `${Math.floor(sec / 60)}min`;
-  return `${Math.floor(sec / 3600)}h${Math.floor((sec % 3600) / 60)}min`;
-}
-
 export default function CarteGlobale() {
   const [camions,               setCamions]               = useState({});
   const [cible,                 setCible]                 = useState(null);

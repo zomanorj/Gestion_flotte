@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { AlertTriangle, Trash2, Edit, CheckCircle, X } from 'lucide-react';
+import { AlertTriangle, Trash2, Edit, CheckCircle } from 'lucide-react';
 
 const TYPES = {
   supprimer: {

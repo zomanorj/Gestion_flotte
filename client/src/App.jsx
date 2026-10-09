@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ProtectedRoute } from './context/AuthContext';
 

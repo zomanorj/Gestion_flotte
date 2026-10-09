@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Wallet, Download, Pencil, AlertTriangle, Users, TrendingUp, MapPin } from 'lucide-react';
+import { useState } from 'react';
+import { Wallet, Download, Pencil, Users, TrendingUp, MapPin } from 'lucide-react';
 import api, { telechargerFichier } from '../services/api';
 import { messageErreur } from '../requetes/client';
 import { useEcriture, usePaie } from '../requetes';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ClipboardList, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import api from '../services/api';
 import { messageErreur } from '../requetes/client';

@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function StatCard({ titre, valeur, icone, couleur = 'blue', sousTitre }) {
   const palettes = {

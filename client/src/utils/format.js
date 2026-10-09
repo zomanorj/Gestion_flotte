@@ -60,4 +60,4 @@ export const dateDuJour = () => {
  * parasites. Même règle que les PDF générés par l'API.
  */
 export const pourPdf = (texte) =>
-  String(texte).replace(/[  ]/g, ' ').replace(/→/g, '->');
+  String(texte).replace(/[\u202F\u00A0]/g, ' ').replace(/\u2192/g, '->');
