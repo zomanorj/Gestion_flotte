@@ -85,6 +85,8 @@ export const useMissionsChauffeur = (id) => useQuery({
 // Missions
 export const useMissions = (params, options) => useQuery(liste('missions', '/missions', params, options));
 export const usePlanning = () => useQuery({ queryKey: ['planning'], queryFn: () => lire('/missions/planning') });
+// Missions du chauffeur connecté (domaine 'missions' : rafraîchies en temps réel comme les autres)
+export const useMesMissions = () => useQuery({ queryKey: ['missions', 'miennes'], queryFn: () => lire('/missions/miennes') });
 
 // Tableau de bord
 export const useTableauDeBord = () => useQuery({ queryKey: ['tableau-de-bord'], queryFn: () => lire('/dashboard/stats') });

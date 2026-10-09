@@ -5,6 +5,7 @@ import timeGridPlugin   from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Calendar, X, MapPin, Truck, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ECRAN_ETROIT, useMediaQuery } from '../hooks/useMediaQuery';
 import { usePlanning } from '../requetes';
 
 const STATUT_CFG = {
@@ -24,6 +25,8 @@ const LEGENDE = [
 export default function Planning() {
   const navigate    = useNavigate();
   const calendarRef = useRef(null);
+  // Sur téléphone : navigation en haut, choix de la vue en bas (la barre complète ne tient pas)
+  const etroit = useMediaQuery(ECRAN_ETROIT);
   const [popup,    setPopup]    = useState(null);
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
 
@@ -32,10 +35,14 @@ export default function Planning() {
   const { data: evenements = [] } = usePlanning();
 
   const onEventClick = (info) => {
+    // Sous l'événement, ou au-dessus s'il est en bas de l'écran ; toujours dans la fenêtre
     const rect = info.el.getBoundingClientRect();
+    const LARGEUR = 320, HAUTEUR = 330, MARGE = 8;
     setPopupPos({
-      x: Math.min(rect.left, window.innerWidth - 320),
-      y: rect.bottom + window.scrollY + 8
+      x: Math.max(MARGE, Math.min(rect.left, window.innerWidth - LARGEUR - MARGE)),
+      y: rect.bottom + MARGE + HAUTEUR <= window.innerHeight
+        ? rect.bottom + MARGE
+        : Math.max(MARGE, rect.top - HAUTEUR - MARGE),
     });
     setPopup({ id: info.event.id, titre: info.event.title, ...info.event.extendedProps });
   };
@@ -54,7 +61,7 @@ export default function Planning() {
             <p className="text-muted small mb-0">Vue calendrier de toutes les missions</p>
           </div>
         </div>
-        <div className="d-flex align-items-center gap-3">
+        <div className="d-flex align-items-center flex-wrap column-gap-3 row-gap-1">
           {LEGENDE.map(({ couleur, label }) => (
             <div key={label} className="d-flex align-items-center gap-2 small text-gray-600">
               <span className="rounded-circle flex-shrink-0" style={{ width: '12px', height: '12px', backgroundColor: couleur }} />
@@ -66,13 +73,16 @@ export default function Planning() {
 
       {/* Calendrier */}
       <div className="card border rounded-3">
-        <div className="card-body p-3">
+        <div className="card-body p-2 p-md-3">
           <FullCalendar
             ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
             locale="fr"
-            headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+            headerToolbar={etroit
+              ? { left: 'prev,next', center: 'title', right: 'today' }
+              : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+            footerToolbar={etroit ? { center: 'dayGridMonth,timeGridWeek,timeGridDay' } : false}
             buttonText={{ today: "Aujourd'hui", month: 'Mois', week: 'Semaine', day: 'Jour' }}
             events={evenements}
             eventClick={onEventClick}
@@ -90,8 +100,11 @@ export default function Planning() {
         <>
           <div className="position-fixed top-0 start-0 w-100 h-100" style={{ zIndex: 1040 }}
                onClick={() => setPopup(null)} />
+          {/* Sur téléphone : panneau en bas de l'écran plutôt que bulle près de l'événement */}
           <div className="position-fixed bg-white rounded-3 shadow-lg border"
-               style={{ left: popupPos.x, top: popupPos.y, zIndex: 1050, width: '320px' }}>
+               style={etroit
+                 ? { left: 8, right: 8, bottom: 8, zIndex: 1050, maxHeight: '70vh', overflowY: 'auto' }
+                 : { left: popupPos.x, top: popupPos.y, zIndex: 1050, width: '320px' }}>
             <div className="p-4">
               <div className="d-flex align-items-start justify-content-between mb-3">
                 <h3 className="fw-bold text-dark small mb-0 pe-2">{popup.titre}</h3>

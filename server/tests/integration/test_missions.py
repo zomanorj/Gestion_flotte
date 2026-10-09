@@ -201,3 +201,30 @@ class TestLecture:
         assert r.headers["content-type"] == "application/pdf"
         assert r.content.startswith(b"%PDF")
         assert api.get("/missions/999999/bon-livraison", headers=chauffeur).status_code == 404
+
+
+class TestMesMissions:
+    """GET /missions/miennes : le chauffeur connecté ne voit que les missions de sa propre fiche."""
+
+    def test_missions_de_sa_fiche_uniquement(self, api, vehicule, fabrique_chauffeur, nouvel_utilisateur,
+                                             creer_mission):
+        compte = nouvel_utilisateur("chauffeur")
+        mienne = fabrique_chauffeur(user_id=compte["id"])
+        autre = fabrique_chauffeur()
+        a = creer_mission(vehicule["id"], mienne["id"], "2036-01-10T08:00", "2036-01-11T08:00").json()
+        b = creer_mission(vehicule["id"], mienne["id"], "2036-02-10T08:00", "2036-02-11T08:00").json()
+        creer_mission(vehicule["id"], autre["id"], "2036-03-10T08:00", "2036-03-11T08:00")
+
+        r = api.get("/missions/miennes", headers=compte["headers"])
+        assert r.status_code == 200
+        # Les plus récentes d'abord, avec le camion
+        assert [m["id"] for m in r.json()] == [b["id"], a["id"]]
+        assert r.json()[0]["immatriculation"] == vehicule["immatriculation"]
+
+    def test_compte_sans_fiche(self, api, nouvel_utilisateur):
+        r = api.get("/missions/miennes", headers=nouvel_utilisateur("chauffeur")["headers"])
+        assert r.status_code == 404
+        assert r.json() == {"message": "Aucune fiche chauffeur n'est liée à ce compte"}
+
+    def test_token_obligatoire(self, api):
+        assert api.get("/missions/miennes").status_code == 401

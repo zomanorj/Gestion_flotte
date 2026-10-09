@@ -26,7 +26,8 @@ export default function Login() {
     const result = await login(form.email, form.password);
     setChargement(false);
     if (result.success) {
-      navigate('/');
+      // Un chauffeur arrive directement sur ses missions
+      navigate(result.user?.role === 'chauffeur' ? '/mes-missions' : '/');
     } else {
       setErreur(result.message);
     }

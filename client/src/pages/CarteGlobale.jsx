@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { Truck, RefreshCw, ChevronLeft, ChevronRight, MapPin, AlertTriangle, Clock, Gauge } from 'lucide-react';
 import api from '../services/api';
 import { useEvenement } from '../hooks/useEvenement';
+import { ECRAN_ETROIT, useMediaQuery } from '../hooks/useMediaQuery';
 import { formaterHeure } from '../utils/format';
 import { useSimulationsActives } from '../requetes';
 
@@ -39,7 +40,10 @@ function formatTemps(sec) {
 export default function CarteGlobale() {
   const [camions,               setCamions]               = useState({});
   const [cible,                 setCible]                 = useState(null);
-  const [panneauOuvert,         setPanneauOuvert]         = useState(true);
+  // Sur téléphone, la carte s'affiche d'abord en entier ; le panneau passe par-dessus quand on l'ouvre
+  const etroit = useMediaQuery(ECRAN_ETROIT);
+  const [panneauOuvert,         setPanneauOuvert]         = useState(() => !window.matchMedia(ECRAN_ETROIT).matches);
+  const largeurPanneau = etroit ? 'min(288px, 85vw)' : '288px';
   const [derniereMaj,           setDerniereMaj]           = useState(null);
   const [multiplicateurs,       setMultiplicateurs]       = useState({});
   const [multiplicateurGlobal,  setMultiplicateurGlobal]  = useState(30);
@@ -114,8 +118,8 @@ export default function CarteGlobale() {
     <div className="d-flex h-100 overflow-hidden position-relative">
 
       {/* PANNEAU LATÉRAL */}
-      <div className={`d-flex flex-column bg-slate-900 text-white flex-shrink-0 overflow-hidden`}
-           style={{ width: panneauOuvert ? '288px' : '0px', transition: 'width 0.3s' }}>
+      <div className={`d-flex flex-column bg-slate-900 text-white flex-shrink-0 overflow-hidden ${etroit ? 'position-absolute top-0 bottom-0 start-0' : ''}`}
+           style={{ width: panneauOuvert ? largeurPanneau : '0px', transition: 'width 0.3s', zIndex: etroit ? 1001 : undefined }}>
 
         <div className="p-3 border-bottom border-slate-700 flex-shrink-0">
           <div className="d-flex align-items-center justify-content-between mb-1">
@@ -217,8 +221,10 @@ export default function CarteGlobale() {
 
       {/* Bouton toggle panneau */}
       <button onClick={() => setPanneauOuvert(!panneauOuvert)}
+              aria-label={panneauOuvert ? 'Masquer la liste des camions' : 'Afficher la liste des camions'}
+              aria-expanded={panneauOuvert}
               className="position-absolute top-50 translate-middle-y btn bg-slate-800 text-white border-0 d-flex align-items-center justify-content-center"
-              style={{ left: panneauOuvert ? '288px' : '0px', width: '24px', height: '48px', borderRadius: '0 6px 6px 0', zIndex: 50, transition: 'left 0.3s' }}>
+              style={{ left: panneauOuvert ? largeurPanneau : '0px', width: etroit ? '32px' : '24px', height: '48px', borderRadius: '0 6px 6px 0', zIndex: etroit ? 1002 : 50, transition: 'left 0.3s' }}>
         {panneauOuvert ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </button>
 
@@ -284,7 +290,8 @@ export default function CarteGlobale() {
         {/* Message si vide */}
         {!chargement && nbEnMission === 0 && (
           <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center pointer-events-none">
-            <div className="bg-white bg-opacity-90 rounded-3 px-4 py-4 text-center shadow-lg">
+            {/* Marge latérale : le bouton du panneau, au bord gauche, reste visible sur téléphone */}
+            <div className="bg-white bg-opacity-90 rounded-3 px-4 py-4 mx-5 text-center shadow-lg">
               <Truck size={48} className="text-muted mb-3 d-block mx-auto" />
               <p className="text-dark fw-medium mb-1">Aucun camion en mission</p>
               <p className="text-muted small mb-0">Démarrez une simulation depuis la page Missions</p>

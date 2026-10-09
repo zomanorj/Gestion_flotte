@@ -166,3 +166,44 @@
 /* Overflow utilities */
 .overflow-y-auto { overflow-y: auto; }
 .overflow-x-auto { overflow-x: auto; }
+
+/* Barre latérale : colonne fixe sur grand écran, tiroir sur téléphone et tablette (< 992 px) */
+.barre-laterale { width: 256px; }
+.voile-menu { display: none; }
+@media (max-width: 991.98px) {
+  .barre-laterale {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    z-index: 1045;
+    width: min(256px, 85vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+  .barre-laterale.ouverte {
+    transform: none;
+    box-shadow: 0 0 2rem rgba(0, 0, 0, 0.4);
+  }
+  .voile-menu.ouvert {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .barre-laterale { transition: none; }
+}
+
+/* Zone tactile confortable pour les boutons d'icône (barre du haut) */
+.bouton-icone { min-width: 2.5rem; min-height: 2.5rem; }
+
+/* Calendrier du planning sur téléphone : titre du mois plus compact */
+@media (max-width: 767.98px) {
+  .fc .fc-toolbar-title { font-size: 1.05rem; }
+  .fc .fc-button { padding: 0.3rem 0.5rem; font-size: 0.85rem; }
+}
+
+/* Les filtres en largeur automatique suivent leur option la plus longue : jamais plus larges
+   que leur conteneur sur un petit écran */
+.form-select { max-width: 100%; }

@@ -131,7 +131,7 @@ export default function Clients() {
   // Vue liste
   return (
     <div className="d-flex flex-column gap-4">
-      <div className="d-flex align-items-center justify-content-between">
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
           <div className="bg-indigo-100 rounded-3 p-2"><Building2 size={24} className="text-indigo-600" /></div>
           <div>

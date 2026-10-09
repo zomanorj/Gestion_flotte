@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import Depends, Query
 from fastapi.responses import Response
 
-from ..auth import Admin, Connecte, Gestionnaire
+from ..auth import Admin, Connecte, Gestionnaire, verifier_token
 from ..schemas.commun import Message, Page, Vide
 from ..schemas.enums import StatutMission
 from ..schemas.flotte import ChangementStatutMission, EvenementPlanning, Mission, MissionCreation
@@ -20,6 +20,12 @@ router = Routeur()
 async def planning():
     """Format FullCalendar ; couleur selon le statut (planifiée, en cours, terminée, annulée)."""
     return await service.planning()
+
+
+@router.get("/miennes", response_model=list[Mission], summary="Missions du chauffeur connecté")
+async def miennes(user: dict = Depends(verifier_token)):
+    """Missions de la fiche chauffeur liée au compte (404 si le compte n'en a pas)."""
+    return await service.du_compte(user)
 
 
 @router.get("", dependencies=[Connecte], response_model=list[Mission] | Page[Mission], summary="Liste des missions")

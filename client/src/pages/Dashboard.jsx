@@ -138,7 +138,7 @@ export default function Dashboard() {
       </div>
 
       {/* Raccourci carte */}
-      <div className="rounded-3 p-4 d-flex align-items-center justify-content-between bg-slate-900">
+      <div className="rounded-3 p-3 p-md-4 d-flex align-items-center justify-content-between flex-wrap gap-3 bg-slate-900">
         <div className="d-flex align-items-center gap-3">
           <div className="bg-orange-500 rounded-3 p-2 flex-shrink-0">
             <Map size={28} color="white" />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, CheckCheck, AlertTriangle, Wrench, FileText, MapPin, X } from 'lucide-react';
+import { Bell, CheckCheck, AlertTriangle, Wrench, FileText, MapPin, X, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { useEvenement } from '../hooks/useEvenement';
@@ -13,10 +13,17 @@ const TITRES = {
   '/chauffeurs':   'Gestion des Chauffeurs',
   '/missions':     'Missions de Transport',
   '/carte':        'Carte Globale de la Flotte',
+  '/documents':    'Documents des véhicules',
+  '/carburant':    'Suivi du carburant',
+  '/depenses':     'Dépenses',
+  '/maintenances': 'Maintenances',
+  '/planning':     'Planning des missions',
+  '/clients':      'Clients',
   '/rapports':     'Rapports & Exports',
   '/utilisateurs': 'Gestion des utilisateurs',
   '/paie':         'Paie des chauffeurs',
-  '/parametres':   'Paramètres métier'
+  '/parametres':   'Paramètres métier',
+  '/mes-missions': 'Mes missions'
 };
 
 const ICONE_NOTIF = {
@@ -43,7 +50,7 @@ const fmtDateRelative = (dateStr) => {
   return formaterDate(dateStr);
 };
 
-export default function Navbar() {
+export default function Navbar({ menuOuvert = false, onMenu }) {
   const { pathname } = useLocation();
   const { user }     = useAuth();
 
@@ -91,17 +98,23 @@ export default function Navbar() {
   };
 
   return (
-    <header className="bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between flex-shrink-0">
-      <h2 className="fs-5 fw-semibold text-gray-800 mb-0">
+    <header className="bg-white border-bottom px-3 px-lg-4 py-2 py-lg-3 d-flex align-items-center gap-2 flex-shrink-0">
+      {/* Menu : ouvre la barre latérale sous 992 px */}
+      <button type="button" onClick={onMenu} aria-label="Ouvrir le menu"
+              aria-controls="barre-laterale" aria-expanded={menuOuvert}
+              className="btn btn-light border rounded-3 d-lg-none bouton-icone p-0 d-flex align-items-center justify-content-center">
+        <Menu size={20} />
+      </button>
+      <h2 className="fs-5 fw-semibold text-gray-800 mb-0 text-truncate flex-grow-1" style={{ minWidth: 0 }}>
         {TITRES[pathname] || 'CamionApp'}
       </h2>
 
-      <div className="d-flex align-items-center gap-3">
+      <div className="d-flex align-items-center gap-2 gap-lg-3 flex-shrink-0">
         {/* Cloche notifications */}
         <div className="position-relative" ref={dropdownRef}>
           <button onClick={() => setOuvert(!ouvert)}
-                  className="btn btn-light btn-sm position-relative p-2 rounded-3 border"
-                  title="Notifications">
+                  className="btn btn-light btn-sm position-relative p-2 rounded-3 border bouton-icone"
+                  title="Notifications" aria-label="Notifications" aria-expanded={ouvert}>
             <Bell size={18} className={nonLues > 0 ? 'text-orange-500' : 'text-gray-600'} />
             {nonLues > 0 && (
               <span className="position-absolute top-0 start-100 translate-middle badge rounded-circle bg-danger"
@@ -113,7 +126,7 @@ export default function Navbar() {
 
           {ouvert && (
             <div className="position-absolute end-0 mt-2 bg-white border rounded-3 shadow-lg"
-                 style={{ width: '360px', zIndex: 1050, maxHeight: '480px', display: 'flex', flexDirection: 'column' }}>
+                 style={{ width: 'min(360px, calc(100vw - 1.5rem))', zIndex: 1050, maxHeight: 'min(480px, 75vh)', display: 'flex', flexDirection: 'column' }}>
               <div className="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
                 <span className="fw-semibold text-dark small">Notifications</span>
                 {nonLues > 0 && (
@@ -162,9 +175,9 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Infos utilisateur */}
-        <div className="d-flex align-items-center gap-3 small text-gray-600">
-          <span className="d-none d-sm-inline">Connecté en tant que</span>
+        {/* Infos utilisateur (le nom et le rôle sont aussi en bas du menu sur téléphone) */}
+        <div className="d-none d-md-flex align-items-center gap-3 small text-gray-600">
+          <span className="d-none d-xl-inline">Connecté en tant que</span>
           <span className="fw-medium text-dark">{user?.nom}</span>
           <span className="badge rounded-pill bg-blue-100 text-blue-700 text-capitalize">
             {user?.role}

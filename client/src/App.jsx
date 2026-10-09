@@ -22,16 +22,28 @@ const ChargementPage = () => (
  * Cadre commun à toutes les pages connectées. Une seule instance pour toute la navigation :
  * la barre latérale et la barre du haut (badges, notifications temps réel) ne sont pas
  * recréées en changeant de page, y compris vers ou depuis la carte en plein écran.
+ * Sous 992 px, la barre latérale devient un tiroir ouvert par le bouton menu.
  */
 const AppLayout = () => {
   const { pathname } = useLocation();
   const pleinEcran = PAGES_PLEIN_ECRAN.has(pathname);
+  const [menuOuvert, setMenuOuvert] = useState(false);
+
+  // Le tiroir se referme après un changement de page et avec la touche Échap
+  useEffect(() => { setMenuOuvert(false); }, [pathname]);
+  useEffect(() => {
+    if (!menuOuvert) return undefined;
+    const surTouche = (e) => { if (e.key === 'Escape') setMenuOuvert(false); };
+    document.addEventListener('keydown', surTouche);
+    return () => document.removeEventListener('keydown', surTouche);
+  }, [menuOuvert]);
+
   return (
     <div className={`d-flex vh-100 overflow-hidden ${pleinEcran ? '' : 'bg-gray-100'}`}>
-      <Sidebar />
-      <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <Navbar />
-        <main className={`flex-grow-1 ${pleinEcran ? 'overflow-hidden' : 'overflow-y-auto p-4'}`}>
+      <Sidebar ouvert={menuOuvert} onFermer={() => setMenuOuvert(false)} />
+      <div className="d-flex flex-column flex-grow-1 overflow-hidden" style={{ minWidth: 0 }}>
+        <Navbar menuOuvert={menuOuvert} onMenu={() => setMenuOuvert(true)} />
+        <main className={`flex-grow-1 ${pleinEcran ? 'overflow-hidden' : 'overflow-y-auto p-3 p-lg-4'}`}>
           <ErreurPage cle={pathname}>
             <Suspense fallback={<ChargementPage />}>
               <Outlet />

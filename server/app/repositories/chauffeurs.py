@@ -26,6 +26,12 @@ async def id_par_permis(numero_permis: str, sauf_id: int | None = None) -> int |
     return ligne["id"] if ligne else None
 
 
+async def id_du_compte(user_id: int) -> int | None:
+    """Fiche chauffeur liée au compte utilisateur (None si aucune)."""
+    ligne = await db.query_one("SELECT id FROM chauffeurs WHERE user_id = %s", [user_id])
+    return ligne["id"] if ligne else None
+
+
 async def proprietaire(id: int) -> int | None:
     """Compte utilisateur lié à la fiche chauffeur (None si aucun ou fiche inexistante)."""
     ligne = await db.query_one("SELECT user_id FROM chauffeurs WHERE id = %s", [id])

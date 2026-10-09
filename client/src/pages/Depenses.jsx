@@ -103,7 +103,7 @@ export default function Depenses() {
   return (
     <div className="d-flex flex-column gap-4">
       {/* En-tête */}
-      <div className="d-flex align-items-center justify-content-between">
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
           <div className="bg-emerald-100 rounded-3 p-2"><Receipt size={24} className="text-emerald-600" /></div>
           <div>

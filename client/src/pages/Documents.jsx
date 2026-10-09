@@ -118,7 +118,7 @@ export default function Documents() {
   return (
     <div className="d-flex flex-column gap-4">
       {/* En-tête */}
-      <div className="d-flex align-items-center justify-content-between">
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
           <div className="bg-blue-100 rounded-3 p-2"><FileCheck size={24} className="text-blue-600" /></div>
           <div>

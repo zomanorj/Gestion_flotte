@@ -84,7 +84,7 @@ Authentification par token JWT (expiration 24 h). Trois rôles appliqués côté
 |------|-------------|
 | admin | Toutes les opérations, y compris suppression et gestion des utilisateurs |
 | gestionnaire | Création et modification — aucune suppression |
-| chauffeur | Lecture seule ; ne voit ni les salaires des autres chauffeurs ni les alertes de gestion, et ne peut télécharger que son propre bulletin de paie |
+| chauffeur | Lecture seule ; arrive sur « Mes missions » (en cours, à venir, historique, bon de livraison) ; ne voit ni les salaires des autres chauffeurs ni les alertes de gestion, et ne peut télécharger que son propre bulletin de paie |
 
 - Chaque requête vérifie que le compte est toujours actif : désactiver un compte, changer son rôle ou son mot de passe révoque immédiatement ses sessions (y compris ses connexions temps réel).
 - Socket.io exige un token valide ; les notifications sont envoyées uniquement à leurs destinataires, avec un état lu / supprimé propre à chaque utilisateur.
@@ -121,10 +121,15 @@ flotte-app/
     └── src/
         ├── context/
         │   └── AuthContext.jsx        # Contexte global auth + persistance localStorage
-        ├── services/api.js            # Instance Axios centralisée + intercepteur JWT
+        ├── services/
+        │   ├── api.js                 # Instance Axios centralisée + intercepteur JWT
+        │   └── socket.js              # Connexion Socket.io unique pour la session
+        ├── requetes/                  # Accès aux données (TanStack Query) : cache et invalidation
+        ├── hooks/                     # useDiffere, useEvenement, useMediaQuery
+        ├── utils/format.js            # Formats communs : dates, montants, kilomètres
         ├── components/
-        │   ├── Sidebar.jsx            # Navigation + badges alertes documents/maintenances
-        │   ├── Navbar.jsx
+        │   ├── Sidebar.jsx            # Navigation (tiroir sur mobile) + badges d'alerte
+        │   ├── Navbar.jsx             # Titre, bouton menu sur mobile, notifications
         │   ├── Modal.jsx
         │   ├── ConfirmModal.jsx       # Modal de confirmation stylisé (remplace window.confirm)
         │   ├── StatCard.jsx
@@ -144,7 +149,9 @@ flotte-app/
             ├── Clients.jsx
             ├── Rapports.jsx
             ├── Utilisateurs.jsx       # Gestion des comptes (admin)
-            └── Paie.jsx               # Bulletins + masse salariale
+            ├── Paie.jsx               # Bulletins + masse salariale
+            ├── Parametres.jsx         # Paramètres métier (admin)
+            └── MesMissions.jsx        # Missions du chauffeur connecté, pensée pour le téléphone
 ```
 
 ---
@@ -313,6 +320,7 @@ Ne jamais charger ces données en production.
 |---------|-------|------|-------------|
 | GET | `/api/missions` | — | Liste avec filtres `?statut=&debut=&fin=` |
 | GET | `/api/missions/planning` | — | Format FullCalendar avec couleurs par statut |
+| GET | `/api/missions/miennes` | — | Missions du chauffeur lié au compte connecté (404 sans fiche liée) |
 | POST | `/api/missions` | gestionnaire | Créer |
 | PUT | `/api/missions/:id/statut` | gestionnaire | Changer le statut |
 | DELETE | `/api/missions/:id` | admin | Supprimer (remet camion et chauffeur disponibles) |

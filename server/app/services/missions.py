@@ -149,6 +149,14 @@ async def lister(statut: str | None, debut, fin, plage: Plage | None) -> Resulta
     return await depot.lister(statut, debut, fin, plage)
 
 
+async def du_compte(user: dict) -> list[dict]:
+    """Missions du chauffeur lié au compte connecté, les plus récentes d'abord."""
+    chauffeur_id = await depot_chauffeurs.id_du_compte(user["id"])
+    if chauffeur_id is None:
+        raise Introuvable("Aucune fiche chauffeur n'est liée à ce compte")
+    return await depot.du_chauffeur(chauffeur_id)
+
+
 async def planning() -> list[dict]:
     return [evenement_planning(m) for m in await depot.pour_planning()]
 

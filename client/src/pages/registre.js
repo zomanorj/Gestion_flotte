@@ -48,6 +48,7 @@ const IMPORTS = {
   '/paie':         () => import('./Paie'),
   '/parametres':   () => import('./Parametres'),
   '/utilisateurs': () => import('./Utilisateurs'),
+  '/mes-missions': () => import('./MesMissions'),
 };
 
 /** Pages affichées sans marge intérieure, sur toute la surface disponible. */
