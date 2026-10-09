@@ -10,11 +10,10 @@ import { Truck, MapPin, Calendar, AlertTriangle, CheckCircle2, Map, FileCheck } 
 import { useTableauDeBord } from '../requetes';
 import StatCard    from '../components/StatCard';
 import AlerteBadge from '../components/AlerteBadge';
+import { formaterMontant } from '../utils/format';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-const formatAriary = (n) =>
-  new Intl.NumberFormat('fr-MG').format(Math.round(n)) + ' Ar';
 
 export default function Dashboard() {
   const { data: stats, isPending: chargement, isError } = useTableauDeBord();
@@ -110,7 +109,7 @@ export default function Dashboard() {
                 </span>
                 <span>
                   Coût carburant :
-                  <strong className="text-primary ms-1">{formatAriary(stats.coutTotalMois)}</strong>
+                  <strong className="text-primary ms-1">{formaterMontant(stats.coutTotalMois)}</strong>
                 </span>
               </div>
             </div>

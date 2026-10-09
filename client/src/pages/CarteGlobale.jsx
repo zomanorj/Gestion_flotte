@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Truck, RefreshCw, ChevronLeft, ChevronRight, MapPin, AlertTriangle, Clock, Gauge } from 'lucide-react';
-import api, { creerSocket } from '../services/api';
+import api from '../services/api';
+import { useEvenement } from '../hooks/useEvenement';
+import { formaterHeure } from '../utils/format';
 import { useSimulationsActives } from '../requetes';
 
 const PALETTE = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#eab308', '#06b6d4', '#ec4899'];
@@ -35,7 +37,6 @@ function formatTemps(sec) {
 }
 
 export default function CarteGlobale() {
-  const socketRef = useRef(null);
   const [camions,               setCamions]               = useState({});
   const [cible,                 setCible]                 = useState(null);
   const [panneauOuvert,         setPanneauOuvert]         = useState(true);
@@ -66,39 +67,32 @@ export default function CarteGlobale() {
     });
   }, [actives.data]);
 
-  useEffect(() => {
-    socketRef.current = creerSocket();
-    const socket = socketRef.current;
-
-    socket.on('flotte:positions', (positions) => {
-      setDerniereMaj(new Date());
-      setMultiplicateurs(prev => {
-        const updated = { ...prev };
-        positions.forEach(c => { if (c.multiplicateur !== undefined) updated[c.missionId] = c.multiplicateur; });
-        return updated;
-      });
-      setCamions(prev => {
-        const suivant = { ...prev };
-        positions.forEach((c) => {
-          const id = c.missionId;
-          const existant = suivant[id];
-          const indexCouleur = existant ? Object.keys(suivant).indexOf(id) : Object.keys(suivant).length;
-          const initiale = (c.immatriculation || '?').replace(/[^A-Z0-9]/gi, '').charAt(0).toUpperCase();
-          suivant[id] = {
-            ...existant, ...c,
-            couleur:  existant?.couleur || couleurParIndex(indexCouleur),
-            initiale: existant?.initiale || initiale,
-            trace: existant?.trace ? [...existant.trace.slice(-499), [c.position.lat, c.position.lng]] : [[c.position.lat, c.position.lng]]
-          };
-        });
-        const idsActifs = positions.map(p => p.missionId);
-        Object.keys(suivant).forEach(id => { if (!idsActifs.includes(id)) delete suivant[id]; });
-        return suivant;
-      });
+  useEvenement('flotte:positions', (positions) => {
+    setDerniereMaj(new Date());
+    setMultiplicateurs(prev => {
+      const updated = { ...prev };
+      positions.forEach(c => { if (c.multiplicateur !== undefined) updated[c.missionId] = c.multiplicateur; });
+      return updated;
     });
-
-    return () => socket.disconnect();
-  }, []);
+    setCamions(prev => {
+      const suivant = { ...prev };
+      positions.forEach((c) => {
+        const id = c.missionId;
+        const existant = suivant[id];
+        const indexCouleur = existant ? Object.keys(suivant).indexOf(id) : Object.keys(suivant).length;
+        const initiale = (c.immatriculation || '?').replace(/[^A-Z0-9]/gi, '').charAt(0).toUpperCase();
+        suivant[id] = {
+          ...existant, ...c,
+          couleur:  existant?.couleur || couleurParIndex(indexCouleur),
+          initiale: existant?.initiale || initiale,
+          trace: existant?.trace ? [...existant.trace.slice(-499), [c.position.lat, c.position.lng]] : [[c.position.lat, c.position.lng]]
+        };
+      });
+      const idsActifs = positions.map(p => p.missionId);
+      Object.keys(suivant).forEach(id => { if (!idsActifs.includes(id)) delete suivant[id]; });
+      return suivant;
+    });
+  });
 
   const camionsList = Object.values(camions);
   const nbEnMission = camionsList.length;
@@ -133,7 +127,7 @@ export default function CarteGlobale() {
           {derniereMaj && (
             <p className="text-slate-500 mb-1" style={{ fontSize: '11px' }}>
               <Clock size={12} className="me-1" />
-              Mis à jour {derniereMaj.toLocaleTimeString('fr-FR')}
+              Mis à jour {formaterHeure(derniereMaj)}
             </p>
           )}
           <button onClick={() => actives.refetch()}

@@ -6,6 +6,7 @@ import { messageErreur } from '../requetes/client';
 import { useAlertesMaintenances, useEcriture, useMaintenances, useVehicules } from '../requetes';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
+import { dateDuJour, formaterDate, formaterKm, formaterMontant } from '../utils/format';
 
 const TYPES = {
   vidange: 'Vidange', freins: 'Freins', pneus: 'Pneus', courroie: 'Courroie',
@@ -29,8 +30,6 @@ const STATUT_CFG = {
 const FORM_VIDE = { vehicule_id: '', type: 'vidange', description: '', kilometrage_declencheur: '', date_prevue: '', cout_estime: '', garage: '', priorite: 'normale' };
 const FORM_CLOTURE = { date_realisee: '', cout_reel: '', notes: '' };
 
-const fmtDate    = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-const fmtMontant = (n) => n != null ? `${Number(n).toLocaleString('fr-FR')} Ar` : '—';
 
 const PrioriteBadge = ({ priorite }) => {
   const cfg = PRIORITE_CFG[priorite] || PRIORITE_CFG.normale;
@@ -103,7 +102,7 @@ export default function Maintenances() {
 
   const ouvrirCloture = (m) => {
     setMaintenanceClt(m);
-    setFormCloture({ date_realisee: new Date().toLocaleDateString('sv-SE'), cout_reel: '', notes: '' });
+    setFormCloture({ date_realisee: dateDuJour(), cout_reel: '', notes: '' });
     setModalCloture(true);
   };
   const fermerCloture = () => { setModalCloture(false); setMaintenanceClt(null); };
@@ -239,7 +238,7 @@ export default function Maintenances() {
                   {a.date_prevue && (
                     <p className="text-xs mt-2 text-gray-600 mb-0">
                       <Clock size={12} className="me-1" />
-                      {a.depassee ? 'Dépassée — prévue le ' : 'Prévue le '}{fmtDate(a.date_prevue)}
+                      {a.depassee ? 'Dépassée — prévue le ' : 'Prévue le '}{formaterDate(a.date_prevue)}
                     </p>
                   )}
                 </div>
@@ -305,15 +304,15 @@ export default function Maintenances() {
                     <td className="px-3 py-2 text-muted text-truncate" style={{ maxWidth: '180px' }}>{m.description || '—'}</td>
                     <td className="px-3 py-2 text-nowrap">
                       <span className={m.depassee ? 'text-danger fw-medium' : 'text-gray-600'}>
-                        {fmtDate(m.date_prevue)}{m.depassee && <span className="ms-1 small">(dépassée)</span>}
+                        {formaterDate(m.date_prevue)}{m.depassee && <span className="ms-1 small">(dépassée)</span>}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-gray-600 text-nowrap">
-                      {m.kilometrage_declencheur ? `${m.kilometrage_declencheur.toLocaleString()} km` : '—'}
+                      {m.kilometrage_declencheur ? formaterKm(m.kilometrage_declencheur) : '—'}
                     </td>
                     <td className="px-3 py-2"><PrioriteBadge priorite={m.priorite} /></td>
                     <td className="px-3 py-2"><StatutBadge statut={m.statut} /></td>
-                    <td className="px-3 py-2 text-dark text-nowrap">{fmtMontant(m.cout_estime)}</td>
+                    <td className="px-3 py-2 text-dark text-nowrap">{formaterMontant(m.cout_estime)}</td>
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-1">
                         {peutModifier && !['terminee', 'annulee'].includes(m.statut) && (

@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Loader2, FileDown, Table2 } from 'lucide-react';
 import { useMissions } from '../requetes';
+import { dateDuJour, formaterDate, formaterKm, formaterMontant, pourPdf } from '../utils/format';
 
-const formatDate   = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-const formatAriary = (n) => n ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '0';
 
 export default function Rapports() {
   const [dateDebut,   setDateDebut]   = useState('');
@@ -53,21 +52,22 @@ export default function Rapports() {
     doc.setFontSize(10);
     doc.setTextColor(100);
     const periode = dateDebut || dateFin
-      ? `Période : ${dateDebut ? formatDate(dateDebut) : 'début'} → ${dateFin ? formatDate(dateFin) : 'fin'}`
+      ? `Période : ${dateDebut ? formaterDate(dateDebut) : 'début'} → ${dateFin ? formaterDate(dateFin) : 'fin'}`
       : 'Toutes les missions terminées';
-    doc.text(periode, 14, 26);
-    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 14, 32);
+    doc.text(pourPdf(periode), 14, 26);
+    doc.text(`Généré le ${formaterDate(new Date())}`, 14, 32);
 
+    // Les polices standard de jsPDF n'ont ni la flèche ni les espaces fines des nombres
     const lignes = missions.map((m) => [
       m.titre, m.immatriculation, `${m.chauffeur_prenom} ${m.chauffeur_nom}`,
-      `${m.lieu_depart} → ${m.lieu_destination}`, `${m.distance_km} km`,
-      formatAriary(m.cout_carburant) + ' Ar', formatDate(m.date_depart)
-    ]);
+      `${m.lieu_depart} → ${m.lieu_destination}`, formaterKm(m.distance_km, 1),
+      formaterMontant(m.cout_carburant, '0 Ar'), formaterDate(m.date_depart)
+    ].map(pourPdf));
     lignes.push([
       { content: `TOTAL — ${missions.length} mission(s)`, styles: { fontStyle: 'bold' } },
       '', '', '',
-      { content: `${totalKm.toFixed(1)} km`, styles: { fontStyle: 'bold' } },
-      { content: formatAriary(totalCout) + ' Ar', styles: { fontStyle: 'bold' } },
+      { content: pourPdf(formaterKm(totalKm, 1)), styles: { fontStyle: 'bold' } },
+      { content: pourPdf(formaterMontant(totalCout)), styles: { fontStyle: 'bold' } },
       ''
     ]);
 
@@ -80,7 +80,7 @@ export default function Rapports() {
       alternateRowStyles: { fillColor: [239, 246, 255] },
       margin: { left: 14, right: 14 }
     });
-    doc.save(`rapport_missions_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`rapport_missions_${dateDuJour()}.pdf`);
   };
 
   const exporterExcel = async () => {
@@ -93,8 +93,8 @@ export default function Rapports() {
       'Destination':         m.lieu_destination,
       'Distance (km)':       parseFloat(m.distance_km),
       'Coût carburant (Ar)': parseFloat(m.cout_carburant) || 0,
-      'Date de départ':      formatDate(m.date_depart),
-      'Date de retour':      formatDate(m.date_retour_reelle)
+      'Date de départ':      formaterDate(m.date_depart),
+      'Date de retour':      formaterDate(m.date_retour_reelle)
     }));
     lignes.push({
       'Mission': `TOTAL (${missions.length} missions)`,
@@ -106,7 +106,7 @@ export default function Rapports() {
     const ws = XLSX.utils.json_to_sheet(lignes);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rapport');
-    XLSX.writeFile(wb, `rapport_missions_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `rapport_missions_${dateDuJour()}.xlsx`);
   };
 
   return (
@@ -185,17 +185,17 @@ export default function Rapports() {
                         <td className="px-3 py-2 text-gray-600 font-monospace small">{m.immatriculation}</td>
                         <td className="px-3 py-2 text-gray-600">{m.chauffeur_prenom} {m.chauffeur_nom}</td>
                         <td className="px-3 py-2 text-gray-600 small">{m.lieu_depart} → {m.lieu_destination}</td>
-                        <td className="px-3 py-2 text-gray-600">{m.distance_km} km</td>
-                        <td className="px-3 py-2 text-primary fw-medium">{formatAriary(m.cout_carburant)} Ar</td>
-                        <td className="px-3 py-2 text-gray-600">{formatDate(m.date_depart)}</td>
+                        <td className="px-3 py-2 text-gray-600">{formaterKm(m.distance_km, 1)}</td>
+                        <td className="px-3 py-2 text-primary fw-medium">{formaterMontant(m.cout_carburant, '0 Ar')}</td>
+                        <td className="px-3 py-2 text-gray-600">{formaterDate(m.date_depart)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="table-primary border-top border-primary">
                     <tr>
                       <td colSpan={4} className="px-3 py-2 fw-bold text-dark">Total — {missions.length} mission(s)</td>
-                      <td className="px-3 py-2 fw-bold text-dark">{totalKm.toFixed(1)} km</td>
-                      <td className="px-3 py-2 fw-bold text-primary">{formatAriary(totalCout)} Ar</td>
+                      <td className="px-3 py-2 fw-bold text-dark">{formaterKm(totalKm, 1)}</td>
+                      <td className="px-3 py-2 fw-bold text-primary">{formaterMontant(totalCout)}</td>
                       <td />
                     </tr>
                   </tfoot>

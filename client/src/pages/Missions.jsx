@@ -8,6 +8,7 @@ import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
+import { formaterDate, formaterKm, formaterMontant } from '../utils/format';
 
 const BADGES = {
   planifiee: 'bg-gray-100 text-gray-700',
@@ -23,8 +24,6 @@ const LABELS = {
   annulee:   'Annulée'
 };
 
-const formatDate   = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-const formatAriary = (n) => n ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' Ar' : '—';
 
 const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
   const [form, setForm] = useState({
@@ -158,7 +157,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
             <div className="row g-3">
               <div className="col-4">
                 <p className="text-xs text-muted mb-1">Distance réelle</p>
-                <p className="fw-bold fs-5 text-dark mb-0">{Math.round(form.distance_km)} km</p>
+                <p className="fw-bold fs-5 text-dark mb-0">{formaterKm(form.distance_km)}</p>
               </div>
               {dureeEstimee !== null && (
                 <div className="col-4">
@@ -171,7 +170,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
               {coutEstime !== null && (
                 <div className="col-4">
                   <p className="text-xs text-muted mb-1">Coût carburant</p>
-                  <p className="fw-bold fs-5 text-orange-500 mb-0">{coutEstime.toLocaleString()} Ar</p>
+                  <p className="fw-bold fs-5 text-orange-500 mb-0">{formaterMontant(coutEstime)}</p>
                 </div>
               )}
             </div>
@@ -238,11 +237,11 @@ const DetailMission = ({ mission }) => (
       <div className="col-6"><strong>Chauffeur :</strong> {mission.chauffeur_prenom} {mission.chauffeur_nom}</div>
       <div className="col-6"><strong>Départ :</strong> {mission.lieu_depart}</div>
       <div className="col-6"><strong>Destination :</strong> {mission.lieu_destination}</div>
-      <div className="col-6"><strong>Distance :</strong> {mission.distance_km} km</div>
+      <div className="col-6"><strong>Distance :</strong> {formaterKm(mission.distance_km, 1)}</div>
       <div className="col-6"><strong>Poids :</strong> {mission.poids_charge ? `${mission.poids_charge} T` : '—'}</div>
-      <div className="col-6"><strong>Coût carburant :</strong> {formatAriary(mission.cout_carburant)}</div>
-      <div className="col-6"><strong>Date départ :</strong> {formatDate(mission.date_depart)}</div>
-      <div className="col-6"><strong>Retour réel :</strong> {formatDate(mission.date_retour_reelle)}</div>
+      <div className="col-6"><strong>Coût carburant :</strong> {formaterMontant(mission.cout_carburant)}</div>
+      <div className="col-6"><strong>Date départ :</strong> {formaterDate(mission.date_depart)}</div>
+      <div className="col-6"><strong>Retour réel :</strong> {formaterDate(mission.date_retour_reelle)}</div>
     </div>
     {mission.notes && (
       <div className="bg-light rounded-2 p-2">
@@ -369,9 +368,9 @@ export default function Missions() {
                     <td className="px-3 py-2 text-gray-600">{m.chauffeur_prenom} {m.chauffeur_nom}</td>
                     <td className="px-3 py-2 text-gray-600 small">
                       {m.lieu_depart} → {m.lieu_destination}
-                      <br /><span className="text-muted">{m.distance_km} km</span>
+                      <br /><span className="text-muted">{formaterKm(m.distance_km, 1)}</span>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 small text-nowrap">{formatDate(m.date_depart)}</td>
+                    <td className="px-3 py-2 text-gray-600 small text-nowrap">{formaterDate(m.date_depart)}</td>
                     <td className="px-3 py-2">
                       <span className={`badge rounded-pill fw-medium ${BADGES[m.statut]}`}>{LABELS[m.statut]}</span>
                     </td>

@@ -5,12 +5,11 @@ import { messageErreur } from '../requetes/client';
 import { useEcriture, useHistoriqueParametres, useParametres } from '../requetes';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { formaterDateHeure, formaterNombre } from '../utils/format';
 
 // Ordre d'affichage des catégories renvoyées par l'API
 const CATEGORIES = ['Missions', 'Paie', 'Alertes'];
 
-const fmtNombre = (n) => new Intl.NumberFormat('fr-FR').format(n);
-const fmtDateHeure = (d) => d ? new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
 
 export default function Parametres() {
   const { user } = useAuth();
@@ -58,7 +57,7 @@ export default function Parametres() {
     try {
       await retablissement.mutateAsync(p.cle);
       setSaisies(({ [p.cle]: _, ...autres }) => autres);
-      ajouterToast('Valeur par défaut rétablie', `${p.libelle} : ${fmtNombre(p.defaut)} ${p.unite}`);
+      ajouterToast('Valeur par défaut rétablie', `${p.libelle} : ${formaterNombre(p.defaut, 3)} ${p.unite}`);
     } catch (err) {
       ajouterToast('Erreur', messageErreur(err, 'Erreur'), true);
     }
@@ -121,8 +120,8 @@ export default function Parametres() {
                       <div className="text-muted small">{p.description}</div>
                       {p.personnalise && (
                         <div className="text-muted small mt-1">
-                          Modifié{p.modifie_par_nom ? ` par ${p.modifie_par_nom}` : ''} le {fmtDateHeure(p.modifie_le)}
-                          {' '}— par défaut : {fmtNombre(p.defaut)} {p.unite}
+                          Modifié{p.modifie_par_nom ? ` par ${p.modifie_par_nom}` : ''} le {formaterDateHeure(p.modifie_le)}
+                          {' '}— par défaut : {formaterNombre(p.defaut, 3)} {p.unite}
                         </div>
                       )}
                     </div>
@@ -135,13 +134,13 @@ export default function Parametres() {
                         <span className="input-group-text">{p.unite}</span>
                       </div>
                       <div className="text-muted small mt-1">
-                        Entre {fmtNombre(p.minimum)} et {fmtNombre(p.maximum)}
+                        Entre {formaterNombre(p.minimum, 3)} et {formaterNombre(p.maximum, 3)}
                       </div>
                     </div>
                     <div className="col-md-2 text-md-end">
                       {estAdmin && p.personnalise && (
                         <button onClick={() => reinitialiser(p)} className="btn btn-sm btn-outline-secondary"
-                                title={`Revenir à ${fmtNombre(p.defaut)} ${p.unite}`}>
+                                title={`Revenir à ${formaterNombre(p.defaut, 3)} ${p.unite}`}>
                           <RotateCcw size={14} className="me-1" /> Défaut
                         </button>
                       )}
@@ -179,7 +178,7 @@ export default function Parametres() {
                   <tbody>
                     {historique.map(h => (
                       <tr key={h.id}>
-                        <td className="px-3 py-2 text-nowrap small">{fmtDateHeure(h.modifie_le)}</td>
+                        <td className="px-3 py-2 text-nowrap small">{formaterDateHeure(h.modifie_le)}</td>
                         <td className="px-3 py-2 small">{h.libelle || libelle(h.cle)}</td>
                         <td className="px-3 py-2 small">{h.ancienne_valeur ?? <span className="text-muted">défaut</span>}</td>
                         <td className="px-3 py-2 small">{h.nouvelle_valeur ?? <span className="text-muted">défaut</span>}</td>

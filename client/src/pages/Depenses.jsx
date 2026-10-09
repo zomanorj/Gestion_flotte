@@ -6,6 +6,7 @@ import { useDepenses, useEcriture, useStatsDepenses, useVehicules } from '../req
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
+import { formaterDate, formaterMontant } from '../utils/format';
 
 const CATEGORIES = {
   peage: 'Péage', amende: 'Amende', lavage: 'Lavage', pneu: 'Pneu',
@@ -21,8 +22,6 @@ const CATEGORIE_COULEURS = {
 };
 
 const FORM_VIDE = { vehicule_id: '', categorie: 'peage', montant: '', date_depense: '', description: '' };
-const fmtDate    = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-const fmtMontant = (n) => n != null ? `${Number(n).toLocaleString('fr-FR')} Ar` : '—';
 
 const KpiCard = ({ Icon, label, valeur, couleur }) => (
   <div className="card border rounded-3">
@@ -91,7 +90,7 @@ export default function Depenses() {
   const supprimer = async (dep) => {
     const ok = await confirmer({
       type: 'supprimer',
-      element: `${CATEGORIES[dep.categorie]} — ${fmtMontant(dep.montant)}`,
+      element: `${CATEGORIES[dep.categorie]} — ${formaterMontant(dep.montant)}`,
       consequences: ['La dépense sera définitivement supprimée', 'Cette action est irréversible']
     });
     if (!ok) return;
@@ -123,10 +122,10 @@ export default function Depenses() {
       {stats && (
         <div className="row g-3">
           <div className="col-12 col-sm-4">
-            <KpiCard Icon={CalendarDays} label="Dépenses ce mois"   valeur={fmtMontant(stats.totalMois)}  couleur="bg-success" />
+            <KpiCard Icon={CalendarDays} label="Dépenses ce mois"   valeur={formaterMontant(stats.totalMois)}  couleur="bg-success" />
           </div>
           <div className="col-12 col-sm-4">
-            <KpiCard Icon={TrendingUp}   label="Total cette année"  valeur={fmtMontant(stats.totalAnnee)} couleur="bg-primary" />
+            <KpiCard Icon={TrendingUp}   label="Total cette année"  valeur={formaterMontant(stats.totalAnnee)} couleur="bg-primary" />
           </div>
           <div className="col-12 col-sm-4">
             <KpiCard Icon={ListChecks}   label="Nombre de dépenses" valeur={stats.nbDepenses}             couleur="bg-secondary" />
@@ -180,7 +179,7 @@ export default function Depenses() {
               <tbody>
                 {depenses.map((d) => (
                   <tr key={d.id}>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">{fmtDate(d.date_depense)}</td>
+                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(d.date_depense)}</td>
                     <td className="px-3 py-2 text-nowrap">
                       <span className="fw-medium text-dark">{d.immatriculation}</span>
                       <span className="text-muted small ms-1">{d.marque}</span>
@@ -190,7 +189,7 @@ export default function Depenses() {
                         {CATEGORIES[d.categorie] || d.categorie}
                       </span>
                     </td>
-                    <td className="px-3 py-2 fw-semibold text-dark text-nowrap">{fmtMontant(d.montant)}</td>
+                    <td className="px-3 py-2 fw-semibold text-dark text-nowrap">{formaterMontant(d.montant)}</td>
                     <td className="px-3 py-2 text-muted text-truncate" style={{ maxWidth: '200px' }}>{d.description || '—'}</td>
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-2">

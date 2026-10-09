@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Bell, CheckCheck, AlertTriangle, Wrench, FileText, MapPin, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import api, { creerSocket } from '../services/api';
+import api from '../services/api';
+import { useEvenement } from '../hooks/useEvenement';
+import { formaterDate } from '../utils/format';
 import { useEcriture, useNotifications, useRafraichir } from '../requetes';
 
 const TITRES = {
@@ -38,7 +40,7 @@ const fmtDateRelative = (dateStr) => {
   if (diff < 60)    return "À l'instant";
   if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)}h`;
-  return new Date(dateStr).toLocaleDateString('fr-FR');
+  return formaterDate(dateStr);
 };
 
 export default function Navbar() {
@@ -47,7 +49,6 @@ export default function Navbar() {
 
   const [ouvert,    setOuvert]   = useState(false);
   const dropdownRef = useRef(null);
-  const socketRef   = useRef(null);
 
   const { data } = useNotifications();
   const notifs  = data?.notifications ?? [];
@@ -58,28 +59,24 @@ export default function Navbar() {
   const toutLire  = useEcriture('notifications', () => api.patch('/notifications/read-all'));
   const masquer   = useEcriture('notifications', (id) => api.delete(`/notifications/${id}`));
 
-  useEffect(() => {
-    // Événements temps réel : les données concernées sont rechargées depuis l'API, si bien
-    // que toutes les pages ouvertes et les badges restent à jour, y compris quand la
-    // modification vient d'un autre utilisateur.
-    socketRef.current = creerSocket();
-    socketRef.current.on('notification:nouvelle', () => {
-      rafraichir('notifications', 'documents', 'maintenances', 'vehicules');
-    });
-    socketRef.current.on('mission:nouvelle', () => rafraichir('missions', 'planning', 'tableau-de-bord'));
-    socketRef.current.on('mission:statut', () => {
-      rafraichir('missions', 'planning', 'vehicules', 'chauffeurs', 'tableau-de-bord', 'paie', 'simulations');
-    });
+  // Événements temps réel : les données concernées sont rechargées depuis l'API, si bien
+  // que toutes les pages ouvertes et les badges restent à jour, y compris quand la
+  // modification vient d'un autre utilisateur.
+  useEvenement('notification:nouvelle', () => {
+    rafraichir('notifications', 'documents', 'maintenances', 'vehicules');
+  });
+  useEvenement('mission:nouvelle', () => rafraichir('missions', 'planning', 'tableau-de-bord'));
+  useEvenement('mission:statut', () => {
+    rafraichir('missions', 'planning', 'vehicules', 'chauffeurs', 'tableau-de-bord', 'paie', 'simulations');
+  });
 
+  useEffect(() => {
     const handleOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOuvert(false);
     };
     document.addEventListener('mousedown', handleOutside);
 
-    return () => {
-      socketRef.current?.disconnect();
-      document.removeEventListener('mousedown', handleOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleOutside);
   }, []);
 
   const marquerLue = (notif) => {

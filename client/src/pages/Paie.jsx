@@ -3,11 +3,11 @@ import { Wallet, Download, Pencil, AlertTriangle, Users, TrendingUp, MapPin } fr
 import api, { telechargerFichier } from '../services/api';
 import { messageErreur } from '../requetes/client';
 import { useEcriture, usePaie } from '../requetes';
+import { formaterKm, formaterMontant } from '../utils/format';
 
 const MOIS_FR = ['', 'Janvier','Février','Mars','Avril','Mai','Juin',
                  'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
-const fmtMontant = (n) => n != null ? `${Math.round(n).toLocaleString('fr-FR')} Ar` : '—';
 
 export default function Paie() {
   const now = new Date();
@@ -91,7 +91,7 @@ export default function Paie() {
                 <div className="bg-success rounded-3 p-2"><TrendingUp size={24} color="white" /></div>
                 <div>
                   <p className="text-xs text-muted fw-medium text-uppercase mb-1">Masse salariale nette</p>
-                  <p className="fs-5 fw-bold text-dark mb-0">{fmtMontant(resume.masse_salariale)}</p>
+                  <p className="fs-5 fw-bold text-dark mb-0">{formaterMontant(resume.masse_salariale)}</p>
                 </div>
               </div>
             </div>
@@ -151,11 +151,11 @@ export default function Paie() {
                         {f.nb_missions}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-gray-600">{f.total_km.toLocaleString()} km</td>
-                    <td className="px-3 py-2 text-gray-600">{fmtMontant(f.salaire_base)}</td>
-                    <td className="px-3 py-2 text-blue-700">{fmtMontant(f.total_primes)}</td>
-                    <td className="px-3 py-2 text-orange-600">{f.km_bonus > 0 ? fmtMontant(f.km_bonus) : '—'}</td>
-                    <td className="px-3 py-2 fw-bold text-success text-nowrap">{fmtMontant(f.net_a_payer)}</td>
+                    <td className="px-3 py-2 text-gray-600">{formaterKm(f.total_km)}</td>
+                    <td className="px-3 py-2 text-gray-600">{formaterMontant(f.salaire_base)}</td>
+                    <td className="px-3 py-2 text-blue-700">{formaterMontant(f.total_primes)}</td>
+                    <td className="px-3 py-2 text-orange-600">{f.km_bonus > 0 ? formaterMontant(f.km_bonus) : '—'}</td>
+                    <td className="px-3 py-2 fw-bold text-success text-nowrap">{formaterMontant(f.net_a_payer)}</td>
                     <td className="px-3 py-2">
                       <div className="d-flex gap-1">
                         <button onClick={() => telechargerPDF(f)}
@@ -175,9 +175,9 @@ export default function Paie() {
                 <tr>
                   <td className="px-3 py-2 fw-bold text-dark">TOTAL</td>
                   <td className="px-3 py-2 text-center fw-bold">{resume.nb_missions}</td>
-                  <td className="px-3 py-2 fw-bold">{resume.fiches.reduce((s, f) => s + f.total_km, 0).toLocaleString()} km</td>
+                  <td className="px-3 py-2 fw-bold">{formaterKm(resume.fiches.reduce((s, f) => s + f.total_km, 0))}</td>
                   <td colSpan={3} />
-                  <td className="px-3 py-2 fw-bold text-success">{fmtMontant(resume.masse_salariale)}</td>
+                  <td className="px-3 py-2 fw-bold text-success">{formaterMontant(resume.masse_salariale)}</td>
                   <td />
                 </tr>
               </tfoot>

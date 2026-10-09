@@ -6,6 +6,7 @@ import { useAlertesDocuments, useDocuments, useEcriture, useVehicules } from '..
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
+import { formaterDate } from '../utils/format';
 
 const TYPES = {
   carte_grise: 'Carte grise', assurance: 'Assurance', vignette: 'Vignette',
@@ -19,7 +20,6 @@ const STATUT_CONFIG = {
 };
 
 const FORM_VIDE = { vehicule_id: '', type: 'carte_grise', numero: '', date_emission: '', date_expiration: '', notes: '' };
-const fmtDate   = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
 
 const StatutBadge = ({ statut }) => {
   const cfg = STATUT_CONFIG[statut] || STATUT_CONFIG.valide;
@@ -211,8 +211,8 @@ export default function Documents() {
                       <span className="fw-medium text-dark">{doc.immatriculation}</span>
                       <span className="text-muted small ms-1">{doc.marque}</span>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">{fmtDate(doc.date_emission)}</td>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">{fmtDate(doc.date_expiration)}</td>
+                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(doc.date_emission)}</td>
+                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(doc.date_expiration)}</td>
                     <td className="px-3 py-2"><StatutBadge statut={doc.statut} /></td>
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-2">

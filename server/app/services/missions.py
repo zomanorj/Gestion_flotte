@@ -224,5 +224,7 @@ async def demarrer_simulation(id: int) -> dict:
         await depot.modifier(id, {"statut": "en_cours"}, tx)
         await occuper_ressources(tx, mission)
 
+    # Comme pour un changement de statut manuel : les écrans des autres utilisateurs se mettent à jour
+    await sio.emit("mission:statut", {"id": id, "statut": "en_cours"})
     await simulation.demarrer_simulation(str(id), mission)
     return mission

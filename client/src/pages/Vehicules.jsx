@@ -7,6 +7,7 @@ import { useDiffere } from '../hooks/useDiffere';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
+import { formaterDate, formaterKm, formaterMontant } from '../utils/format';
 
 const BADGES_STATUT = {
   disponible:  'bg-green-100 text-green-800',
@@ -27,7 +28,6 @@ const TYPES_CAMION = {
   frigorifique: 'Frigorifique', citerne: 'Citerne'
 };
 
-const formatDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
 
 const FormulaireCamion = ({ camion, onSauvegarder, onAnnuler }) => {
   const [form, setForm] = useState({
@@ -208,13 +208,13 @@ export default function Vehicules() {
                     <td className="px-3 py-2 text-gray-700">{c.marque} {c.modele}</td>
                     <td className="px-3 py-2 text-gray-600 text-capitalize">{TYPES_CAMION[c.type_camion] || c.type_camion}</td>
                     <td className="px-3 py-2 text-gray-600">{c.tonnage ? `${c.tonnage} T` : '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{new Intl.NumberFormat('fr-FR').format(c.kilometrage)} km</td>
+                    <td className="px-3 py-2 text-gray-600">{formaterKm(c.kilometrage)}</td>
                     <td className="px-3 py-2">
                       <span className={`badge rounded-pill small fw-medium ${BADGES_STATUT[c.statut] || 'bg-gray-100 text-gray-700'}`}>
                         {LABELS_STATUT[c.statut] || c.statut}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formatDate(c.date_prochain_ct)}</td>
+                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(c.date_prochain_ct)}</td>
                     <td className="px-3 py-2">
                       <div className="d-flex gap-1">
                         <button onClick={() => ouvrirDetail(c)} className="btn btn-sm btn-light" title="Voir le détail">
@@ -286,7 +286,7 @@ function DetailCamion({ camion }) {
         <div className="col-6"><strong>Marque :</strong> {detail.marque}</div>
         <div className="col-6"><strong>Modèle :</strong> {detail.modele}</div>
         <div className="col-6"><strong>Année :</strong> {detail.annee}</div>
-        <div className="col-6"><strong>Km :</strong> {new Intl.NumberFormat('fr-FR').format(detail.kilometrage)}</div>
+        <div className="col-6"><strong>Km :</strong> {formaterKm(detail.kilometrage)}</div>
         <div className="col-6"><strong>Type :</strong> {TYPES_CAMION[detail.type_camion] || detail.type_camion}</div>
         <div className="col-6"><strong>Tonnage :</strong> {detail.tonnage ? `${detail.tonnage} T` : '—'}</div>
         <div className="col-6"><strong>Conso :</strong> {detail.consommation_litre_km} L/km</div>
@@ -316,8 +316,8 @@ function DetailCamion({ camion }) {
           <div className="d-flex flex-column gap-2">
             {detail.maintenances.map((m) => (
               <div key={m.id} className="bg-light rounded-2 p-2">
-                <p className="fw-medium mb-1">{m.type} — {new Intl.NumberFormat('fr-FR').format(m.cout)} Ar</p>
-                <p className="text-muted mb-0">{new Date(m.date_maintenance).toLocaleDateString('fr-FR')}</p>
+                <p className="fw-medium mb-1">{m.type} — {formaterMontant(m.cout)}</p>
+                <p className="text-muted mb-0">{formaterDate(m.date_maintenance)}</p>
               </div>
             ))}
           </div>

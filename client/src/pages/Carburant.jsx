@@ -6,6 +6,7 @@ import { useEcriture, useParametres, usePleins, useStatsCarburant, useVehicules 
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
+import { formaterDate, formaterMontant, formaterNombre } from '../utils/format';
 
 const TYPES_CARBURANT = { diesel: 'Diesel', essence: 'Essence', gasoil: 'Gasoil' };
 
@@ -15,8 +16,6 @@ const FORM_VIDE = {
   station: '', ville: '', type_carburant: 'diesel', notes: ''
 };
 
-const fmtDate    = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-const fmtMontant = (n) => n != null ? `${Number(n).toLocaleString('fr-FR')} Ar` : '—';
 
 const KpiCard = ({ Icon, label, valeur, couleur }) => (
   <div className="card border rounded-3">
@@ -96,8 +95,8 @@ export default function Carburant() {
   const supprimer = async (plein) => {
     const ok = await confirmer({
       type: 'supprimer',
-      element: `Plein du ${fmtDate(plein.date_plein)} — ${plein.immatriculation}`,
-      consequences: ['Cette action est irréversible', `${plein.litres} L — ${fmtMontant(plein.cout_total)}`]
+      element: `Plein du ${formaterDate(plein.date_plein)} — ${plein.immatriculation}`,
+      consequences: ['Cette action est irréversible', `${plein.litres} L — ${formaterMontant(plein.cout_total)}`]
     });
     if (!ok) return;
     try { await suppression.mutateAsync(plein.id); }
@@ -127,16 +126,16 @@ export default function Carburant() {
       {stats && (
         <div className="row g-3">
           <div className="col-12 col-sm-6 col-xl-3">
-            <KpiCard Icon={Droplets}    label="Total litres"    valeur={`${Number(stats.totalLitres).toLocaleString('fr-FR')} L`} couleur="bg-primary" />
+            <KpiCard Icon={Droplets}    label="Total litres"    valeur={`${formaterNombre(stats.totalLitres, 1)} L`} couleur="bg-primary" />
           </div>
           <div className="col-12 col-sm-6 col-xl-3">
-            <KpiCard Icon={DollarSign}  label="Coût total"      valeur={fmtMontant(stats.coutTotal)}   couleur="bg-amber-500" />
+            <KpiCard Icon={DollarSign}  label="Coût total"      valeur={formaterMontant(stats.coutTotal)}   couleur="bg-amber-500" />
           </div>
           <div className="col-12 col-sm-6 col-xl-3">
             <KpiCard Icon={Gauge}       label="Conso. moyenne"  valeur={stats.consommationMoyenne ? `${Number(stats.consommationMoyenne).toFixed(2)} L/km` : '—'} couleur="bg-success" />
           </div>
           <div className="col-12 col-sm-6 col-xl-3">
-            <KpiCard Icon={TrendingDown} label="Dépense ce mois" valeur={fmtMontant(stats.coutMois)}    couleur="bg-secondary" />
+            <KpiCard Icon={TrendingDown} label="Dépense ce mois" valeur={formaterMontant(stats.coutMois)}    couleur="bg-secondary" />
           </div>
         </div>
       )}
@@ -183,15 +182,15 @@ export default function Carburant() {
               <tbody>
                 {pleins.map((p) => (
                   <tr key={p.id}>
-                    <td className="px-3 py-2 text-gray-600 text-nowrap">{fmtDate(p.date_plein)}</td>
+                    <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(p.date_plein)}</td>
                     <td className="px-3 py-2 text-nowrap">
                       <span className="fw-medium text-dark">{p.immatriculation}</span>
                       <span className="text-muted small ms-1">{p.marque}</span>
                     </td>
                     <td className="px-3 py-2 text-gray-600">{p.station || '—'}{p.ville ? ` · ${p.ville}` : ''}</td>
                     <td className="px-3 py-2 text-dark fw-medium">{p.litres} L</td>
-                    <td className="px-3 py-2 text-gray-600">{Number(p.prix_litre).toLocaleString('fr-FR')} Ar</td>
-                    <td className="px-3 py-2 text-dark fw-semibold text-nowrap">{fmtMontant(p.cout_total)}</td>
+                    <td className="px-3 py-2 text-gray-600">{formaterMontant(p.prix_litre)}</td>
+                    <td className="px-3 py-2 text-dark fw-semibold text-nowrap">{formaterMontant(p.cout_total)}</td>
                     <td className="px-3 py-2">
                       <span className="badge rounded-pill bg-amber-100 text-amber-700 fw-medium">
                         {TYPES_CARBURANT[p.type_carburant] || p.type_carburant}

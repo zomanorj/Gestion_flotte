@@ -103,6 +103,8 @@ def test_simulation_de_mission(serveur, api, admin, vehicule, chauffeur_fiche, c
         assert r.json()["mission"]["camion"] == vehicule["immatriculation"]
 
         assert await _attendre(lambda: f"mission:{mid}:debut" in recus)
+        # Le passage en cours est diffusé : les listes ouvertes ailleurs se mettent à jour
+        assert {"id": mid, "statut": "en_cours"} in recus.get("mission:statut", [])
         debut = recus[f"mission:{mid}:debut"][0]
         assert debut["totalPoints"] == 51  # tracé de secours (OSRM désactivé en test)
         assert debut["multiplicateur"] == 30

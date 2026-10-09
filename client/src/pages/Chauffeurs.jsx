@@ -7,6 +7,7 @@ import { useDiffere } from '../hooks/useDiffere';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
+import { formaterDate, formaterKm, formaterMontant } from '../utils/format';
 
 const BADGES_STATUT = {
   disponible: 'bg-green-100 text-green-800',
@@ -133,9 +134,9 @@ const HistoriqueMissions = ({ chauffeurId }) => {
             {m.immatriculation} • {m.lieu_depart} → {m.lieu_destination}
           </p>
           <p className="text-muted text-xs mt-1 mb-0">
-            {new Date(m.date_depart).toLocaleDateString('fr-FR')}
-            {' · '}{m.distance_km} km
-            {m.cout_carburant ? ` · ${new Intl.NumberFormat('fr-FR').format(m.cout_carburant)} Ar` : ''}
+            {formaterDate(m.date_depart)}
+            {' · '}{formaterKm(m.distance_km, 1)}
+            {m.cout_carburant ? ` · ${formaterMontant(m.cout_carburant)}` : ''}
           </p>
         </div>
       ))}

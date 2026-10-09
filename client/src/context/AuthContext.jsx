@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import api from '../services/api';
 import { clientRequetes } from '../requetes/client';
+import { fermerSocket, reconnecterSocket } from '../services/socket';
 
 const AuthContext = createContext(null);
 
@@ -25,6 +26,7 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.post('/auth/login', { email, password });
       // Aucune donnée d'un compte précédent ne doit rester en cache
       clientRequetes.clear();
+      fermerSocket();
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('token', data.token);
@@ -40,10 +42,13 @@ export const AuthProvider = ({ children }) => {
   const majToken = (nouveauToken) => {
     setToken(nouveauToken);
     localStorage.setItem('token', nouveauToken);
+    // L'API a fermé la connexion temps réel liée à l'ancien token
+    reconnecterSocket();
   };
 
   const logout = () => {
     clientRequetes.clear();
+    fermerSocket();
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');

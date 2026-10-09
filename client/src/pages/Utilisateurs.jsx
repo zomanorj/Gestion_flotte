@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { messageErreur } from '../requetes/client';
 import { useEcriture, useUtilisateurs } from '../requetes';
 import { useConfirm } from '../components/ConfirmModal';
+import { formaterDate } from '../utils/format';
 
 const ROLES = { admin: 'Admin', gestionnaire: 'Gestionnaire', chauffeur: 'Chauffeur' };
 const ROLE_COULEURS = {
@@ -150,7 +151,7 @@ export default function Utilisateurs() {
                       }
                     </td>
                     <td className="px-3 py-2 text-muted small text-nowrap">
-                      {new Date(u.created_at).toLocaleDateString('fr-FR')}
+                      {formaterDate(u.created_at)}
                     </td>
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-1">

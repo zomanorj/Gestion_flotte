@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { messageErreur } from '../requetes/client';
 import { useClients, useEcriture, useMissionsClient } from '../requetes';
 import { useConfirm } from '../components/ConfirmModal';
+import { formaterDate, formaterMontant } from '../utils/format';
 
 const TYPES = { entreprise: 'Entreprise', particulier: 'Particulier' };
 
@@ -16,8 +17,6 @@ const STATUT_CFG = {
 };
 
 const FORM_VIDE = { nom: '', type: 'entreprise', contact_nom: '', telephone: '', email: '', adresse: '', ville: '', notes: '' };
-const fmtDate    = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-const fmtMontant = (n) => n != null ? `${Number(n).toLocaleString('fr-FR')} Ar` : '—';
 
 export default function Clients() {
   const { user } = useAuth();
@@ -111,13 +110,13 @@ export default function Clients() {
                         {m.lieu_depart} → {m.lieu_destination}
                         <br /><span className="text-muted">{m.distance_km} km</span>
                       </td>
-                      <td className="px-3 py-2 text-gray-600 text-nowrap">{fmtDate(m.date_depart)}</td>
+                      <td className="px-3 py-2 text-gray-600 text-nowrap">{formaterDate(m.date_depart)}</td>
                       <td className="px-3 py-2">
                         <span className={`badge rounded-pill fw-medium ${STATUT_CFG[m.statut]?.cls || ''}`}>
                           {STATUT_CFG[m.statut]?.label || m.statut}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-dark text-nowrap">{fmtMontant(m.cout_carburant)}</td>
+                      <td className="px-3 py-2 text-dark text-nowrap">{formaterMontant(m.cout_carburant)}</td>
                     </tr>
                   ))}
                 </tbody>
