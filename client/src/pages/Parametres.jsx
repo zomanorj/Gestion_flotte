@@ -70,7 +70,7 @@ export default function Parametres() {
       {/* En-tête */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
-          <div className="bg-blue-100 rounded-3 p-2"><SlidersHorizontal size={24} className="text-blue-600" /></div>
+          <div className="icone-page rounded-3 p-2"><SlidersHorizontal size={24} /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Paramètres métier</h1>
             <p className="text-muted small mb-0">Prix, barème de paie et seuils d'alerte utilisés par les calculs</p>
@@ -110,12 +110,12 @@ export default function Parametres() {
               const saisie = saisies[p.cle] ?? String(p.valeur);
               const modifie = p.cle in modifications;
               return (
-                <li key={p.cle} className={`list-group-item py-3 ${modifie ? 'bg-yellow-50' : ''}`}>
+                <li key={p.cle} className={`list-group-item py-3 ${modifie ? 'bg-light' : ''}`}>
                   <div className="row g-3 align-items-center">
                     <div className="col-md-6">
                       <div className="fw-medium text-dark d-flex align-items-center gap-2 flex-wrap">
                         {p.libelle}
-                        {p.personnalise && <span className="badge bg-blue-100 text-blue-700 fw-normal">Personnalisé</span>}
+                        {p.personnalise && <span className="badge etat-neutre fw-normal">Personnalisé</span>}
                       </div>
                       <div className="text-muted small">{p.description}</div>
                       {p.personnalise && (

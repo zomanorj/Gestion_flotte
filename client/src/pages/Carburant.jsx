@@ -108,15 +108,14 @@ export default function Carburant() {
       {/* En-tête */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
-          <div className="bg-amber-100 rounded-3 p-2"><Fuel size={24} className="text-amber-600" /></div>
+          <div className="icone-page rounded-3 p-2"><Fuel size={24} /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Carburant</h1>
             <p className="text-muted small mb-0">{pleins.length} plein(s) enregistré(s)</p>
           </div>
         </div>
         {peutModifier && (
-          <button onClick={ouvrirAjout} className="btn d-flex align-items-center gap-2 text-white bg-amber-500"
-                  style={{ backgroundColor: '#f59e0b', border: 'none' }}>
+          <button onClick={ouvrirAjout} className="btn btn-primary d-flex align-items-center gap-2">
             <Plus size={16} /> Ajouter un plein
           </button>
         )}
@@ -129,10 +128,10 @@ export default function Carburant() {
             <KpiCard Icon={Droplets}    label="Total litres"    valeur={`${formaterNombre(stats.totalLitres, 1)} L`} couleur="bg-primary" />
           </div>
           <div className="col-12 col-sm-6 col-xl-3">
-            <KpiCard Icon={DollarSign}  label="Coût total"      valeur={formaterMontant(stats.coutTotal)}   couleur="bg-amber-500" />
+            <KpiCard Icon={DollarSign}  label="Coût total"      valeur={formaterMontant(stats.coutTotal)}   couleur="bg-dark" />
           </div>
           <div className="col-12 col-sm-6 col-xl-3">
-            <KpiCard Icon={Gauge}       label="Conso. moyenne"  valeur={stats.consommationMoyenne ? `${Number(stats.consommationMoyenne).toFixed(2)} L/km` : '—'} couleur="bg-success" />
+            <KpiCard Icon={Gauge}       label="Conso. moyenne"  valeur={stats.consommationMoyenne ? `${Number(stats.consommationMoyenne).toFixed(2)} L/km` : '—'} couleur="bg-info" />
           </div>
           <div className="col-12 col-sm-6 col-xl-3">
             <KpiCard Icon={TrendingDown} label="Dépense ce mois" valeur={formaterMontant(stats.coutMois)}    couleur="bg-secondary" />
@@ -162,7 +161,7 @@ export default function Carburant() {
       <div className="card border rounded-3 overflow-hidden">
         {chargement ? (
           <div className="d-flex justify-content-center align-items-center" style={{ height: '10rem' }}>
-            <div className="spinner-border text-warning" role="status" />
+            <div className="spinner-border text-primary" role="status" />
           </div>
         ) : pleins.length === 0 ? (
           <div className="text-center py-5 text-muted">
@@ -192,7 +191,7 @@ export default function Carburant() {
                     <td className="px-3 py-2 text-gray-600">{formaterMontant(p.prix_litre)}</td>
                     <td className="px-3 py-2 text-dark fw-semibold text-nowrap">{formaterMontant(p.cout_total)}</td>
                     <td className="px-3 py-2">
-                      <span className="badge rounded-pill bg-amber-100 text-amber-700 fw-medium">
+                      <span className="badge rounded-pill etat-neutre fw-medium">
                         {TYPES_CARBURANT[p.type_carburant] || p.type_carburant}
                       </span>
                     </td>
@@ -286,7 +285,7 @@ export default function Carburant() {
               </div>
               <div className="d-flex gap-3 pt-1">
                 <button type="button" onClick={fermerModal} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" disabled={sauvegarde} className="btn btn-warning btn-sm flex-grow-1 text-white">
+                <button type="submit" disabled={sauvegarde} className="btn btn-primary btn-sm flex-grow-1">
                   {sauvegarde ? 'Enregistrement...' : modal === 'ajout' ? 'Ajouter' : 'Enregistrer'}
                 </button>
               </div>

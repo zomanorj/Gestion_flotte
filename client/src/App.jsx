@@ -38,7 +38,7 @@ const AppLayout = () => {
   }, [menuOuvert]);
 
   return (
-    <div className="d-flex vh-100 overflow-hidden bg-gray-100">
+    <div className="d-flex vh-100 overflow-hidden bg-body">
       <Sidebar ouvert={menuOuvert} onFermer={() => setMenuOuvert(false)} />
       <div className="d-flex flex-column flex-grow-1 overflow-hidden" style={{ minWidth: 0 }}>
         <Navbar menuOuvert={menuOuvert} onMenu={() => setMenuOuvert(true)} />

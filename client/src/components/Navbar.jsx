@@ -36,7 +36,7 @@ const ICONE_NOTIF = {
 const COULEUR_NOTIF = {
   document_expiration: 'text-orange-500',
   maintenance_urgente: 'text-red-500',
-  mission_demarree:    'text-blue-500',
+  mission_demarree:    'text-gray-600',
   mission_terminee:    'text-green-500',
   default:             'text-gray-500'
 };
@@ -114,7 +114,7 @@ export default function Navbar({ menuOuvert = false, onMenu }) {
           <button onClick={() => setOuvert(!ouvert)}
                   className="btn btn-light btn-sm position-relative p-2 rounded-3 border bouton-icone"
                   title="Notifications" aria-label="Notifications" aria-expanded={ouvert}>
-            <Bell size={18} className={nonLues > 0 ? 'text-orange-500' : 'text-gray-600'} />
+            <Bell size={18} className={nonLues > 0 ? 'text-gray-900' : 'text-gray-600'} />
             {nonLues > 0 && (
               <span className="position-absolute top-0 start-100 translate-middle badge rounded-circle bg-danger"
                     style={{ fontSize: '10px', minWidth: '18px', height: '18px', lineHeight: '18px', padding: 0 }}>
@@ -149,7 +149,7 @@ export default function Navbar({ menuOuvert = false, onMenu }) {
                     return (
                       <div key={n.id} onClick={() => marquerLue(n)}
                            className={`d-flex align-items-start gap-3 px-3 py-2 border-bottom
-                                      ${!n.est_lue ? 'bg-blue-50' : ''}`}
+                                      ${!n.est_lue ? 'bg-light' : ''}`}
                            style={{ cursor: 'pointer' }}>
                         <div className={`flex-shrink-0 mt-1 ${couleur}`}><Icone size={16} /></div>
                         <div className="flex-grow-1 min-w-0">
@@ -178,7 +178,7 @@ export default function Navbar({ menuOuvert = false, onMenu }) {
         <div className="d-none d-md-flex align-items-center gap-3 small text-gray-600">
           <span className="d-none d-xl-inline">Connecté en tant que</span>
           <span className="fw-medium text-dark">{user?.nom}</span>
-          <span className="badge rounded-pill bg-blue-100 text-blue-700 text-capitalize">
+          <span className="badge rounded-pill etat-neutre text-capitalize">
             {user?.role}
           </span>
         </div>

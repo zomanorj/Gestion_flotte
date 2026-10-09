@@ -10,10 +10,10 @@ import { formaterDate, formaterMontant } from '../utils/format';
 const TYPES = { entreprise: 'Entreprise', particulier: 'Particulier' };
 
 const STATUT_CFG = {
-  planifiee: { label: 'Planifiée',  cls: 'bg-yellow-100 text-yellow-700' },
-  en_cours:  { label: 'En cours',   cls: 'bg-blue-100   text-blue-700'   },
-  terminee:  { label: 'Terminée',   cls: 'bg-green-100  text-green-700'  },
-  annulee:   { label: 'Annulée',    cls: 'bg-gray-100   text-gray-500'   }
+  planifiee: { label: 'Planifiée',  cls: 'etat-neutre'  },
+  en_cours:  { label: 'En cours',   cls: 'etat-actif'   },
+  terminee:  { label: 'Terminée',   cls: 'etat-succes'  },
+  annulee:   { label: 'Annulée',    cls: 'etat-inactif' }
 };
 
 const FORM_VIDE = { nom: '', type: 'entreprise', contact_nom: '', telephone: '', email: '', adresse: '', ville: '', notes: '' };
@@ -76,7 +76,7 @@ export default function Clients() {
             <ArrowLeft size={20} />
           </button>
           <div className="d-flex align-items-center gap-3">
-            <div className="bg-blue-100 rounded-3 p-2"><History size={24} className="text-blue-600" /></div>
+            <div className="icone-page rounded-3 p-2"><History size={24} /></div>
             <div>
               <h1 className="fs-4 fw-bold text-dark mb-0">Missions — {historique.client.nom}</h1>
               <p className="text-muted small mb-0">{historique.missions.length} mission(s)</p>
@@ -133,7 +133,7 @@ export default function Clients() {
     <div className="d-flex flex-column gap-4">
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
-          <div className="bg-indigo-100 rounded-3 p-2"><Building2 size={24} className="text-indigo-600" /></div>
+          <div className="icone-page rounded-3 p-2"><Building2 size={24} /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Clients</h1>
             <p className="text-muted small mb-0">{clients.length} client(s) enregistré(s)</p>
@@ -173,7 +173,7 @@ export default function Clients() {
                   <tr key={c.id}>
                     <td className="px-3 py-2 fw-semibold text-dark">{c.nom}</td>
                     <td className="px-3 py-2">
-                      <span className={`badge rounded-pill fw-medium ${c.type === 'entreprise' ? 'bg-indigo-100 text-indigo-700' : 'bg-purple-100 text-purple-700'}`}>
+                      <span className={`badge rounded-pill fw-medium ${c.type === 'entreprise' ? 'etat-actif' : 'etat-neutre'}`}>
                         {TYPES[c.type]}
                       </span>
                     </td>

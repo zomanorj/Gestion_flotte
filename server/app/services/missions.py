@@ -39,11 +39,13 @@ LIBELLES_STATUT = {
 VEHICULE_INDISPONIBLE  = ("en_panne", "maintenance")
 CHAUFFEUR_INDISPONIBLE = ("conge",)
 
+# Couleurs du calendrier (fond, texte), palette de l'interface : gris, et vert pour une mission
+# terminée. Chaque couple reste lisible (contraste d'au moins 4,5:1).
 COULEURS_PLANNING = {
-    "planifiee": "#f59e0b",
-    "en_cours":  "#3b82f6",
-    "terminee":  "#22c55e",
-    "annulee":   "#9ca3af",
+    "planifiee": ("#6c757d", "#ffffff"),
+    "en_cours":  ("#212529", "#ffffff"),
+    "terminee":  ("#198754", "#ffffff"),
+    "annulee":   ("#dee2e6", "#495057"),
 }
 
 
@@ -68,12 +70,14 @@ def verifier_transition(actuel: str, nouveau: str) -> None:
 
 def evenement_planning(m: dict) -> dict:
     """Mission (avec immatriculation, marque et nom du chauffeur) au format FullCalendar."""
+    fond, texte = COULEURS_PLANNING.get(m["statut"], COULEURS_PLANNING["annulee"])
     return {
         "id":    m["id"],
         "title": f"{m['immatriculation']} — {m['titre']}",
         "start": m["date_depart"],
         "end":   m["date_retour_prevue"],
-        "color": COULEURS_PLANNING.get(m["statut"], "#9ca3af"),
+        "color": fond,
+        "textColor": texte,
         "extendedProps": {
             "statut":           m["statut"],
             "chauffeur":        f"{m['chauffeur_prenom']} {m['chauffeur_nom']}",

@@ -13,7 +13,7 @@ const TYPES = {
   modifier: {
     Icone:         Edit,
     couleurIcone:  'text-primary',
-    couleurBg:     'bg-blue-50',
+    couleurBg:     'bg-gray-100',
     couleurBouton: 'btn-primary',
     titre:         'Confirmer la modification',
     texteBtn:      'Enregistrer'
@@ -28,9 +28,9 @@ const TYPES = {
   },
   regler: {
     Icone:         CheckCircle,
-    couleurIcone:  'text-success',
-    couleurBg:     'bg-green-50',
-    couleurBouton: 'btn-success',
+    couleurIcone:  'text-primary',
+    couleurBg:     'bg-gray-100',
+    couleurBouton: 'btn-primary',
     titre:         'Marquer comme réglé',
     texteBtn:      'Marquer réglé'
   }

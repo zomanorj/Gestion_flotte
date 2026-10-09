@@ -170,6 +170,7 @@ class EvenementPlanning(Sortie):
     start: datetime
     end: datetime
     color: str
+    textColor: str
     extendedProps: ProprietesPlanning
 
 

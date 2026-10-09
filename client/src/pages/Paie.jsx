@@ -60,7 +60,7 @@ export default function Paie() {
       {/* En-tête */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
-          <div className="bg-emerald-100 rounded-3 p-2"><Wallet size={24} className="text-emerald-600" /></div>
+          <div className="icone-page rounded-3 p-2"><Wallet size={24} /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Paie des chauffeurs</h1>
             <p className="text-muted small mb-0">Bulletins de salaire mensuels</p>
@@ -88,7 +88,7 @@ export default function Paie() {
           <div className="col-12 col-sm-4">
             <div className="card border rounded-3">
               <div className="card-body p-3 d-flex align-items-center gap-3">
-                <div className="bg-success rounded-3 p-2"><TrendingUp size={24} color="white" /></div>
+                <div className="bg-dark rounded-3 p-2"><TrendingUp size={24} color="white" /></div>
                 <div>
                   <p className="text-xs text-muted fw-medium text-uppercase mb-1">Masse salariale nette</p>
                   <p className="fs-5 fw-bold text-dark mb-0">{formaterMontant(resume.masse_salariale)}</p>
@@ -110,7 +110,7 @@ export default function Paie() {
           <div className="col-12 col-sm-4">
             <div className="card border rounded-3">
               <div className="card-body p-3 d-flex align-items-center gap-3">
-                <div className="bg-warning rounded-3 p-2"><MapPin size={24} color="white" /></div>
+                <div className="bg-secondary rounded-3 p-2"><MapPin size={24} color="white" /></div>
                 <div>
                   <p className="text-xs text-muted fw-medium text-uppercase mb-1">Missions ce mois</p>
                   <p className="fs-5 fw-bold text-dark mb-0">{resume.nb_missions}</p>
@@ -125,7 +125,7 @@ export default function Paie() {
       <div className="card border rounded-3 overflow-hidden">
         {chargement ? (
           <div className="d-flex justify-content-center align-items-center" style={{ height: '10rem' }}>
-            <div className="spinner-border text-success" role="status" />
+            <div className="spinner-border text-primary" role="status" />
           </div>
         ) : !resume || resume.fiches.length === 0 ? (
           <div className="text-center py-5 text-muted">
@@ -153,9 +153,9 @@ export default function Paie() {
                     </td>
                     <td className="px-3 py-2 text-gray-600">{formaterKm(f.total_km)}</td>
                     <td className="px-3 py-2 text-gray-600">{formaterMontant(f.salaire_base)}</td>
-                    <td className="px-3 py-2 text-blue-700">{formaterMontant(f.total_primes)}</td>
-                    <td className="px-3 py-2 text-orange-600">{f.km_bonus > 0 ? formaterMontant(f.km_bonus) : '—'}</td>
-                    <td className="px-3 py-2 fw-bold text-success text-nowrap">{formaterMontant(f.net_a_payer)}</td>
+                    <td className="px-3 py-2 text-gray-700">{formaterMontant(f.total_primes)}</td>
+                    <td className="px-3 py-2 text-gray-700">{f.km_bonus > 0 ? formaterMontant(f.km_bonus) : '—'}</td>
+                    <td className="px-3 py-2 fw-bold text-dark text-nowrap">{formaterMontant(f.net_a_payer)}</td>
                     <td className="px-3 py-2">
                       <div className="d-flex gap-1">
                         <button onClick={() => telechargerPDF(f)}
@@ -177,7 +177,7 @@ export default function Paie() {
                   <td className="px-3 py-2 text-center fw-bold">{resume.nb_missions}</td>
                   <td className="px-3 py-2 fw-bold">{formaterKm(resume.fiches.reduce((s, f) => s + f.total_km, 0))}</td>
                   <td colSpan={3} />
-                  <td className="px-3 py-2 fw-bold text-success">{formaterMontant(resume.masse_salariale)}</td>
+                  <td className="px-3 py-2 fw-bold text-dark">{formaterMontant(resume.masse_salariale)}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -214,7 +214,7 @@ export default function Paie() {
                 <button type="button" onClick={() => setModalSalaire(null)}
                         className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
                 <button type="submit" disabled={savSalaire}
-                        className="btn btn-success btn-sm flex-grow-1">
+                        className="btn btn-primary btn-sm flex-grow-1">
                   {savSalaire ? 'Enregistrement...' : 'Enregistrer'}
                 </button>
               </div>

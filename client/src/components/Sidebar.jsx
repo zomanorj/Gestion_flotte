@@ -58,7 +58,7 @@ export default function Sidebar({ ouvert = false, onFermer }) {
         <div className="px-4 py-3 border-bottom border-gray-700 d-flex align-items-start justify-content-between">
           <div>
             <h1 className="text-white fs-5 fw-bold d-flex align-items-center gap-2 mb-0">
-              <Truck size={22} className="text-blue-400" />
+              <Truck size={22} className="text-gray-400" />
               <span>CamionApp</span>
             </h1>
             <p className="text-gray-400 text-xs mt-1 mb-0">Flotte de Camions — Madagascar</p>
@@ -115,8 +115,8 @@ export default function Sidebar({ ouvert = false, onFermer }) {
             onClick={handleLogout}
             className="btn btn-sm w-100 d-flex align-items-center gap-2 text-gray-400"
             style={{ backgroundColor: 'transparent', border: 'none' }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor='#1f2937'; e.currentTarget.style.color='#f87171'; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color='#9ca3af'; }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor='#343a40'; e.currentTarget.style.color='#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color='#adb5bd'; }}
           >
             <LogOut size={16} />
             Déconnexion

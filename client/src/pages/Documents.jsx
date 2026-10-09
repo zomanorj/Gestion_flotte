@@ -14,9 +14,9 @@ const TYPES = {
 };
 
 const STATUT_CONFIG = {
-  valide:         { label: 'Valide',         bg: 'bg-green-100', text: 'text-green-700',  Icon: CheckCircle2 },
-  expire_bientot: { label: 'Expire bientôt', bg: 'bg-orange-100', text: 'text-orange-700', Icon: Clock },
-  expire:         { label: 'Expiré',         bg: 'bg-red-100',   text: 'text-red-700',    Icon: AlertTriangle }
+  valide:         { label: 'Valide',         bg: 'bg-green-100', text: 'text-green-800',  Icon: CheckCircle2 },
+  expire_bientot: { label: 'Expire bientôt', bg: 'bg-orange-100', text: 'text-orange-800', Icon: Clock },
+  expire:         { label: 'Expiré',         bg: 'bg-red-100',   text: 'text-red-800',    Icon: AlertTriangle }
 };
 
 const FORM_VIDE = { vehicule_id: '', type: 'carte_grise', numero: '', date_emission: '', date_expiration: '', notes: '' };
@@ -120,7 +120,7 @@ export default function Documents() {
       {/* En-tête */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
-          <div className="bg-blue-100 rounded-3 p-2"><FileCheck size={24} className="text-blue-600" /></div>
+          <div className="icone-page rounded-3 p-2"><FileCheck size={24} /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Documents</h1>
             <p className="text-muted small mb-0">{paginInfo.total} document(s) enregistré(s)</p>
@@ -225,7 +225,7 @@ export default function Documents() {
                         {peutModifier && (
                           <>
                             <button onClick={() => { setUploadDocId(doc.id); setFichierUpload(null); }}
-                                    className="btn btn-sm btn-outline-info" title="Upload fichier">
+                                    className="btn btn-sm btn-outline-secondary" title="Upload fichier">
                               <FileCheck size={14} />
                             </button>
                             <button onClick={() => ouvrirEdition(doc)} className="btn btn-sm btn-outline-primary"><Pencil size={14} /></button>

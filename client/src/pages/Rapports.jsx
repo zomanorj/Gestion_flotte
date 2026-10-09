@@ -157,7 +157,7 @@ export default function Rapports() {
                   Exporter PDF
                 </button>
                 <button onClick={() => exporter('excel', exporterExcel)} disabled={exportEnCours !== null}
-                        className="btn btn-success btn-sm d-flex align-items-center gap-2">
+                        className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
                   {exportEnCours === 'excel' ? <span className="spinner-border spinner-border-sm" role="status" aria-label="Préparation de l'export" /> : <Table2 size={16} />}
                   Exporter Excel
                 </button>

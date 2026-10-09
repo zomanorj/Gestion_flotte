@@ -110,7 +110,7 @@ class TestMissions:
             "lieu_depart": "A", "lieu_destination": "B", "distance_km": 10, "poids_charge": None,
         })
         assert evenement["title"] == "MAD-1 — Riz"
-        assert evenement["color"] == "#3b82f6"
+        assert (evenement["color"], evenement["textColor"]) == ("#212529", "#ffffff")
         assert evenement["extendedProps"]["chauffeur"] == "Paul Rabe"
 
 

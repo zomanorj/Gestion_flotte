@@ -11,10 +11,10 @@ import Pagination from '../components/Pagination';
 import { formaterDate, formaterKm, formaterMontant } from '../utils/format';
 
 const BADGES = {
-  planifiee: 'bg-gray-100 text-gray-700',
-  en_cours:  'bg-blue-100 text-blue-800',
-  terminee:  'bg-green-100 text-green-800',
-  annulee:   'bg-red-100 text-red-700'
+  planifiee: 'etat-neutre',
+  en_cours:  'etat-actif',
+  terminee:  'etat-succes',
+  annulee:   'etat-inactif'
 };
 
 const LABELS = {
@@ -119,7 +119,7 @@ const FormulaireMission = ({ onSauvegarder, onAnnuler }) => {
           {coutEstime !== null && (
             <div className="bg-light rounded-2 px-3 py-2 border">
               <p className="text-xs text-muted mb-0">Coût carburant estimé</p>
-              <p className="fw-bold text-orange-500 mb-0">{formaterMontant(coutEstime)}</p>
+              <p className="fw-bold text-dark mb-0">{formaterMontant(coutEstime)}</p>
             </div>
           )}
         </div>
@@ -321,19 +321,19 @@ export default function Missions() {
                       <div className="d-flex gap-1 flex-wrap align-items-center">
                         {isGestionnaire && m.statut === 'planifiee' && (
                           <button onClick={() => demarrerMission(m)}
-                                  className="btn btn-warning btn-sm d-flex align-items-center gap-1 text-white">
+                                  className="btn btn-primary btn-sm d-flex align-items-center gap-1">
                             <Play size={12} /> Démarrer
                           </button>
                         )}
                         {isGestionnaire && m.statut === 'planifiee' && (
                           <button onClick={() => changerStatut(m.id, 'annulee')}
-                                  className="btn btn-outline-warning btn-sm d-flex align-items-center gap-1">
+                                  className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
                             <X size={12} /> Annuler
                           </button>
                         )}
                         {isGestionnaire && m.statut === 'en_cours' && (
                           <button onClick={() => changerStatut(m.id, 'terminee')}
-                                  className="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                                  className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
                             <Check size={12} /> Terminer
                           </button>
                         )}

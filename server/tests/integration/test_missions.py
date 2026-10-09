@@ -190,7 +190,7 @@ class TestLecture:
     def test_planning(self, api, admin, vehicule, chauffeur_fiche, creer_mission):
         m = creer_mission(vehicule["id"], chauffeur_fiche["id"], "2032-04-01T08:00", "2032-04-02T08:00").json()
         evenement = next(e for e in api.get("/missions/planning", headers=admin).json() if e["id"] == m["id"])
-        assert evenement["color"] == "#f59e0b"
+        assert (evenement["color"], evenement["textColor"]) == ("#6c757d", "#ffffff")
         assert evenement["title"].startswith(vehicule["immatriculation"])
 
     def test_bon_de_livraison(self, api, chauffeur, vehicule, chauffeur_fiche, creer_mission):

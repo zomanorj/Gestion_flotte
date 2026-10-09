@@ -35,7 +35,7 @@ export default function Login() {
 
   return (
     <div className="min-vh-100 d-flex align-items-center justify-content-center p-3"
-         style={{ background: 'linear-gradient(135deg, #1e3a8a, #1d4ed8, #2563eb)' }}>
+         style={{ background: 'linear-gradient(135deg, #212529, #343a40, #495057)' }}>
       <div className="w-100" style={{ maxWidth: '26rem' }}>
 
         {/* Logo */}
@@ -45,7 +45,7 @@ export default function Login() {
             <Truck size={44} color="white" />
           </div>
           <h1 className="fw-bold text-white fs-3">FlotteApp</h1>
-          <p style={{ color: '#bfdbfe' }}>Gestion de Flotte — Madagascar</p>
+          <p style={{ color: '#ced4da' }}>Gestion de Flotte — Madagascar</p>
         </div>
 
         {/* Formulaire */}
@@ -125,7 +125,7 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-center mt-4 small" style={{ color: '#bfdbfe' }}>
+        <p className="text-center mt-4 small" style={{ color: '#ced4da' }}>
           Projet portfolio — L3 Informatique — Antananarivo
         </p>
       </div>

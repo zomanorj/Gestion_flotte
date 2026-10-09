@@ -14,17 +14,17 @@ const TYPES = {
 };
 
 const PRIORITE_CFG = {
-  faible:  { label: 'Faible',  cls: 'bg-gray-100 text-gray-600' },
-  normale: { label: 'Normale', cls: 'bg-blue-100 text-blue-600' },
-  haute:   { label: 'Haute',   cls: 'bg-orange-100 text-orange-600' },
-  urgente: { label: 'Urgente', cls: 'bg-red-100 text-red-600 animate-pulse' }
+  faible:  { label: 'Faible',  cls: 'etat-inactif' },
+  normale: { label: 'Normale', cls: 'etat-neutre' },
+  haute:   { label: 'Haute',   cls: 'etat-attention' },
+  urgente: { label: 'Urgente', cls: 'etat-danger animate-pulse' }
 };
 
 const STATUT_CFG = {
-  planifiee: { label: 'Planifiée', cls: 'bg-yellow-100 text-yellow-700' },
-  en_cours:  { label: 'En cours',  cls: 'bg-blue-100 text-blue-700' },
-  terminee:  { label: 'Terminée',  cls: 'bg-green-100 text-green-700' },
-  annulee:   { label: 'Annulée',   cls: 'bg-gray-100 text-gray-500' }
+  planifiee: { label: 'Planifiée', cls: 'etat-neutre' },
+  en_cours:  { label: 'En cours',  cls: 'etat-actif' },
+  terminee:  { label: 'Terminée',  cls: 'etat-succes' },
+  annulee:   { label: 'Annulée',   cls: 'etat-inactif' }
 };
 
 const FORM_VIDE = { vehicule_id: '', type: 'vidange', description: '', kilometrage_declencheur: '', date_prevue: '', cout_estime: '', garage: '', priorite: 'normale' };
@@ -190,7 +190,7 @@ export default function Maintenances() {
           </div>
           <div className="d-flex gap-3 pt-1">
             <button type="button" onClick={fermerModal} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-            <button type="submit" disabled={sauvegarde} className="btn btn-warning btn-sm flex-grow-1 text-white">
+            <button type="submit" disabled={sauvegarde} className="btn btn-primary btn-sm flex-grow-1">
               {sauvegarde ? 'Enregistrement...' : modal === 'ajout' ? 'Planifier' : 'Enregistrer'}
             </button>
           </div>
@@ -204,14 +204,14 @@ export default function Maintenances() {
       {/* En-tête */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
-          <div className="bg-orange-100 rounded-3 p-2"><Wrench size={24} className="text-orange-600" /></div>
+          <div className="icone-page rounded-3 p-2"><Wrench size={24} /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Maintenances</h1>
             <p className="text-muted small mb-0">{paginInfo.total} maintenance(s) enregistrée(s)</p>
           </div>
         </div>
         {peutModifier && (
-          <button onClick={ouvrirAjout} className="btn btn-warning text-white d-flex align-items-center gap-2">
+          <button onClick={ouvrirAjout} className="btn btn-primary d-flex align-items-center gap-2">
             <Plus size={16} /> Planifier une maintenance
           </button>
         )}
@@ -276,7 +276,7 @@ export default function Maintenances() {
       <div className="card border rounded-3 overflow-hidden">
         {chargement ? (
           <div className="d-flex justify-content-center align-items-center" style={{ height: '10rem' }}>
-            <div className="spinner-border text-warning" role="status" />
+            <div className="spinner-border text-primary" role="status" />
           </div>
         ) : maintenances.length === 0 ? (
           <div className="text-center py-5 text-muted">
@@ -316,7 +316,7 @@ export default function Maintenances() {
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-1">
                         {peutModifier && !['terminee', 'annulee'].includes(m.statut) && (
-                          <button onClick={() => ouvrirCloture(m)} className="btn btn-sm btn-outline-success" title="Marquer terminée">
+                          <button onClick={() => ouvrirCloture(m)} className="btn btn-sm btn-outline-primary" title="Marquer terminée">
                             <CheckCircle2 size={14} />
                           </button>
                         )}
@@ -374,7 +374,7 @@ export default function Maintenances() {
               </div>
               <div className="d-flex gap-3 pt-1">
                 <button type="button" onClick={fermerCloture} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" disabled={sauvegardeClt} className="btn btn-success btn-sm flex-grow-1">
+                <button type="submit" disabled={sauvegardeClt} className="btn btn-primary btn-sm flex-grow-1">
                   {sauvegardeClt ? 'Enregistrement...' : 'Confirmer clôture'}
                 </button>
               </div>

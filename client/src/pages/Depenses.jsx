@@ -15,10 +15,9 @@ const CATEGORIES = {
 };
 
 const CATEGORIE_COULEURS = {
-  peage: 'bg-blue-100 text-blue-700', amende: 'bg-red-100 text-red-700',
-  lavage: 'bg-cyan-100 text-cyan-700', pneu: 'bg-orange-100 text-orange-700',
-  pieces_detachees: 'bg-purple-100 text-purple-700', main_oeuvre: 'bg-indigo-100 text-indigo-700',
-  parking: 'bg-yellow-100 text-yellow-700', divers: 'bg-gray-100 text-gray-700'
+  // Catégories : simple étiquette, sans couleur d'état
+  peage: 'etat-neutre', amende: 'etat-neutre', lavage: 'etat-neutre', pneu: 'etat-neutre',
+  pieces_detachees: 'etat-neutre', main_oeuvre: 'etat-neutre', parking: 'etat-neutre', divers: 'etat-neutre'
 };
 
 const FORM_VIDE = { vehicule_id: '', categorie: 'peage', montant: '', date_depense: '', description: '' };
@@ -105,14 +104,14 @@ export default function Depenses() {
       {/* En-tête */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
-          <div className="bg-emerald-100 rounded-3 p-2"><Receipt size={24} className="text-emerald-600" /></div>
+          <div className="icone-page rounded-3 p-2"><Receipt size={24} /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Dépenses</h1>
             <p className="text-muted small mb-0">{depenses.length} dépense(s) enregistrée(s)</p>
           </div>
         </div>
         {peutModifier && (
-          <button onClick={ouvrirAjout} className="btn btn-success d-flex align-items-center gap-2">
+          <button onClick={ouvrirAjout} className="btn btn-primary d-flex align-items-center gap-2">
             <Plus size={16} /> Ajouter une dépense
           </button>
         )}
@@ -122,10 +121,10 @@ export default function Depenses() {
       {stats && (
         <div className="row g-3">
           <div className="col-12 col-sm-4">
-            <KpiCard Icon={CalendarDays} label="Dépenses ce mois"   valeur={formaterMontant(stats.totalMois)}  couleur="bg-success" />
+            <KpiCard Icon={CalendarDays} label="Dépenses ce mois"   valeur={formaterMontant(stats.totalMois)}  couleur="bg-primary" />
           </div>
           <div className="col-12 col-sm-4">
-            <KpiCard Icon={TrendingUp}   label="Total cette année"  valeur={formaterMontant(stats.totalAnnee)} couleur="bg-primary" />
+            <KpiCard Icon={TrendingUp}   label="Total cette année"  valeur={formaterMontant(stats.totalAnnee)} couleur="bg-dark" />
           </div>
           <div className="col-12 col-sm-4">
             <KpiCard Icon={ListChecks}   label="Nombre de dépenses" valeur={stats.nbDepenses}             couleur="bg-secondary" />
@@ -159,7 +158,7 @@ export default function Depenses() {
       <div className="card border rounded-3 overflow-hidden">
         {chargement ? (
           <div className="d-flex justify-content-center align-items-center" style={{ height: '10rem' }}>
-            <div className="spinner-border text-success" role="status" />
+            <div className="spinner-border text-primary" role="status" />
           </div>
         ) : depenses.length === 0 ? (
           <div className="text-center py-5 text-muted">
@@ -255,7 +254,7 @@ export default function Depenses() {
               </div>
               <div className="d-flex gap-3 pt-1">
                 <button type="button" onClick={fermerModal} className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" disabled={sauvegarde} className="btn btn-success btn-sm flex-grow-1">
+                <button type="submit" disabled={sauvegarde} className="btn btn-primary btn-sm flex-grow-1">
                   {sauvegarde ? 'Enregistrement...' : modal === 'ajout' ? 'Ajouter' : 'Enregistrer'}
                 </button>
               </div>

@@ -10,9 +10,9 @@ import { formaterDate } from '../utils/format';
 
 const ROLES = { admin: 'Admin', gestionnaire: 'Gestionnaire', chauffeur: 'Chauffeur' };
 const ROLE_COULEURS = {
-  admin:        'bg-red-100 text-red-700',
-  gestionnaire: 'bg-blue-100 text-blue-700',
-  chauffeur:    'bg-green-100 text-green-700'
+  admin:        'etat-actif',
+  gestionnaire: 'etat-neutre',
+  chauffeur:    'etat-inactif'
 };
 
 const FORM_VIDE = { nom: '', email: '', password: '', role: 'gestionnaire' };
@@ -98,7 +98,7 @@ export default function Utilisateurs() {
       {/* En-tête */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
-          <div className="bg-blue-100 rounded-3 p-2"><Users size={24} className="text-blue-600" /></div>
+          <div className="icone-page rounded-3 p-2"><Users size={24} /></div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Gestion des utilisateurs</h1>
             <p className="text-muted small mb-0">{utilisateurs.length} compte(s) enregistré(s)</p>
@@ -164,7 +164,7 @@ export default function Utilisateurs() {
                         </button>
                         {u.id !== moi?.id && (
                           <button onClick={() => toggleActif(u)}
-                                  className={`btn btn-sm ${u.is_active ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                  className={`btn btn-sm ${u.is_active ? 'btn-outline-danger' : 'btn-outline-primary'}`}
                                   title={u.is_active ? 'Désactiver' : 'Réactiver'}>
                             {u.is_active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                           </button>
@@ -244,7 +244,7 @@ export default function Utilisateurs() {
               <div className="d-flex gap-2">
                 <button type="button" onClick={() => setModalMdp(null)}
                         className="btn btn-outline-secondary btn-sm flex-grow-1">Annuler</button>
-                <button type="submit" className="btn btn-warning btn-sm flex-grow-1 text-white">
+                <button type="submit" className="btn btn-primary btn-sm flex-grow-1">
                   Réinitialiser
                 </button>
               </div>

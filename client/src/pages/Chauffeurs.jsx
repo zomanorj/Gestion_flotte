@@ -10,9 +10,9 @@ import Pagination from '../components/Pagination';
 import { formaterDate, formaterKm, formaterMontant } from '../utils/format';
 
 const BADGES_STATUT = {
-  disponible: 'bg-green-100 text-green-800',
-  en_mission: 'bg-blue-100 text-blue-800',
-  conge:      'bg-gray-100 text-gray-700'
+  disponible: 'etat-succes',
+  en_mission: 'etat-actif',
+  conge:      'etat-inactif'
 };
 
 const LABELS_STATUT = {
@@ -116,10 +116,10 @@ const HistoriqueMissions = ({ chauffeurId }) => {
   if (missions.length === 0) return <p className="text-center text-muted py-4">Aucune mission enregistrée</p>;
 
   const BADGES_M = {
-    planifiee: 'bg-gray-100 text-gray-700',
-    en_cours:  'bg-blue-100 text-blue-700',
-    terminee:  'bg-green-100 text-green-700',
-    annulee:   'bg-red-100 text-red-700'
+    planifiee: 'etat-neutre',
+    en_cours:  'etat-actif',
+    terminee:  'etat-succes',
+    annulee:   'etat-inactif'
   };
 
   return (

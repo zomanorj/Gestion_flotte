@@ -11,10 +11,10 @@ export function Toast({ message, sousTitre, onClose, duree = 4000, erreur = fals
   }, [duree]);
 
   return (
-    <div className="bg-slate-900 text-white rounded-3 shadow-lg p-3
-                    d-flex align-items-start gap-3 animate-slide-in border border-slate-700"
+    <div className="bg-dark text-white rounded-3 shadow-lg p-3
+                    d-flex align-items-start gap-3 animate-slide-in border border-secondary"
          style={{ minWidth: '18rem', maxWidth: '24rem' }}>
-      <div className={`rounded-circle p-2 flex-shrink-0 ${erreur ? 'bg-danger' : 'bg-orange-500'}`}>
+      <div className={`rounded-circle p-2 flex-shrink-0 ${erreur ? 'bg-danger' : 'bg-secondary'}`}>
         {erreur
           ? <AlertTriangle size={16} />
           : <Truck size={16} />
@@ -23,7 +23,7 @@ export function Toast({ message, sousTitre, onClose, duree = 4000, erreur = fals
       <div className="flex-grow-1 min-w-0">
         <p className="fw-bold small mb-0">{message}</p>
         {sousTitre && (
-          <p className="text-slate-400 text-xs mt-1 mb-0">{sousTitre}</p>
+          <p className="text-gray-400 text-xs mt-1 mb-0">{sousTitre}</p>
         )}
       </div>
       <button onClick={onClose}

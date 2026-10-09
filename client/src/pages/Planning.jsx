@@ -9,17 +9,18 @@ import { ECRAN_ETROIT, useMediaQuery } from '../hooks/useMediaQuery';
 import { usePlanning } from '../requetes';
 
 const STATUT_CFG = {
-  planifiee: { label: 'Planifiée',  cls: 'bg-yellow-100 text-yellow-700' },
-  en_cours:  { label: 'En cours',   cls: 'bg-blue-100   text-blue-700'   },
+  planifiee: { label: 'Planifiée',  cls: 'etat-neutre'  },
+  en_cours:  { label: 'En cours',   cls: 'etat-actif'   },
   terminee:  { label: 'Terminée',   cls: 'bg-green-100  text-green-700'  },
   annulee:   { label: 'Annulée',    cls: 'bg-gray-100   text-gray-500'   }
 };
 
 const LEGENDE = [
-  { couleur: '#f59e0b', label: 'Planifiée' },
-  { couleur: '#3b82f6', label: 'En cours'  },
-  { couleur: '#22c55e', label: 'Terminée'  },
-  { couleur: '#9ca3af', label: 'Annulée'   }
+  // Mêmes couleurs que les événements envoyés par l'API (COULEURS_PLANNING)
+  { couleur: '#6c757d', label: 'Planifiée' },
+  { couleur: '#212529', label: 'En cours'  },
+  { couleur: '#198754', label: 'Terminée'  },
+  { couleur: '#dee2e6', label: 'Annulée'   }
 ];
 
 export default function Planning() {
@@ -53,8 +54,8 @@ export default function Planning() {
       {/* En-tête */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
-          <div className="bg-blue-100 rounded-3 p-2">
-            <Calendar size={24} className="text-blue-600" />
+          <div className="icone-page rounded-3 p-2">
+            <Calendar size={24} />
           </div>
           <div>
             <h1 className="fs-4 fw-bold text-dark mb-0">Planning des missions</h1>

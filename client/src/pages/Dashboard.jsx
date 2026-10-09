@@ -39,11 +39,11 @@ export default function Dashboard() {
     datasets: [{
       label: 'Missions',
       data: stats.missionsParSemaine.map((s) => s.count),
-      borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59,130,246,0.1)',
+      borderColor: '#343a40',
+      backgroundColor: 'rgba(52,58,64,0.08)',
       tension: 0.4,
       fill: true,
-      pointBackgroundColor: '#3b82f6',
+      pointBackgroundColor: '#343a40',
       pointRadius: 5
     }]
   };
@@ -67,27 +67,27 @@ export default function Dashboard() {
       <div className="row g-3 align-items-stretch">
         <div className="col-12 col-sm-6 col-xl">
           <StatCard titre="Camions disponibles" valeur={stats.vehiculesDisponibles}
-            icone={<Truck size={28} />} couleur="green"
+            icone={<Truck size={28} />} couleur="neutre"
             sousTitre={`sur ${stats.totalVehicules} camions`} />
         </div>
         <div className="col-12 col-sm-6 col-xl">
           <StatCard titre="Missions en cours" valeur={stats.missionsEnCours}
-            icone={<MapPin size={28} />} couleur="blue"
+            icone={<MapPin size={28} />} couleur="neutre"
             sousTitre={`${stats.missionsPlanifiees} planifiée(s)`} />
         </div>
         <div className="col-12 col-sm-6 col-xl">
           <StatCard titre="Missions aujourd'hui" valeur={stats.missionsAujourdhui}
-            icone={<Calendar size={28} />} couleur="orange"
+            icone={<Calendar size={28} />} couleur="neutre"
             sousTitre="départs prévus ce jour" />
         </div>
         <div className="col-12 col-sm-6 col-xl">
           <StatCard titre="Alertes maintenance" valeur={stats.alertesMaintenance}
-            icone={<AlertTriangle size={28} />} couleur="red"
+            icone={<AlertTriangle size={28} />} couleur={stats.alertesMaintenance > 0 ? 'danger' : 'neutre'}
             sousTitre="non lues" />
         </div>
         <div className="col-12 col-sm-6 col-xl">
           <StatCard titre="Documents à renouveler" valeur={stats.documentsExpires}
-            icone={<FileCheck size={28} />} couleur="yellow"
+            icone={<FileCheck size={28} />} couleur={stats.documentsExpires > 0 ? 'attention' : 'neutre'}
             sousTitre="expirés ou < 30 jours" />
         </div>
       </div>

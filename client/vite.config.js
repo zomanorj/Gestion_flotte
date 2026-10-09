@@ -20,6 +20,13 @@ function decouperEnFichiers(id) {
 
 export default defineConfig({
   plugins: [react()],
+  css: {
+    preprocessorOptions: {
+      // Bootstrap 5.3 utilise encore @import et les anciennes fonctions de couleur Sass : ces
+      // avertissements concernent la bibliothèque, pas notre thème
+      scss: { api: 'modern-compiler', quietDeps: true, silenceDeprecations: ['import', 'global-builtin', 'color-functions'] },
+    },
+  },
   build: {
     rollupOptions: {
       output: { manualChunks: decouperEnFichiers }

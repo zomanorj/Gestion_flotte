@@ -3,9 +3,9 @@ import { AlertTriangle } from 'lucide-react';
 const couleurParType = (type = '') => {
   const t = type.toLowerCase();
   if (t.includes('contr') || t.includes('ct'))    return 'bg-red-100 text-red-700 border-red-200';
-  if (t.includes('vidange'))                       return 'bg-orange-100 text-orange-700 border-orange-200';
+  if (t.includes('vidange'))                       return 'bg-orange-100 text-orange-800 border-orange-200';
   if (t.includes('frein') || t.includes('panne'))  return 'bg-red-100 text-red-700 border-red-200';
-  return 'bg-yellow-100 text-yellow-700';
+  return 'bg-orange-100 text-orange-800 border-orange-200';
 };
 
 export default function AlerteBadge({ alerte }) {

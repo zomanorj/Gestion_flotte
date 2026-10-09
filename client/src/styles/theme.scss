@@ -1,0 +1,36 @@
+// Thème de l'application : Bootstrap compilé avec la palette de gris de FlotteApp.
+//
+// Palette (du plus clair au plus foncé) :
+//   #f8f9fa #e9ecef #dee2e6 #ced4da #adb5bd #6c757d #495057 #343a40 #212529
+//
+// Toute l'interface utilise ces gris. Seuls les états gardent une couleur : rouge (expiré,
+// urgent, erreur, suppression), orange (expire bientôt, priorité haute), vert (terminé, valide).
+// Les couleurs d'état de Bootstrap ($success, $warning, $danger) ne sont donc pas modifiées.
+
+$gray-100: #f8f9fa;
+$gray-200: #e9ecef;
+$gray-300: #dee2e6;
+$gray-400: #ced4da;
+$gray-500: #adb5bd;
+$gray-600: #6c757d;
+$gray-700: #495057;
+$gray-800: #343a40;
+$gray-900: #212529;
+
+// Couleur principale : boutons, liens, focus des champs, cases cochées, pagination, chargements
+$primary:   $gray-800;
+$secondary: $gray-600;
+$info:      $gray-700;
+$light:     $gray-100;
+$dark:      $gray-900;
+
+$body-bg:        $gray-100;
+$body-color:     $gray-900;
+$border-color:   $gray-300;
+$link-color:     $gray-800;
+$link-hover-color: $gray-900;
+
+// Les tons « subtle » (alertes, badges clairs) suivent les gris pour info et secondaire
+$min-contrast-ratio: 4.5;
+
+@import "bootstrap/scss/bootstrap";

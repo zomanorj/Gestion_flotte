@@ -7,10 +7,10 @@ import { useMesMissions } from '../requetes';
 import { formaterDateHeure, formaterKm } from '../utils/format';
 
 const STATUTS = {
-  planifiee: { label: 'Planifiée', cls: 'bg-gray-100 text-gray-700' },
-  en_cours:  { label: 'En cours',  cls: 'bg-blue-100 text-blue-800' },
-  terminee:  { label: 'Terminée',  cls: 'bg-green-100 text-green-800' },
-  annulee:   { label: 'Annulée',   cls: 'bg-red-100 text-red-700' },
+  planifiee: { label: 'Planifiée', cls: 'etat-neutre' },
+  en_cours:  { label: 'En cours',  cls: 'etat-actif' },
+  terminee:  { label: 'Terminée',  cls: 'etat-succes' },
+  annulee:   { label: 'Annulée',   cls: 'etat-inactif' },
 };
 
 const HISTORIQUE_INITIAL = 10;
@@ -120,7 +120,7 @@ export default function MesMissions() {
   return (
     <div className="d-flex flex-column gap-4">
       <div className="d-flex align-items-center gap-3">
-        <div className="bg-blue-100 rounded-3 p-2 flex-shrink-0"><ClipboardList size={24} className="text-blue-600" /></div>
+        <div className="icone-page rounded-3 p-2 flex-shrink-0"><ClipboardList size={24} /></div>
         <div style={{ minWidth: 0 }}>
           <h1 className="fs-4 fw-bold text-dark mb-0">Mes missions</h1>
           <p className="text-muted small mb-0">
