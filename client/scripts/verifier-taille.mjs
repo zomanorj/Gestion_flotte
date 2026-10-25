@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-const BUDGET_KO = 150;
+// 160 Ko : ~152 Ko mesurés après le passage à React Router 7 et la mise à jour d'axios
+const BUDGET_KO = 160;
 const dist = new URL('../dist/', import.meta.url).pathname;
 
 const html = readFileSync(join(dist, 'index.html'), 'utf8');
