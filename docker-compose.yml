@@ -33,6 +33,8 @@ services:
       # Le schéma est créé et mis à jour par l'API au démarrage (migrations Alembic).
       # 1 = données de démonstration chargées si la base n'a aucun compte (comptes en password123)
       SEED_DEMO: ${SEED_DEMO:-1}
+      # 1 = démo publique : données réinitialisées chaque jour, comptes et fichiers bloqués
+      MODE_DEMO: ${MODE_DEMO:-0}
       # Premier administrateur, créé seulement si aucun admin actif n'existe (base sans démo)
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}

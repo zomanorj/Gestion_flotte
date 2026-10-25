@@ -11,6 +11,7 @@ import { emplacement } from './navigation';
 import Sidebar    from './components/Sidebar';
 import Navbar     from './components/Navbar';
 import ErreurPage from './components/ErreurPage';
+import BandeauDemo from './components/BandeauDemo';
 
 const ChargementPage = () => (
   <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '12rem' }}>
@@ -48,6 +49,7 @@ const AppLayout = () => {
     <div className="d-flex vh-100 overflow-hidden bg-body">
       <Sidebar ouvert={menuOuvert} onFermer={() => setMenuOuvert(false)} />
       <div className="d-flex flex-column flex-grow-1 overflow-hidden" style={{ minWidth: 0 }}>
+        <BandeauDemo />
         <Navbar menuOuvert={menuOuvert} onMenu={() => setMenuOuvert(true)} />
         <main className="flex-grow-1 overflow-y-auto">
           {/* Largeur de lecture limitée sur grand écran ; courte entrée à chaque changement de page */}

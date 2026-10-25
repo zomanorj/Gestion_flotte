@@ -51,6 +51,9 @@ class Configuration(BaseSettings):
 
     # Démarrage
     seed_demo: bool = False
+    # Démo publique : données remises à zéro régulièrement, actions sensibles bloquées
+    mode_demo: bool = False
+    demo_reinitialisation_heures: int = Field(24, ge=1, le=168)
     admin_email: str | None = None
     admin_password: SecretStr | None = None
     admin_nom: str = "Administrateur"
@@ -112,9 +115,11 @@ class Configuration(BaseSettings):
             if len(secret) < LONGUEUR_MIN_SECRET_PRODUCTION or secret in SECRETS_CONNUS:
                 erreurs.append(f"JWT_SECRET doit être une valeur aléatoire propre à la production "
                                f"({LONGUEUR_MIN_SECRET_PRODUCTION} caractères minimum)")
-            if self.seed_demo:
-                erreurs.append("SEED_DEMO est interdit en production (comptes au mot de passe connu)")
-            if self.stockage == "local" and self.uploads_dir is None:
+            # En mode démo, les comptes connus sont voulus et l'envoi de fichiers est bloqué
+            if self.seed_demo and not self.mode_demo:
+                erreurs.append("SEED_DEMO est interdit en production (comptes au mot de passe connu), "
+                               "sauf avec MODE_DEMO=1")
+            if self.stockage == "local" and self.uploads_dir is None and not self.mode_demo:
                 erreurs.append("En production, définir UPLOADS_DIR sur un volume persistant, ou utiliser STOCKAGE=s3 "
                                "(le disque d'un conteneur est effacé à chaque déploiement)")
         if erreurs:
@@ -125,6 +130,10 @@ class Configuration(BaseSettings):
     @property
     def origines_client(self) -> list[str]:
         return [o.strip() for o in self.client_url.split(",") if o.strip()]
+
+    @property
+    def charger_demo(self) -> bool:
+        return self.seed_demo or self.mode_demo
 
     @property
     def mot_de_passe_admin(self) -> str:

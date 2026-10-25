@@ -1,12 +1,15 @@
-"""Briques de sécurité : limitation des connexions, mots de passe, stockage local."""
+"""Briques de sécurité : limitation des connexions, mots de passe, stockage local, mode démo."""
 import asyncio
+from types import SimpleNamespace
 
 import pytest
 
+from app import auth as module_auth
 from app import limiteur as module_limiteur
-from app.auth import hacher_mdp, verifier_mdp
-from app.exceptions import TropDeTentatives
+from app.auth import hacher_mdp, refuser_en_demo, verifier_mdp
+from app.exceptions import AccesRefuse, TropDeTentatives
 from app.limiteur import MAX_ECHECS_EMAIL, MAX_ECHECS_IP, LimiteurConnexion
+from app.routers import documents, users
 from app.stockage import FichierIntrouvable, StockageLocal, cle_depuis_url
 
 
@@ -100,3 +103,21 @@ class TestStockageLocal:
         assert cle_depuis_url("/uploads/documents/a.pdf") == "documents/a.pdf"
         assert cle_depuis_url("/autre/a.pdf") is None
         assert cle_depuis_url(None) is None
+
+
+class TestModeDemo:
+    @pytest.mark.parametrize("demo", [True, False])
+    def test_refus_seulement_en_demo(self, monkeypatch, demo):
+        monkeypatch.setattr(module_auth, "config", lambda: SimpleNamespace(mode_demo=demo))
+        if demo:
+            with pytest.raises(AccesRefuse):
+                asyncio.run(refuser_en_demo())
+        else:
+            asyncio.run(refuser_en_demo())
+
+    def test_routes_sensibles_bloquees(self):
+        """Comptes et envoi de fichiers : bloqués sur la démo publique."""
+        bloquees = {(m, r.path) for r in users.router.routes + documents.router.routes for m in r.methods
+                    if any(d.dependency is refuser_en_demo for d in r.dependencies)}
+        assert bloquees == {("POST", ""), ("PUT", "/{id}"), ("PATCH", "/{id}/password"), ("DELETE", "/{id}"),
+                            ("POST", "/{id}/fichier")}

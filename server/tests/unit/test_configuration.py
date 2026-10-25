@@ -26,7 +26,7 @@ def problemes(**variables) -> list[str]:
 @pytest.fixture(autouse=True)
 def environnement_vide(monkeypatch):
     """Isole les tests des variables d'environnement de la machine."""
-    for variable in ("ENVIRONNEMENT", "JWT_SECRET", "SEED_DEMO", "STOCKAGE", "UPLOADS_DIR", "CLIENT_URL",
+    for variable in ("ENVIRONNEMENT", "JWT_SECRET", "SEED_DEMO", "MODE_DEMO", "STOCKAGE", "UPLOADS_DIR", "CLIENT_URL",
                      "ADMIN_EMAIL", "ADMIN_PASSWORD", "MYSQL_URL", "APP_TIMEZONE", "S3_BUCKET"):
         monkeypatch.delenv(variable, raising=False)
 
@@ -35,6 +35,7 @@ class TestConfiguration:
     def test_valeurs_par_defaut(self):
         c = charger()
         assert (c.environnement, c.port, c.stockage, c.seed_demo) == ("developpement", 5000, "local", False)
+        assert not c.mode_demo and not c.charger_demo
         assert c.origines_client == ["http://localhost:5173"]
 
     def test_secret_obligatoire(self):
@@ -77,6 +78,10 @@ class TestProduction:
 
     def test_donnees_de_demo_refusees(self):
         assert any("SEED_DEMO" in p for p in problemes(**self.BASE, seed_demo=True))
+
+    def test_mode_demo_accepte_les_donnees_de_demo(self):
+        c = charger(**{**self.BASE, "uploads_dir": None}, mode_demo=True, seed_demo=True)
+        assert c.mode_demo and c.charger_demo
 
     def test_disque_ephemere_refuse(self):
         assert any("UPLOADS_DIR" in p for p in problemes(**{**self.BASE, "uploads_dir": None}))

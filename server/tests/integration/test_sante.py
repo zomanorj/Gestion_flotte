@@ -2,7 +2,9 @@
 
 
 def test_sante(api):
-    assert api.get("/health").json() == {"status": "OK", "message": "Serveur flotte opérationnel"}
+    # Les tests démarrent l'API avec les données de démo, sans le mode démo public
+    assert api.get("/health").json() == {"status": "OK", "message": "Serveur flotte opérationnel",
+                                         "demo": False, "comptes_demo": True}
 
 
 def test_route_inconnue(api, admin):

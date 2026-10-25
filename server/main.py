@@ -31,7 +31,7 @@ from fastapi.responses import JSONResponse, Response
 
 from app import db
 from app.auth import Connecte
-from app.demarrage import charger_donnees_demo, initialiser_admin
+from app.demarrage import charger_donnees_demo, initialiser_admin, reinitialiser_demo
 from app.erreurs import installer_gestionnaires
 from app.exceptions import Introuvable
 from app.migrations import mettre_a_jour_schema
@@ -65,6 +65,16 @@ async def _alertes_periodiques():
         await asyncio.sleep(24 * 3600)
 
 
+async def _reinitialisation_demo():
+    """Mode démo : les données reviennent à leur état initial à intervalle régulier."""
+    while True:
+        await asyncio.sleep(config().demo_reinitialisation_heures * 3600)
+        try:
+            await reinitialiser_demo()
+        except Exception as err:
+            print("[Démo] Réinitialisation impossible :", err)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     try:
@@ -80,14 +90,18 @@ async def lifespan(_app: FastAPI):
     await charger_donnees_demo()
     await initialiser_admin()
     await stockage.preparer()
-    tache_alertes = asyncio.create_task(_alertes_periodiques())
+    taches = [asyncio.create_task(_alertes_periodiques())]
+    if config().mode_demo:
+        taches.append(asyncio.create_task(_reinitialisation_demo()))
 
     print("\nTransiFlow — Serveur démarré (FastAPI)")
     print(f"   API disponible sur : http://localhost:{config().port}/api")
-    print(f"   Environnement      : {config().environnement}\n")
+    print(f"   Environnement      : {config().environnement}")
+    print(f"   Mode démo          : {'oui' if config().mode_demo else 'non'}\n")
     yield
 
-    tache_alertes.cancel()
+    for tache in taches:
+        tache.cancel()
     await db.fermer()
 
 
@@ -182,11 +196,12 @@ async def fichier_uploade(chemin: str):
          responses={503: {"model": Sante, "description": "Base de données injoignable"}})
 async def sante():
     """Route de santé : vérifie que l'API répond et que la base est joignable."""
+    demo = {"demo": config().mode_demo, "comptes_demo": config().charger_demo}
     try:
         await db.query_one("SELECT 1 AS ok")
     except Exception:
-        return JSONResponse(status_code=503, content={"status": "KO", "message": "Base de données injoignable"})
-    return {"status": "OK", "message": "Serveur flotte opérationnel"}
+        return JSONResponse(status_code=503, content={"status": "KO", "message": "Base de données injoignable", **demo})
+    return {"status": "OK", "message": "Serveur flotte opérationnel", **demo}
 
 
 # Application ASGI finale : Socket.io sur /socket.io, FastAPI pour le reste

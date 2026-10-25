@@ -79,10 +79,17 @@ def verifier_role(*roles: str):
     return _dep
 
 
+async def refuser_en_demo() -> None:
+    """Dépendance : action bloquée sur la démo publique (comptes partagés, fichiers)."""
+    if config().mode_demo:
+        raise AccesRefuse("Action désactivée sur la version de démonstration")
+
+
 # Raccourcis utilisés par les routers
 Connecte     = Depends(verifier_token)
 Gestionnaire = Depends(verifier_role(*ROLES_GESTION))
 Admin        = Depends(verifier_role("admin"))
+HorsDemo     = Depends(refuser_en_demo)
 
 
 # bcrypt est volontairement lent (~100 ms) : exécuté hors de la boucle async pour ne pas

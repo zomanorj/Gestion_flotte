@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, AlertTriangle, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useModeDemo } from '../requetes';
 
 const COMPTES_DEMO = [
   { libelle: 'Administrateur', email: 'admin@flotte.mg' },
@@ -18,6 +19,7 @@ const ATOUTS = [
 export default function Login() {
   const { login }   = useAuth();
   const navigate    = useNavigate();
+  const { data: sante } = useModeDemo();
 
   const [form,       setForm]       = useState({ email: '', password: '' });
   const [erreur,     setErreur]     = useState('');
@@ -106,8 +108,8 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Comptes de démonstration : un clic remplit le formulaire */}
-          <div className="mt-4 pt-4 border-top">
+          {/* Comptes de démonstration (seulement s'ils sont chargés) : un clic remplit le formulaire */}
+          {sante?.comptesDemo && <div className="mt-4 pt-4 border-top">
             <p className="small text-muted mb-2">Comptes de démonstration (mot de passe <span className="font-monospace">password123</span>)</p>
             <div className="d-flex flex-wrap gap-2">
               {COMPTES_DEMO.map((c) => (
@@ -117,7 +119,7 @@ export default function Login() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
         </div>
       </main>
     </div>

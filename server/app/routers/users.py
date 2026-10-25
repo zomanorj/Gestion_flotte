@@ -1,7 +1,8 @@
 # Routes gestion des utilisateurs — admin uniquement (sauf changement de mot de passe)
+# Écritures bloquées en mode démo : les comptes de démonstration sont partagés par tous.
 from fastapi import Depends
 
-from ..auth import verifier_role, verifier_token
+from ..auth import HorsDemo, verifier_role, verifier_token
 from ..schemas.commun import Message
 from ..schemas.comptes import (
     ChangementMotDePasse,
@@ -23,13 +24,13 @@ async def lister():
     return await service.lister()
 
 
-@router.post("", status_code=201, response_model=Utilisateur, dependencies=[Depends(admin_seulement)],
+@router.post("", status_code=201, response_model=Utilisateur, dependencies=[Depends(admin_seulement), HorsDemo],
              summary="Créer un compte")
 async def creer(donnees: UtilisateurCreation):
     return await service.creer(donnees)
 
 
-@router.put("/{id}", response_model=Utilisateur, summary="Modifier un compte")
+@router.put("/{id}", response_model=Utilisateur, dependencies=[HorsDemo], summary="Modifier un compte")
 async def modifier(id: int, donnees: UtilisateurMiseAJour, auteur: dict = Depends(admin_seulement)):
     """
     Seuls les champs envoyés sont modifiés. Un admin ne peut ni se rétrograder ni se
@@ -39,7 +40,7 @@ async def modifier(id: int, donnees: UtilisateurMiseAJour, auteur: dict = Depend
 
 
 @router.patch("/{id}/password", response_model=MotDePasseChange, response_model_exclude_none=True,
-              summary="Changer un mot de passe")
+              dependencies=[HorsDemo], summary="Changer un mot de passe")
 async def changer_mot_de_passe(id: int, donnees: ChangementMotDePasse, auteur: dict = Depends(verifier_token)):
     """
     Un administrateur réinitialise n'importe quel compte ; un utilisateur change le sien en
@@ -49,7 +50,7 @@ async def changer_mot_de_passe(id: int, donnees: ChangementMotDePasse, auteur: d
     return await service.changer_mot_de_passe(id, donnees, auteur)
 
 
-@router.delete("/{id}", response_model=Message, summary="Désactiver un compte")
+@router.delete("/{id}", response_model=Message, dependencies=[HorsDemo], summary="Désactiver un compte")
 async def desactiver(id: int, auteur: dict = Depends(admin_seulement)):
     """Les données du compte sont conservées ; ses sessions sont coupées."""
     nom = await service.desactiver(id, auteur)
