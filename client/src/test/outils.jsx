@@ -20,7 +20,7 @@ export function connecter(user = { id: 1, nom: 'Rakoto Jean', email: 'admin@flot
 export function rendre(ui, { route = '/', client = nouveauClient() } = {}) {
   const resultat = render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[route]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter initialEntries={[route]}>
         <AuthProvider>{ui}</AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,

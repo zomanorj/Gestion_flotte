@@ -88,7 +88,7 @@ export default function Navbar({ menuOuvert = false, onMenu }) {
       <nav aria-label="Fil d'Ariane" className="flex-grow-1 min-w-0">
         <ol className="fil-ariane">
           {ici && <li className="d-none d-sm-flex">{ici.section}<ChevronRight size={14} aria-hidden="true" /></li>}
-          <li aria-current="page" className="text-truncate">{ici?.page || 'FlotteApp'}</li>
+          <li aria-current="page" className="text-truncate">{ici?.page || 'TransiFlow'}</li>
         </ol>
       </nav>
 

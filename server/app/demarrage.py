@@ -9,20 +9,45 @@ from .sql_outils import instructions_sql
 FICHIER_DEMO = Path(__file__).resolve().parents[1] / "donnees" / "demo.sql"
 
 
+async def _executer_demo(tx) -> None:
+    for instruction in instructions_sql(FICHIER_DEMO.read_text(encoding="utf-8")):
+        await tx.execute(instruction)
+
+
 async def charger_donnees_demo() -> bool:
     """
-    Avec SEED_DEMO=1, charge les données de démonstration (comptes en password123, camions,
-    missions…) dans une base sans aucun compte. Jamais en production. Retourne True si chargé.
+    Avec SEED_DEMO=1 (ou MODE_DEMO=1), charge les données de démonstration (comptes en
+    password123, camions, missions…) dans une base sans aucun compte. Retourne True si chargé.
     """
-    if not config().seed_demo:
+    if not config().charger_demo:
         return False
     if (await db.query_one("SELECT COUNT(*) AS nb FROM users"))["nb"]:
         return False
     async with db.transaction() as tx:
-        for instruction in instructions_sql(FICHIER_DEMO.read_text(encoding="utf-8")):
-            await tx.execute(instruction)
+        await _executer_demo(tx)
     print("[Démo] Données de démonstration chargées (comptes en password123)")
     return True
+
+
+async def reinitialiser_demo() -> None:
+    """
+    Mode démo : vide toutes les tables puis recharge les données de démonstration.
+    TRUNCATE remet les compteurs AUTO_INCREMENT à 1, nécessaire car demo.sql référence
+    les lignes par leur id.
+    """
+    async with db.transaction() as tx:
+        tables = await tx.query(
+            "SELECT TABLE_NAME AS nom FROM information_schema.TABLES "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME <> 'alembic_version'"
+        )
+        await tx.execute("SET FOREIGN_KEY_CHECKS = 0")
+        try:
+            for table in tables:
+                await tx.execute(f"TRUNCATE TABLE `{table['nom']}`")
+        finally:
+            await tx.execute("SET FOREIGN_KEY_CHECKS = 1")
+        await _executer_demo(tx)
+    print("[Démo] Données de démonstration réinitialisées")
 
 
 async def initialiser_admin() -> None:

@@ -108,3 +108,5 @@ class Page(Sortie, Generic[T]):
 class Sante(Sortie):
     status: str
     message: str
+    demo: bool = Field(False, description="Version de démonstration publique (données réinitialisées)")
+    comptes_demo: bool = Field(False, description="Comptes de démonstration chargés (password123)")

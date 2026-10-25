@@ -122,5 +122,11 @@ export const useHistoriqueParametres = (actif) => useQuery({
   queryKey: ['parametres', 'historique'], queryFn: () => lire('/parametres/historique'), enabled: actif,
 });
 
+// Démo : { demo, comptes_demo } lus une seule fois, ils ne changent pas pendant la session
+export const useModeDemo = () => useQuery({
+  queryKey: ['sante'], queryFn: () => lire('/health'), staleTime: Infinity, retry: false,
+  select: (sante) => ({ demo: !!sante?.demo, comptesDemo: !!sante?.comptes_demo }),
+});
+
 // Notifications (rafraîchies aussi en temps réel par la barre du haut)
 export const useNotifications = () => useQuery({ queryKey: ['notifications'], queryFn: () => lire('/notifications') });

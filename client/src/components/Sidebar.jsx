@@ -49,7 +49,7 @@ export default function Sidebar({ ouvert = false, onFermer }) {
           <div className="d-flex align-items-center gap-2">
             <span className="logo"><Truck size={18} strokeWidth={2} /></span>
             <div className="lh-sm">
-              <p className="fw-semibold text-white mb-0">FlotteApp</p>
+              <p className="fw-semibold text-white mb-0">TransiFlow</p>
               <p className="sous-marque mb-0">Transport — Madagascar</p>
             </div>
           </div>

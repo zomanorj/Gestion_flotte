@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, AlertTriangle, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useModeDemo } from '../requetes';
 
 const COMPTES_DEMO = [
   { libelle: 'Administrateur', email: 'admin@flotte.mg' },
@@ -18,12 +19,13 @@ const ATOUTS = [
 export default function Login() {
   const { login }   = useAuth();
   const navigate    = useNavigate();
+  const { data: sante } = useModeDemo();
 
   const [form,       setForm]       = useState({ email: '', password: '' });
   const [erreur,     setErreur]     = useState('');
   const [chargement, setChargement] = useState(false);
 
-  useEffect(() => { document.title = 'Connexion · FlotteApp'; }, []);
+  useEffect(() => { document.title = 'Connexion · TransiFlow'; }, []);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -56,7 +58,7 @@ export default function Login() {
                 style={{ width: 34, height: 34 }}>
             <Truck size={18} />
           </span>
-          <span className="fw-semibold fs-6">FlotteApp</span>
+          <span className="fw-semibold fs-6">TransiFlow</span>
         </div>
         <div>
           <p className="connexion-accroche mb-4">La gestion de votre flotte de transport, au même endroit.</p>
@@ -75,7 +77,7 @@ export default function Login() {
                   style={{ width: 32, height: 32 }}>
               <Truck size={17} />
             </span>
-            <span className="fw-semibold">FlotteApp</span>
+            <span className="fw-semibold">TransiFlow</span>
           </div>
 
           <h1 className="titre-page mb-1" style={{ fontSize: '1.5rem' }}>Connexion</h1>
@@ -106,8 +108,8 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Comptes de démonstration : un clic remplit le formulaire */}
-          <div className="mt-4 pt-4 border-top">
+          {/* Comptes de démonstration (seulement s'ils sont chargés) : un clic remplit le formulaire */}
+          {sante?.comptesDemo && <div className="mt-4 pt-4 border-top">
             <p className="small text-muted mb-2">Comptes de démonstration (mot de passe <span className="font-monospace">password123</span>)</p>
             <div className="d-flex flex-wrap gap-2">
               {COMPTES_DEMO.map((c) => (
@@ -117,7 +119,7 @@ export default function Login() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
         </div>
       </main>
     </div>

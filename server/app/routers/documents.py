@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, File, Query, UploadFile
 
-from ..auth import Admin, Connecte, Gestionnaire
+from ..auth import Admin, Connecte, Gestionnaire, HorsDemo
 from ..schemas.commun import IdOpt, Message, Page, Vide
 from ..schemas.enums import TypeDocument
 from ..schemas.operations import Document, DocumentSaisie, FichierEnvoye
@@ -40,7 +40,7 @@ async def modifier(id: int, donnees: DocumentSaisie):
     return await service.modifier(id, donnees)
 
 
-@router.post("/{id}/fichier", dependencies=[Gestionnaire], response_model=FichierEnvoye,
+@router.post("/{id}/fichier", dependencies=[Gestionnaire, HorsDemo], response_model=FichierEnvoye,
              summary="Joindre un fichier à un document")
 async def joindre_fichier(id: int,
                           fichier: UploadFile | None = File(None, description="PDF, image ou Word, 10 Mo max")):

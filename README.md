@@ -1,21 +1,44 @@
-# FlotteApp — Système de Gestion de Flotte
+# TransiFlow
 
-> Projet de portfolio réalisé en L3 Informatique — Antananarivo, Madagascar  
-> Auteur : Manoa
+**Gestion de flotte de transport routier : missions, camions, chauffeurs, carburant, documents et paie, au même endroit.**
+
+[![CI](https://github.com/zomanorj/Gestion_flotte/actions/workflows/ci.yml/badge.svg)](https://github.com/zomanorj/Gestion_flotte/actions/workflows/ci.yml)
+
+<!-- Démo en ligne : remplacer l'adresse puis décommenter
+**[Voir la démo en ligne](https://transiflow.vercel.app)** — comptes de démonstration proposés sur la page de connexion
+-->
+
+<!-- Captures : ajouter les images dans docs/captures/ puis décommenter
+![Tableau de bord](docs/captures/tableau-de-bord.png)
+| Planning | Missions | Paie |
+|---|---|---|
+| ![Planning](docs/captures/planning.png) | ![Missions](docs/captures/missions.png) | ![Paie](docs/captures/paie.png) |
+-->
 
 ---
 
-## Présentation
+## Le problème
 
-FlotteApp est une application web full-stack de gestion de flotte de transport développée dans le contexte malgache. Elle couvre l'ensemble du cycle opérationnel d'une entreprise de transport : planification des missions, suivi des véhicules en temps réel, gestion administrative, finances et ressources humaines.
+Une entreprise de transport malgache suit souvent ses camions sur papier ou dans plusieurs fichiers Excel : on ne sait pas quel camion est disponible, quand l'assurance expire, combien a coûté le carburant du mois, ni combien payer chaque chauffeur.
 
-Le projet a été structuré en trois phases successives, chacune ajoutant une couche de complexité fonctionnelle et technique, de la gestion métier de base jusqu'aux modules ERP (paie, utilisateurs, notifications temps réel).
+TransiFlow remplace tout cela par une seule application web :
+
+- **Planifier** les missions sans double affectation d'un camion ou d'un chauffeur
+- **Être alerté** avant l'expiration d'un document ou une maintenance en retard
+- **Suivre les coûts** : carburant, dépenses, coût par mission en Ariary
+- **Calculer la paie** des chauffeurs (primes, bonus kilométrique, CNAPS) et générer les bulletins PDF
+- **Voir les changements en temps réel** sur tous les postes connectés
+
+## English summary
+
+TransiFlow is a full-stack fleet management web app built for road transport companies in Madagascar. It covers mission planning with conflict detection, vehicle documents and maintenance alerts, fuel and expense tracking, driver payroll with PDF payslips, role-based access (admin, manager, driver) and real-time notifications.
+
+**Stack:** React 18 + Vite, FastAPI (Python 3.12), MySQL 8, Socket.io, JWT auth, Docker, GitHub Actions CI with 500+ automated tests.
 
 ---
 
 ## Stack technique
 
-[![CI](https://github.com/zomanorj/Gestion_flotte/actions/workflows/ci.yml/badge.svg)](https://github.com/zomanorj/Gestion_flotte/actions/workflows/ci.yml)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white&style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white&style=flat-square)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white&style=flat-square)
@@ -28,7 +51,7 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 
 | Couche | Technologies |
 |--------|-------------|
-| Frontend | React 18, Vite, Bootstrap 5 (thème Sass en niveaux de gris), TanStack Query, FullCalendar, Chart.js, jsPDF, SheetJS — pages chargées à la demande (138 Ko compressés au premier chargement) |
+| Frontend | React 18, Vite, Bootstrap 5 (thème Sass en niveaux de gris), TanStack Query, FullCalendar, Chart.js, jsPDF, write-excel-file — pages chargées à la demande (152 Ko compressés au premier chargement) |
 | Backend | Python 3.12, FastAPI, python-socketio, PyJWT, bcrypt, ReportLab |
 | Base de données | MySQL 5.7+ (pool de connexions async via aiomysql) |
 | Temps réel | Socket.io (python-socketio, compatible socket.io-client v4) — notifications push, mise à jour des écrans à chaque changement de mission |
@@ -59,7 +82,7 @@ Le projet a été structuré en trois phases successives, chacune ajoutant une c
 | Carburant | Suivi des pleins — litres, prix au litre, station, kilométrage, consommation réelle calculée, statistiques mensuelles |
 | Dépenses | Catégorisation (péage, amende, pneus, pièces, main-d'œuvre, parking…), statistiques par véhicule et évolution mensuelle |
 | Bon de livraison | Génération PDF côté serveur (ReportLab) — en-tête, trajet, références camion / chauffeur / client, zone de signatures |
-| Rapports | Filtrage par période, export PDF (jsPDF) et export Excel (SheetJS) |
+| Rapports | Filtrage par période, export PDF (jsPDF) et export Excel (write-excel-file) |
 
 ### Ressources humaines et administration
 
@@ -92,7 +115,7 @@ Authentification par token JWT (expiration 24 h). Trois rôles appliqués côté
 ## Architecture
 
 ```
-flotte-app/
+Gestion_flotte/
 ├── server/                            # API REST Python + FastAPI + Socket.io
 │   ├── main.py                        # Point d'entrée : app FastAPI + Socket.io (ASGI), migrations, CORS
 │   ├── migrations/versions/           # Migrations du schéma (Alembic), appliquées au démarrage
@@ -252,6 +275,16 @@ cd server
 - **Secrets** : `JWT_SECRET` long et aléatoire, propre à la production.
 - **Environnement** : définir `ENVIRONNEMENT=production`, qui active les contrôles de configuration propres à la production.
 
+### Démo publique
+
+`MODE_DEMO=1` prépare une instance ouverte à tous (portfolio, présentation à un client) :
+
+- les données de démonstration sont chargées, puis remises à zéro toutes les `DEMO_REINITIALISATION_HEURES` heures (24 par défaut) ;
+- la gestion des comptes et l'envoi de fichiers sont bloqués, pour qu'un visiteur ne puisse ni verrouiller les comptes partagés ni déposer de fichiers ;
+- la page de connexion propose les comptes de démonstration et un bandeau rappelle que les données sont réinitialisées.
+
+C'est le seul cas où `ENVIRONNEMENT=production` accepte les comptes de démonstration. Sur une installation réelle (ni `SEED_DEMO` ni `MODE_DEMO`), la page de connexion ne les affiche pas.
+
 La documentation interactive de l'API est disponible sur http://localhost:5000/docs (Swagger) et `/redoc` : chaque route y décrit ses paramètres, son corps de requête, sa réponse et ses erreurs, avec un bouton *Authorize* pour tester avec un token.
 
 Toutes les entrées sont validées (types, valeurs autorisées, longueurs, cohérence des dates). Les erreurs ont toujours le format `{"message": "..."}`, en français ; les erreurs de validation (400) détaillent chaque champ dans `erreurs: [{champ, message}]`.
@@ -260,7 +293,7 @@ Toutes les entrées sont validées (types, valeurs autorisées, longueurs, cohé
 
 ## Tests et intégration continue
 
-Le backend est couvert par plus de 500 tests (`server/tests/`) :
+Le backend est couvert par plus de 460 tests (`server/tests/`) :
 
 - **unitaires** : règles métier testées sans base de données (cycle de vie des missions, paie, coûts, confidentialité des salaires), sécurité, schémas, et règles d'architecture (un router ne contient pas de SQL, un service ignore HTTP) ;
 - **intégration** : l'API complète appelée en HTTP et Socket.io sur une base MySQL jetable initialisée avec les scripts du dépôt (droits par rôle, chevauchement des missions y compris en concurrence, révocation des sessions, notifications, fichiers, paie).
@@ -288,7 +321,7 @@ npm test              # ou npm run test:watch pendant le développement
 
 ## Comptes de démonstration
 
-Disponibles uniquement si l'API a démarré avec `SEED_DEMO=1` sur une base sans aucun compte (valeur par défaut avec Docker) : elle charge alors `server/donnees/demo.sql`.
+Disponibles uniquement si l'API a démarré avec `SEED_DEMO=1` ou `MODE_DEMO=1` sur une base sans aucun compte (valeur par défaut avec Docker) : elle charge alors `server/donnees/demo.sql`.
 
 | Email | Mot de passe | Rôle |
 |-------|-------------|------|

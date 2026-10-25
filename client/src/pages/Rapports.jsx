@@ -16,7 +16,7 @@ export default function Rapports() {
   const missions   = rapport.data ?? [];
   const chargement = rapport.isFetching;
   const genere     = !!filtres && rapport.isSuccess;
-  // Bibliothèques d'export (jsPDF, xlsx : ~800 Ko) téléchargées seulement au premier export
+  // Bibliothèques d'export (jsPDF, write-excel-file) téléchargées seulement au premier export
   const [exportEnCours, setExportEnCours] = useState(null); // 'pdf' | 'excel' | null
 
   const exporter = async (format, fonction) => {
@@ -51,7 +51,7 @@ export default function Rapports() {
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(16);
     doc.setTextColor(30, 64, 175);
-    doc.text('Rapport de Missions — FlotteApp Madagascar', 14, 18);
+    doc.text('Rapport de Missions — TransiFlow Madagascar', 14, 18);
     doc.setFontSize(10);
     doc.setTextColor(100);
     const periode = dateDebut || dateFin
@@ -87,29 +87,39 @@ export default function Rapports() {
   };
 
   const exporterExcel = async () => {
-    const XLSX = await import('xlsx');
+    const { default: writeExcelFile } = await import('write-excel-file/browser');
     const lignes = missions.map((m) => ({
-      'Mission':             m.titre,
-      'Véhicule':            m.immatriculation,
-      'Chauffeur':           `${m.chauffeur_prenom} ${m.chauffeur_nom}`,
-      'Départ':              m.lieu_depart,
-      'Destination':         m.lieu_destination,
-      'Distance (km)':       parseFloat(m.distance_km),
-      'Coût carburant (Ar)': parseFloat(m.cout_carburant) || 0,
-      'Date de départ':      formaterDate(m.date_depart),
-      'Date de retour':      formaterDate(m.date_retour_reelle)
+      mission:     m.titre,
+      vehicule:    m.immatriculation,
+      chauffeur:   `${m.chauffeur_prenom} ${m.chauffeur_nom}`,
+      depart:      m.lieu_depart,
+      destination: m.lieu_destination,
+      distance:    parseFloat(m.distance_km) || 0,
+      cout:        parseFloat(m.cout_carburant) || 0,
+      dateDepart:  formaterDate(m.date_depart),
+      dateRetour:  formaterDate(m.date_retour_reelle)
     }));
+    // Ligne de total en gras, en bas du tableau
     lignes.push({
-      'Mission': `TOTAL (${missions.length} missions)`,
-      'Véhicule': '', 'Chauffeur': '', 'Départ': '', 'Destination': '',
-      'Distance (km)': parseFloat(totalKm.toFixed(2)),
-      'Coût carburant (Ar)': parseFloat(totalCout.toFixed(2)),
-      'Date de départ': '', 'Date de retour': ''
+      mission: `TOTAL (${missions.length} missions)`, distance: totalKm, cout: totalCout, total: true
     });
-    const ws = XLSX.utils.json_to_sheet(lignes);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Rapport');
-    XLSX.writeFile(wb, `rapport_missions_${dateDuJour()}.xlsx`);
+
+    const entete = (texte) => ({ value: texte, fontWeight: 'bold' });
+    const texte = (cle) => (l) => ({ value: l[cle] ?? null, fontWeight: l.total ? 'bold' : undefined });
+    const nombre = (cle, format) => (l) => ({ value: l[cle], type: Number, format, fontWeight: l.total ? 'bold' : undefined });
+    const colonnes = [
+      { header: entete('Mission'),             cell: texte('mission'),              width: 30 },
+      { header: entete('Véhicule'),            cell: texte('vehicule'),             width: 14 },
+      { header: entete('Chauffeur'),           cell: texte('chauffeur'),            width: 22 },
+      { header: entete('Départ'),              cell: texte('depart'),               width: 18 },
+      { header: entete('Destination'),         cell: texte('destination'),          width: 18 },
+      { header: entete('Distance (km)'),       cell: nombre('distance', '#,##0.0'), width: 14 },
+      { header: entete('Coût carburant (Ar)'), cell: nombre('cout', '#,##0'),       width: 20 },
+      { header: entete('Date de départ'),      cell: texte('dateDepart'),           width: 16 },
+      { header: entete('Date de retour'),      cell: texte('dateRetour'),           width: 16 }
+    ];
+    await writeExcelFile(lignes, { columns: colonnes, sheet: 'Rapport', stickyRowsCount: 1 })
+      .toFile(`rapport_missions_${dateDuJour()}.xlsx`);
   };
 
   return (

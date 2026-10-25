@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react';
 // par le navigateur tant que leurs versions ne changent pas (le code de l'application, lui, change
 // à chaque déploiement). Les autres dépendances suivent les pages qui les utilisent.
 const GROUPES = {
-  'socle-react': ['react', 'react-dom', 'react-router', 'react-router-dom', 'scheduler', '@remix-run/router'],
+  'socle-react': ['react', 'react-dom', 'react-router', 'react-router-dom', 'scheduler'],
   // Partagés par plusieurs pages : un fichier commun plutôt qu'hébergés dans la première page qui les utilise
   'graphiques':  ['chart.js', 'react-chartjs-2', '@kurkle/color'],
   'icones':      ['lucide-react'],

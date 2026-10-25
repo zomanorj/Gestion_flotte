@@ -86,7 +86,7 @@ def generer_bulletin_pdf(fiche: dict) -> bytes:
     y += 40
 
     # Pied de page
-    pdf.texte(f"Document généré le {date_fr(aujourdhui())} — CamionApp ERP Madagascar",
+    pdf.texte(f"Document généré le {date_fr(aujourdhui())} — TransiFlow ERP Madagascar",
               50, y + 20, taille=8, couleur="#9ca3af", largeur=495, align="center")
 
     return pdf.terminer()
