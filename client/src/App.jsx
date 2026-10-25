@@ -31,11 +31,11 @@ const AppLayout = () => {
   const [menuOuvert, setMenuOuvert] = useState(false);
 
   // Le tiroir se referme après un changement de page et avec la touche Échap ;
-  // le titre de l'onglet suit la page (« Véhicules · FlotteApp »)
+  // le titre de l'onglet suit la page (« Véhicules · TransiFlow »)
   useEffect(() => {
     setMenuOuvert(false);
     const page = emplacement(pathname)?.page;
-    document.title = page ? `${page} · FlotteApp` : 'FlotteApp';
+    document.title = page ? `${page} · TransiFlow` : 'TransiFlow';
   }, [pathname]);
   useEffect(() => {
     if (!menuOuvert) return undefined;

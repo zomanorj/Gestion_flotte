@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Logo FlotteApp (même dessin que la barre latérale) : carré arrondi et camion lucide.
+  <!-- Logo TransiFlow (même dessin que la barre latérale) : carré arrondi et camion lucide.
        Onglet clair : carré foncé, camion blanc. Onglet sombre : carré blanc, camion foncé. -->
   <style>
     .fond { fill: #212529; }

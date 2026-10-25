@@ -51,7 +51,7 @@ export default function Rapports() {
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(16);
     doc.setTextColor(30, 64, 175);
-    doc.text('Rapport de Missions — FlotteApp Madagascar', 14, 18);
+    doc.text('Rapport de Missions — TransiFlow Madagascar', 14, 18);
     doc.setFontSize(10);
     doc.setTextColor(100);
     const periode = dateDebut || dateFin

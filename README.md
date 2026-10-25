@@ -1,4 +1,4 @@
-# FlotteApp — Système de Gestion de Flotte
+# TransiFlow — Système de Gestion de Flotte
 
 > Projet de portfolio réalisé en L3 Informatique — Antananarivo, Madagascar  
 > Auteur : Manoa
@@ -7,7 +7,7 @@
 
 ## Présentation
 
-FlotteApp est une application web full-stack de gestion de flotte de transport développée dans le contexte malgache. Elle couvre l'ensemble du cycle opérationnel d'une entreprise de transport : planification des missions, suivi des véhicules en temps réel, gestion administrative, finances et ressources humaines.
+TransiFlow est une application web full-stack de gestion de flotte de transport développée dans le contexte malgache. Elle couvre l'ensemble du cycle opérationnel d'une entreprise de transport : planification des missions, suivi des véhicules en temps réel, gestion administrative, finances et ressources humaines.
 
 Le projet a été structuré en trois phases successives, chacune ajoutant une couche de complexité fonctionnelle et technique, de la gestion métier de base jusqu'aux modules ERP (paie, utilisateurs, notifications temps réel).
 
@@ -92,7 +92,7 @@ Authentification par token JWT (expiration 24 h). Trois rôles appliqués côté
 ## Architecture
 
 ```
-flotte-app/
+Gestion_flotte/
 ├── server/                            # API REST Python + FastAPI + Socket.io
 │   ├── main.py                        # Point d'entrée : app FastAPI + Socket.io (ASGI), migrations, CORS
 │   ├── migrations/versions/           # Migrations du schéma (Alembic), appliquées au démarrage

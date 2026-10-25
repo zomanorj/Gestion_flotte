@@ -82,7 +82,7 @@ async def lifespan(_app: FastAPI):
     await stockage.preparer()
     tache_alertes = asyncio.create_task(_alertes_periodiques())
 
-    print("\nCamionApp — Serveur démarré (FastAPI)")
+    print("\nTransiFlow — Serveur démarré (FastAPI)")
     print(f"   API disponible sur : http://localhost:{config().port}/api")
     print(f"   Environnement      : {config().environnement}\n")
     yield
@@ -135,7 +135,7 @@ REPONSES_ERREUR = {
 }
 
 api = FastAPI(
-    title="FlotteApp API",
+    title="TransiFlow API",
     version="2.0.0",
     description=DESCRIPTION,
     openapi_tags=[{"name": tag, "description": desc} for _, _, tag, desc in MODULES],

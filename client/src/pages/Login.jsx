@@ -23,7 +23,7 @@ export default function Login() {
   const [erreur,     setErreur]     = useState('');
   const [chargement, setChargement] = useState(false);
 
-  useEffect(() => { document.title = 'Connexion · FlotteApp'; }, []);
+  useEffect(() => { document.title = 'Connexion · TransiFlow'; }, []);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -56,7 +56,7 @@ export default function Login() {
                 style={{ width: 34, height: 34 }}>
             <Truck size={18} />
           </span>
-          <span className="fw-semibold fs-6">FlotteApp</span>
+          <span className="fw-semibold fs-6">TransiFlow</span>
         </div>
         <div>
           <p className="connexion-accroche mb-4">La gestion de votre flotte de transport, au même endroit.</p>
@@ -75,7 +75,7 @@ export default function Login() {
                   style={{ width: 32, height: 32 }}>
               <Truck size={17} />
             </span>
-            <span className="fw-semibold">FlotteApp</span>
+            <span className="fw-semibold">TransiFlow</span>
           </div>
 
           <h1 className="titre-page mb-1" style={{ fontSize: '1.5rem' }}>Connexion</h1>

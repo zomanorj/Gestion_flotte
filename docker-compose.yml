@@ -1,4 +1,4 @@
-# FlotteApp — environnement complet : MySQL 8 + API FastAPI + client React (nginx)
+# TransiFlow — environnement complet : MySQL 8 + API FastAPI + client React (nginx)
 # Lancement : docker compose up --build   →   http://localhost:8080
 services:
   mysql:

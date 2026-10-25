@@ -1,5 +1,5 @@
 -- ============================================================
--- Données de démonstration — FlotteApp
+-- Données de démonstration — TransiFlow
 -- Chargé par l'API au démarrage (app/demarrage.py) si SEED_DEMO=1 et que la base n'a aucun compte.
 -- Ne jamais exécuter en production : crée des comptes au mot de passe connu.
 -- Format : une instruction SQL par bloc, terminée par ";".
